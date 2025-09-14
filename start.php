@@ -1,10 +1,27 @@
 <?php
 $page = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-require("src/header.php");
-if ($page == "/")
-  require("home.php");
-elseif ($page == "/player")
-  require("player.php");
+$query = parse_url($_SERVER["REQUEST_URI"], PHP_URL_QUERY);
+
+foreach (explode('&', $query) as $chunk)
+{
+  $param = explode("=", $chunk);
+  if ($param)
+    $_GET[urldecode($param[0])] = urldecode($param[1]);
+}
+
+if ($page == "/login")
+  require("login.php");
+elseif ($page == "/logout")
+  require("logout.php");
 else
-  echo "Unknown page:".$page;
+{
+  require("src/header.php");
+  if ($page == "/")
+    require("home.php");
+  elseif ($page == "/player")
+    require("player.php");
+  else
+    echo "Unknown page:".$page;
+}
+require("src/footer.php");
 ?>
