@@ -32,6 +32,12 @@ function query($query, $show = false)
   return $result;
 }
 
+function lastInsertID()
+{
+  global $db;
+  return $db->insert_id;
+}
+
 function escape($input)
 {
   if (empty($input))

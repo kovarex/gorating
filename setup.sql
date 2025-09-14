@@ -45,8 +45,9 @@ CREATE TABLE IF NOT EXISTS `invite` (
   `first_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `last_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(256) NOT NULL,
-  `secret` varchar(64) NOT NULL,
+  `secret` int NOT NULL,
   `rating` double DEFAULT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `from_user_id` (`from_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;

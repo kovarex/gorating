@@ -8,6 +8,7 @@ foreach (explode('&', $query) as $chunk)
   if ($param)
     $_GET[urldecode($param[0])] = urldecode($param[1]);
 }
+require("src/link_helper.php");
 
 if ($page == "/login")
   require("login.php");
@@ -16,10 +17,16 @@ elseif ($page == "/logout")
 else
 {
   require("src/header.php");
+  if (!empty($_GET["message"]))
+    echo "<div>".$_GET["message"]."</div>";
   if ($page == "/")
     require("home.php");
   elseif ($page == "/player")
     require("player.php");
+  elseif ($page == "/invite")
+    require("invite.php");
+  elseif ($page == "/invites")
+    require("invites.php");
   else
     echo "Unknown page:".$page;
 }

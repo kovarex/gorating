@@ -7,4 +7,11 @@ function userID()
 {
   return @$_SESSION["user"]["id"];
 }
+
+function checkLoggedIn()
+{
+  if (empty(userID()))
+    die("Not logged in");
+}
+
 ?>
