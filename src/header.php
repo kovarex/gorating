@@ -5,7 +5,7 @@ require("header_internal.php");
 
 if (!empty($_SESSION["user"]))
   echo "<div style=\"position: absolute;right: 0px;\">
-          Currently logged in as".$_SESSION["user"]["username"]."
+          Currently logged in as ".$_SESSION["user"]["username"]."
           <form method=\"post\" action=\"logout\" style=\"display:inline;\">
             <input type=\"submit\" value=\"Logoff\"/>
           </form>
