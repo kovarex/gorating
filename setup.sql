@@ -1,30 +1,61 @@
 CREATE TABLE IF NOT EXISTS `country` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(10) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3 AUTO_INCREMENT=1 ;
+  PRIMARY KEY (`id`),
+  UNIQUE KEY (`name`),
+  UNIQUE KEY (`code`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3 AUTO_INCREMENT=1;
 
-INSERT INTO `country` (`id`, `name`, `code`) VALUES
-(1, 'Czechia', 'CZ');
+INSERT INTO `country` (`name`, `code`) VALUES
+('Czechia', 'CZ'),
+('Germany', 'DE'),
+('Poland', 'PL'),
+('Slovakia', 'SK'),
+('Belgium', 'BE'),
+('Bulgaria', 'BK'),
+('Denmark', 'DK'),
+('Estonia', 'EE'),
+('Ireland', 'IE'),
+('Greece', 'EL'),
+('Spain', 'ES'),
+('France', 'FR'),
+('Croatia', 'HR'),
+('Italy', 'IT'),
+('Cyprus', 'CY'),
+('Latvia', 'LV'),
+('Lithuania', 'LT'),
+('Luxembourg', 'LU'),
+('Hungary', 'HU'),
+('Malta', 'MT'),
+('Netherlands', 'NL'),
+('Austria', 'AT'),
+('Portugal', 'PT'),
+('Romania', 'RO'),
+('Slovenia', 'SI'),
+('Finland', 'FI'),
+('Sweden', 'SE'),
+('United Kingdom', 'UK'),
+('United States', 'US');
 
 CREATE TABLE IF NOT EXISTS `game` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
   `winner_user_id` int unsigned NOT NULL,
   `loser_user_id` int unsigned NOT NULL,
-  `game_type_id` int NOT NULL,
+  `game_type_id` int unsigned NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `location` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `winner_comment` varchar(128) DEFAULT NULL,
   `loser_comment` varchar(128) DEFAULT NULL,
   `sgf` blob,
   PRIMARY KEY (`id`),
-  KEY `winner_user_id` (`winner_user_id`,`loser_user_id`,`game_type_id`),
-  KEY `FK_game_game_type` (`game_type_id`)
+  INDEX `winner_user_id` (`winner_user_id`),
+  INDEX `loser_user_id` (`loser_user_id`),
+  INDEX `game_type_id` (`game_type_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 CREATE TABLE IF NOT EXISTS `game_type` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(64) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3 AUTO_INCREMENT=1 ;
@@ -39,8 +70,8 @@ INSERT INTO `game_type` (`id`, `name`) VALUES
 (7, 'Blitz');
 
 CREATE TABLE IF NOT EXISTS `invite` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `from_user_id` int NOT NULL,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `from_user_id` int unsigned NOT NULL,
   `egd_pin` int DEFAULT NULL,
   `first_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `last_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -53,7 +84,7 @@ CREATE TABLE IF NOT EXISTS `invite` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 CREATE TABLE IF NOT EXISTS `admin_level` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(64) NOT NULL,
   `description` varchar(128) NOT NULL,
   PRIMARY KEY (`id`)
@@ -76,23 +107,31 @@ CREATE TABLE IF NOT EXISTS `user` (
   `egd_pin` int DEFAULT NULL,
   `egd_rating` double DEFAULT NULL,
   `rating` double NOT NULL,
-  `country_id` int NOT NULL,
+  `country_id` int unsigned NOT NULL,
   `password` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `admin_level_id` int NOT NULL,
+  `admin_level_id` int unsigned NOT NULL,
+  `invited_by_user_id` int unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `username` (`username`,`email`),
-  KEY `country_id` (`country_id`)
+  UNIQUE KEY (username),
+  UNIQUE KEY (email),
+  UNIQUE KEY (egd_pin),
+  INDEX `invited_by_user_id` (`invited_by_user_id`),
+  INDEX `country_id` (`country_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- first user is inserted manually
-INSERT INTO `user` (`id`, `username`, `first_name`, `last_name`, `email`, `egd_pin`, `egd_rating`, `rating`, `country_id`, `password`) VALUES
-(1, 'kovarex', 'Michal', 'Kovařík', 'kovarex@gmail.com', 13050378, 2206, 2206, 1, '$2y$10$OdqeMM4K7QwUsDRC38y1yezecOsHNi7wQj5T8EPNclZ.KWHLrkEMK');
+INSERT INTO `user` (`id`, `username`, `first_name`, `last_name`, `email`, `egd_pin`, `egd_rating`, `rating`, `country_id`, `password`, admin_level_id) VALUES
+(1, 'kovarex', 'Michal', 'Kovařík', 'kovarex@gmail.com', 13050378, 2206, 2206, 1, '$2y$10$OdqeMM4K7QwUsDRC38y1yezecOsHNi7wQj5T8EPNclZ.KWHLrkEMK', 1);
 
 ALTER TABLE `game`
-  ADD CONSTRAINT `game_ibfk_1` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`),
-  ADD CONSTRAINT `user_ibfk_2` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`),
-  ADD CONSTRAINT `user_ibfk_3` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`);
+  ADD CONSTRAINT `game_fk_1` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`),
+  ADD CONSTRAINT `game_fk_2` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`),
+  ADD CONSTRAINT `game_fk_3` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`);
   
 ALTER TABLE `user`
-  ADD CONSTRAINT `user_ibfk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
-  ADD CONSTRAINT `user_ibfk_2` FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`);
+  ADD CONSTRAINT `user_fk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
+  ADD CONSTRAINT `user_fk_2` FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`),
+  ADD CONSTRAINT `user_fk_3` FOREIGN KEY (`invited_by_user_id`) REFERENCES `user` (`id`);
+
+ALTER TABLE `invite`
+  ADD CONSTRAINT `invite_fk_1` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`);

@@ -41,7 +41,8 @@ query("INSERT INTO
             rating,
             password,
             country_id,
-            admin_level_id)
+            admin_level_id,
+            invited_by_user_id)
         values(".escape($_POST["username"]).",".
                  escape($invite["first_name"]).",".
                  escape($invite["last_name"]).",".
@@ -50,6 +51,7 @@ query("INSERT INTO
                  escape($rating).",".
                  escape(password_hash($_POST["password"], PASSWORD_DEFAULT)).",".
                  "1,
-                 ".ADMIN_LEVEL_USER.")");
+                 ".ADMIN_LEVEL_USER.",".
+                 $invite["from_user_id"].")");
 redirectWithMessageCustom("/player?id=".lastInsertID(), "Registration successful.");
 ?>
