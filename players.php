@@ -25,6 +25,8 @@ if (canSeeInviters())
   echo "<th>Invited by</th>";
 if (canSeeEmails())
   echo "<th>email</th>";
+if (userID())
+  echo "<th>Report loss</th>";
 echo "</tr>";
 while($row = $players->fetch_assoc())
 {
@@ -37,6 +39,13 @@ while($row = $players->fetch_assoc())
     echo "<td>".playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"])."</td>";
   if (canSeeEmails())
     echo "<td>".$row["email"]."</td>";
+  if (userID())
+  {
+    echo "<td>";
+    if ($row["id"] != userID())
+      echo "<a href=\"report?id=".$row["id"]."\"/>Report</a>";
+    echo "</td>";
+  }
   echo "</tr>";
 }
 echo "</table>";

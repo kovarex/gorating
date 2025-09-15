@@ -17,6 +17,8 @@ elseif ($page == "/logout")
   require("logout.php");
 elseif ($page == "/register_action")
   require("register_action.php");
+elseif ($page == "/report_action")
+  require("report_action.php");
 else
 {
   require("src/header.php");
@@ -34,6 +36,8 @@ else
     require("invites.php");
   elseif ($page == "/register")
     require("register.php");
+  elseif ($page == "/report")
+    require("report.php");
   else
     echo "Unknown page:".$page;
 }
