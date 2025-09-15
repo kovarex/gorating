@@ -21,7 +21,8 @@ $games = query("SELECT
                  game_type.name as game_type_name,
                  game.location as game_location,
                  game.winner_comment as winner_comment,
-                 game.loser_comment as loser_comment
+                 game.loser_comment as loser_comment,
+                 game.timestamp as game_timestamp
                FROM game, user as winner, user as loser, game_type
                WHERE
                   game.winner_user_id = winner.id and
@@ -32,7 +33,7 @@ $games = query("SELECT
 if ($games->num_rows != 0)
 {
   echo "<table class=\"data-table\">";
-  echo   "<tr><th>Result</th><th>Opponent</th><th>Game type</th><th>Location</th><th>Comment</th><th>Opponent</th></tr>";
+  echo   "<tr><th>Result</th><th>Opponent</th><th>Game type</th><th>Time</th><th>Location</th><th>Comment</th><th>Opponent</th></tr>";
   while($row = $games->fetch_assoc())
   {
      echo "<tr>";
@@ -42,6 +43,7 @@ if ($games->num_rows != 0)
      echo "<td>".($winner ? "WIN" : "LOSS")."</td>";
      echo "<td>".playerLink($row[$prefix."id"], $row[$prefix."first_name"]." ".$row[$prefix."last_name"])."</td>";
      echo "<td>".$row["game_type_name"]."</td>";
+     echo "<td>".date("d. m. Y H:i", strtotime($row["game_timestamp"]))."</td>";
      echo "<td>".$row["game_location"]."</td>";
      echo "<td>".$row[$myPrefix."comment"]."</td>";
      echo "<td>".$row[$prefix."comment"]."</td>";
