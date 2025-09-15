@@ -10,7 +10,7 @@ function userID()
 
 function checkLoggedIn()
 {
-  if (empty(userID()))
+  if (!userID())
     die("Not logged in");
 }
 
