@@ -29,7 +29,7 @@
 <?php
 $result = query("SELECT
                     invite.first_name as first_name,
-                    invite.first_name as last_name,
+                    invite.last_name as last_name,
                     invite.email as email,
                     invite.egd_pin as egd_pin,
                     invite.from_user_id as from_user_id,

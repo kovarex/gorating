@@ -26,6 +26,16 @@ function canAccessAllInvites()
   return userCanDo(ADMIN_LEVEL_MOD);
 }
 
+function canSeeInviters()
+{
+  return userCanDo(ADMIN_LEVEL_MOD);
+}
+
+function canSeeEmails()
+{
+  return userCanDo(ADMIN_LEVEL_MOD);
+}
+
 function checkLoggedIn()
 {
   if (!userID())

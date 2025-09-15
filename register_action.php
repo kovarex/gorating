@@ -12,12 +12,15 @@ if (is_string($checkResult))
 $invite = query("SELECT * FROM invite WHERE id=".escape($_POST["invite_id"]))->fetch_assoc();
 assert(!empty($invite));
 
-$rating = "100";
 if ($invite["egd_pin"])
 {
   $egdInfo = getEgdInfo($invite["egd_pin"]);
   $rating = $egdInfo["rating"];
 }
+elseif ($invite["rating"])
+  $rating = $invite["rating"];
+else
+  $rating = "100";
 
 if (empty($_POST["username"]))
 {
@@ -50,8 +53,10 @@ query("INSERT INTO
                  escape($invite["egd_pin"]).",".
                  escape($rating).",".
                  escape(password_hash($_POST["password"], PASSWORD_DEFAULT)).",".
-                 "1,
-                 ".ADMIN_LEVEL_USER.",".
+                 "1,".
+                 ADMIN_LEVEL_USER.",".
                  $invite["from_user_id"].")");
-redirectWithMessageCustom("/player?id=".lastInsertID(), "Registration successful.");
+$newUserID = lastInsertID();
+query("DELETE FROM invite WHERE id=".$invite["id"]);
+redirectWithMessageCustom("/player?id=".$newUserID, "Registration successful.");
 ?>

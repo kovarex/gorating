@@ -17,7 +17,10 @@ function redirectWithMessageCustom($redirect, $message)
 {
   if (empty($redirect))
     die("redirect address not provided.");
-  header("Location: ".$redirect."?message=".urlencode($message));
+  $parameterDelimiter = "?";
+  if (str_contains($redirect, "?"))
+    $parameterDelimiter = "&";
+  header("Location: ".$redirect.$parameterDelimiter."message=".urlencode($message));
   die();
 }
 
