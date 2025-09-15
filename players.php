@@ -1,5 +1,5 @@
 <?php
-$players = query("SELECT * FROM user");
+$players = query("SELECT * FROM user ORDER BY user.rating DESC");
 echo "<table class=\"data-table\">";
 echo "<tr><th>EGD link</th><th>Name</th><th>Rating</th></tr>";
 while($row = $players->fetch_assoc())
