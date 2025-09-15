@@ -9,7 +9,7 @@ function egdAddress($pin)
 function egdLink($pin)
 {
   if (empty($pin))
-    return "NULL";
+    return "";
   return "<a href=\"".egdAddress($pin)."\">".$pin."</a>";
 }
 

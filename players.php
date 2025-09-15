@@ -31,7 +31,7 @@ echo "</tr>";
 while($row = $players->fetch_assoc())
 {
   echo "<tr>";
-  echo "<td>".$row["rating"]."</td>";
+  echo "<td style=\"text-align: right;\">".round($row["rating"])."</td>";
   echo "<td>".playerLink($row["id"], $row["first_name"]." ".$row["last_name"])."</td>";
   echo "<td>".egdLink($row["egd_pin"])."</td>";
   echo "<td>".$row["admin_level_name"]."</td>";

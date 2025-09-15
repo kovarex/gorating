@@ -1,6 +1,7 @@
 <?php
 require("src/db.php");
 require("src/auth.php");
+require("src/rating_helper.php");
 if (empty(userID()))
 {
   echo "Can't report game when not logged in.";
@@ -22,18 +23,40 @@ if ($_POST["game_type"] != GAME_TYPE_SERIOUS and
   return;
 }
 
+$me = query("SELECT * FROM user WHERE id=".escape(userID()))->fetch_assoc();
+
+if (empty($me))
+{
+  echo "The record of currently logged user doesn't exist, this shouldn't happen!";
+  return;
+}
+
+$myOldRating = $me["rating"];
+$opponentOldRating = $opponent["rating"];
+$myNewRating = calculateNewRating($myOldRating, $opponentOldRating, 0.0, $_POST["game_type"]);
+$opponentNewRating = calculateNewRating($opponentOldRating, $myOldRating, 1.0, $_POST["game_type"]);
 
 query("INSERT INTO
        game(winner_user_id,
             loser_user_id,
             game_type_id,
             location,
-            loser_comment)
+            loser_comment,
+            winner_old_rating,
+            winner_new_rating,
+            loser_old_rating,
+            loser_new_rating)
        VALUES(".$opponent["id"].",".
                 userID().",".
                 escape($_POST["game_type"]).",".
                 escape($_POST["location"]).",".
-                escape($_POST["comment"]).")");
+                escape($_POST["comment"]).",".
+                escape($opponentOldRating).",".
+                escape($opponentNewRating).",".
+                escape($myOldRating).",".
+                escape($myNewRating).")");
+query("UPDATE user set rating=".$myNewRating." WHERE id=".userID());
+query("UPDATE user set rating=".$opponentNewRating." WHERE id=".escape($_POST["winner_user_id"]));
 
 redirectWithMessageCustom("/player?id=".userID(), "Game added");
 ?>
