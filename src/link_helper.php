@@ -13,12 +13,17 @@ function egdLink($pin)
   return "<a href=\"".egdAddress($pin)."\">".$pin."</a>";
 }
 
+function redirectWithMessageCustom($redirect, $message)
+{
+  if (empty($redirect))
+    die("redirect address not provided.");
+  header("Location: ".$redirect."?message=".urlencode($message));
+  die();
+}
+
 function redirectWithMessage($message)
 {
-  if (empty($_POST["redirect"]))
-    die("redirect address not provided.");
-  header("Location: ".$_POST["redirect"]."?message=".urlencode($message));
-  die();
+  redirectWithMessageCustom($_POST["redirect"], $message);
 }
 
 function playerLink($playerID, $playerName)

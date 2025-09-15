@@ -22,5 +22,6 @@ echo "<a href=\"/\">Home</a>";
 echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/players\">Players</a>";
 if (adminLevel() <= ADMIN_LEVEL_USER)
   echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/invites\">Invites</a>";
-echo "</div>"
+echo "</div>";
+echo "<br/><br/>";
 ?>
