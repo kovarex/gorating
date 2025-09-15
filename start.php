@@ -9,6 +9,7 @@ foreach (explode('&', $query) as $chunk)
     $_GET[urldecode($param[0])] = urldecode($param[1]);
 }
 require("src/link_helper.php");
+require("src/constants.php");
 
 if ($page == "/login")
   require("login.php");

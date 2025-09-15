@@ -52,6 +52,20 @@ CREATE TABLE IF NOT EXISTS `invite` (
   KEY `from_user_id` (`from_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
+CREATE TABLE IF NOT EXISTS `admin_level` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  `description` varchar(128) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3;
+
+INSERT INTO `admin_level` (`id`, `name`, `description`) VALUES
+(1, 'owner', 'Can do anything.'),
+(2, 'admin', 'Anything but promoting/demoting admins.'),
+(3, 'mod', 'Full access to invites.'),
+(4, 'trusted', 'Can insert any game results on its own.'),
+(5, 'user', 'Can only insert his losses.');
+
 CREATE TABLE IF NOT EXISTS `user` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -63,6 +77,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `rating` double NOT NULL,
   `country_id` int NOT NULL,
   `password` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `admin_level_id` int NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`email`),
   KEY `country_id` (`country_id`)
@@ -78,4 +93,5 @@ ALTER TABLE `game`
   ADD CONSTRAINT `user_ibfk_3` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`);
   
 ALTER TABLE `user`
-  ADD CONSTRAINT `user_ibfk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`);
+  ADD CONSTRAINT `user_ibfk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
+  ADD CONSTRAINT `user_ibfk_2` FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`);

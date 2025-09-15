@@ -20,4 +20,9 @@ function redirectWithMessage($message)
   header("Location: ".$_POST["redirect"]."?message=".urlencode($message));
   die();
 }
+
+function playerLink($playerID, $playerName)
+{
+  return "<a href=\"/player?id=".$playerID."\">".$playerName."</a>";
+}
 ?>

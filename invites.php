@@ -27,20 +27,36 @@
 </form>
 
 <?php
-$result = query("SELECT * FROM invite");
+$result = query("SELECT
+                    invite.first_name as first_name,
+                    invite.first_name as last_name,
+                    invite.email as email,
+                    invite.egd_pin as egd_pin,
+                    invite.from_user_id as from_user_id,
+                    user.first_name as from_user_first_name,
+                    user.last_name as from_user_last_name
+                 FROM
+                   invite, user
+                 WHERE
+                   invite.from_user_id = user.id".(canAccessAllInvites() ? "" : " and invite.from_user_id=".userID()));
 if ($result->num_rows == 0)
 {
   echo "No pending invites";
   return;
 }
 
-echo "<table class='data-table'><tr><th>Name</th><th>EGD</th><th>email</th></tr>";
+echo "<table class='data-table'><tr><th>Name</th><th>EGD</th><th>email</th>";
+if (canAccessAllInvites())
+  echo "<th>Creator</th>";
+echo "</tr>";
 while($row = $result->fetch_assoc())
 {
   echo "<tr>";
   echo "<td>".$row["first_name"]." ".$row["last_name"]."</td>";
   echo "<td>".egdLink($row["egd_pin"])."</td>";
   echo "<td>".$row["email"]."</td>";
+  if (canAccessAllInvites())
+    echo "<td>".playerLink($row["from_user_id"], $row["from_user_first_name"]." ".$row["from_user_last_name"])."</td>";
   echo "</tr>";
 }
 echo "</table>";
