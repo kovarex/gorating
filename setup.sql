@@ -60,11 +60,12 @@ CREATE TABLE IF NOT EXISTS `admin_level` (
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3;
 
 INSERT INTO `admin_level` (`id`, `name`, `description`) VALUES
-(1, 'owner', 'Can do anything.'),
-(2, 'admin', 'Anything but promoting/demoting admins.'),
-(3, 'mod', 'Full access to invites.'),
-(4, 'trusted', 'Can insert any game results on its own.'),
-(5, 'user', 'Can only insert his losses.');
+(1, 'Owner', 'Can do anything'),
+(2, 'Admin', 'Anything but promoting/demoting admins'),
+(3, 'Mod', 'Full access to invites'),
+(4, 'Trusted user', 'Can insert any game results on its own'),
+(5, 'User', 'Can only insert his losses'),
+(6, 'Unregistered', 'Player who didn''t register but is present as opponent from EGD (or other) database.');
 
 CREATE TABLE IF NOT EXISTS `user` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
