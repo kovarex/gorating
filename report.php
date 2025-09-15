@@ -6,7 +6,7 @@ if (empty($opponent))
   return;
 }
 
-echo "<form method=\"post\" action=\"report_action\">";
+echo "<form method=\"post\" enctype=\"multipart/form-data\" action=\"report_action\">";
 echo "<table class=\"data-table\">";
 echo "<tr><td>Winner:</td><td>".playerLink($opponent["id"], $opponent["first_name"]." ".$opponent["last_name"])." (".round($opponent["rating"]).")</td></tr>";
 echo "<tr><td>Loser:</td><td>".playerLink($_SESSION["user"]["id"], $_SESSION["user"]["first_name"]." ".$_SESSION["user"]["last_name"])." (".round($_SESSION["user"]["rating"]).")</td></tr>";
@@ -30,6 +30,7 @@ echo   "</td>";
 echo "</tr>";
 echo "<tr><td>Location:</td><td><input type=\"text\" name=\"location\"/></td></tr>";
 echo "<tr><td>Comment:</td><td><input type=\"text\" name=\"comment\"/></td></tr>";
+echo "<tr><td>SGF:</td><td><input type=\"file\" name=\"sgf\" accept=\".sgf\"/></td></tr>";
 echo "</table>";
 echo "<input type=\"hidden\" name=\"winner_user_id\" value=\"".$opponent["id"]."\"/>";
 echo "<br/>";

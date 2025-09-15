@@ -9,17 +9,21 @@ $players = query("SELECT
                     admin_level.name as admin_level_name,
                     inviter.id as inviter_id,
                     inviter.first_name as inviter_first_name,
-                    inviter.last_name as inviter_last_name
+                    inviter.last_name as inviter_last_name,
+                    country.code as country_code
                   FROM user LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id,
-                       admin_level
+                       admin_level,
+                       country
                   WHERE
-                    user.admin_level_id = admin_level.id
+                    user.admin_level_id = admin_level.id and
+                    user.country_id = country.id
                   ORDER BY user.rating DESC");
 echo "<table class=\"data-table\">";
 echo "<tr>";
 echo "<th>Rating</th>";
 echo "<th>Name</th>";
 echo "<th>EGD link</th>";
+echo "<th>Country</th>";
 echo "<th>Role</th>";
 if (canSeeInviters())
   echo "<th>Invited by</th>";
@@ -34,6 +38,7 @@ while($row = $players->fetch_assoc())
   echo "<td style=\"text-align: right;\">".round($row["rating"])."</td>";
   echo "<td>".playerLink($row["id"], $row["first_name"]." ".$row["last_name"])."</td>";
   echo "<td>".egdLink($row["egd_pin"])."</td>";
+  echo "<td style=\"text-align: center;\">".$row["country_code"]."</td>";
   echo "<td>".$row["admin_level_name"]."</td>";
   if (canSeeInviters())
     echo "<td>".playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"])."</td>";

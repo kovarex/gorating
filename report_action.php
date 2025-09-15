@@ -35,6 +35,8 @@ $myOldRating = $me["rating"];
 $opponentOldRating = $opponent["rating"];
 $myNewRating = calculateNewRating($myOldRating, $opponentOldRating, 0.0, $_POST["game_type"]);
 $opponentNewRating = calculateNewRating($opponentOldRating, $myOldRating, 1.0, $_POST["game_type"]);
+if (!empty($_FILES["sgf"] and !empty($_FILES["sgf"]["tmp_name"])))
+  $sgf = file_get_contents($_FILES['sgf']['tmp_name']);
 
 query("INSERT INTO
        game(winner_user_id,
@@ -45,7 +47,8 @@ query("INSERT INTO
             winner_old_rating,
             winner_new_rating,
             loser_old_rating,
-            loser_new_rating)
+            loser_new_rating,
+            sgf)
        VALUES(".$opponent["id"].",".
                 userID().",".
                 escape($_POST["game_type"]).",".
@@ -54,7 +57,8 @@ query("INSERT INTO
                 escape($opponentOldRating).",".
                 escape($opponentNewRating).",".
                 escape($myOldRating).",".
-                escape($myNewRating).")");
+                escape($myNewRating).",".
+                escape($sgf).")");
 query("UPDATE user set rating=".$myNewRating." WHERE id=".userID());
 query("UPDATE user set rating=".$opponentNewRating." WHERE id=".escape($_POST["winner_user_id"]));
 

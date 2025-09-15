@@ -10,6 +10,7 @@ echo "<tr><td>EGD Rating:</td><td>".$player["egd_rating"]."</td></tr>";
 echo "</table>";
 
 $games = query("SELECT
+                 game.id as game_id,
                  winner.id as winner_id,
                  winner.first_name as winner_first_name,
                  winner.last_name as winner_last_name,
@@ -26,7 +27,8 @@ $games = query("SELECT
                  game.location as game_location,
                  game.winner_comment as winner_comment,
                  game.loser_comment as loser_comment,
-                 game.timestamp as game_timestamp
+                 game.timestamp as game_timestamp,
+                 length(game.sgf) > 0 as has_sgf
                FROM game, user as winner, user as loser, game_type
                WHERE
                  game.winner_user_id = winner.id and
@@ -38,7 +40,7 @@ $games = query("SELECT
 if ($games->num_rows != 0)
 {
   echo "<table class=\"data-table\">";
-  echo   "<tr><th>Result</th><th>Rating change</th><th>Opponent</th><th>Game type</th><th>Time</th><th>Location</th><th>Comment</th><th>Opponent</th></tr>";
+  echo   "<tr><th>Result</th><th>Rating change</th><th>Opponent</th><th>Game type</th><th>Time</th><th>Location</th><th>Comment</th><th>Opponent</th><th>SGF</th></tr>";
   while($row = $games->fetch_assoc())
   {
      echo "<tr>";
@@ -54,6 +56,12 @@ if ($games->num_rows != 0)
      echo "<td style=\"text-align:center;\">".$row["game_location"]."</td>";
      echo "<td style=\"text-align:center;\">".$row[$myPrefix."comment"]."</td>";
      echo "<td style=\"text-align:center;\">".$row[$prefix."comment"]."</td>";
+
+     echo "<td>";
+     if ($row["has_sgf"])
+       echo "<a href=\"/sgf?id=".$row["game_id"]."\">SGF</a>";
+     echo "</td>";
+
      echo "</tr>";
   }
   echo "</table>";

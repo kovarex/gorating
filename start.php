@@ -19,6 +19,8 @@ elseif ($page == "/register_action")
   require("register_action.php");
 elseif ($page == "/report_action")
   require("report_action.php");
+elseif ($page == "/sgf")
+  require("sgf.php");
 else
 {
   require("src/header.php");
