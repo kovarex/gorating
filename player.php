@@ -27,7 +27,7 @@ $games = query("SELECT
                   game.winner_user_id = winner.id and
                   game.loser_user_id = loser.id and
                   game.game_type_id = game_type.id and
-                 (winner_user_id=".userID()." or loser_user_id=".userID().")");
+                 (winner_user_id=".escape($_GET["id"])." or loser_user_id=".escape($_GET["id"]).")");
 
 if ($games->num_rows != 0)
 {
@@ -36,7 +36,7 @@ if ($games->num_rows != 0)
   while($row = $games->fetch_assoc())
   {
      echo "<tr>";
-     $winner = ($row["winner_id"] == userID());
+     $winner = ($row["winner_id"] == $_GET["id"]);
      $prefix = $winner ? "loser_" : "winner_";
      $myPrefix = $winner ? "winner_" : "loser_";
      echo "<td>".($winner ? "WIN" : "LOSS")."</td>";
