@@ -39,7 +39,6 @@ query("INSERT INTO
             email,
             egd_pin,
             rating,
-            egd_rating,
             password,
             country_id,
             admin_level_id)
@@ -49,7 +48,6 @@ query("INSERT INTO
                  escape($invite["email"]).",".
                  escape($invite["egd_pin"]).",".
                  escape($rating).",".
-                 (empty($egdInfo) ? "NULL" : $rating).",".
                  escape(password_hash($_POST["password"], PASSWORD_DEFAULT)).",".
                  "1,
                  ".ADMIN_LEVEL_USER.")");

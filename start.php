@@ -26,6 +26,8 @@ else
     require("home.php");
   elseif ($page == "/player")
     require("player.php");
+    elseif ($page == "/players")
+    require("players.php");
   elseif ($page == "/invite")
     require("invite.php");
   elseif ($page == "/invites")
