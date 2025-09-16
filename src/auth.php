@@ -21,6 +21,11 @@ function userCanDo($level)
   return adminLevel() <= $level;
 }
 
+function canProcessTournament()
+{
+  return userCanDo(ADMIN_LEVEL_MOD);
+}
+
 function canAccessAllInvites()
 {
   return userCanDo(ADMIN_LEVEL_MOD);

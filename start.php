@@ -21,6 +21,8 @@ elseif ($page == "/report_action")
   require("report_action.php");
 elseif ($page == "/sgf")
   require("sgf.php");
+elseif ($page == "/process_tournament")
+  require("process_tournament.php");
 else
 {
   require("src/header.php");
