@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS `game_type` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(64) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3 AUTO_INCREMENT=1 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3 AUTO_INCREMENT=1;
 
 INSERT INTO `game_type` (`id`, `name`) VALUES
 (1, 'EGD - class A'),
