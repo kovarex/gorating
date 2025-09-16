@@ -31,12 +31,50 @@ if (empty($me))
   return;
 }
 
-$myOldRating = $me["rating"];
-$opponentOldRating = $opponent["rating"];
-$myNewRating = calculateNewRating($myOldRating, $opponentOldRating, 0.0, $_POST["game_type"]);
-$opponentNewRating = calculateNewRating($opponentOldRating, $myOldRating, 1.0, $_POST["game_type"]);
 if (!empty($_FILES["sgf"] and !empty($_FILES["sgf"]["tmp_name"])))
   $sgf = file_get_contents($_FILES['sgf']['tmp_name']);
+
+if (!is_numeric($_POST["handicap"]))
+{
+  echo "Handicap value must be numeric";
+  return;
+}
+
+if ($_POST["handicap"] > 9)
+{
+  echo "Maximum handicap value is 9";
+  return;
+}
+
+if ($_POST["handicap"] < 0)
+{
+  echo "Handicap can't be negative";
+  return;
+}
+
+if (!is_numeric($_POST["komi"]))
+{
+  echo "Komi value must be numeric";
+  return;
+}
+
+if ($_POST["color"] == "black")
+  $winnerIsBlack = false;
+elseif ($_POST["color"] == "white")
+  $winnerIsBlack = true;
+else
+{
+  echo "Invalid color value:".$_POST["color"];
+  return;
+}
+
+$myOldRating = $me["rating"];
+$opponentOldRating = $opponent["rating"];
+
+$myHandicap = ($winnerIsBlack ? -1 : 1) * $_POST["handicap"];
+$myExtraKomi = ($winnerIsBlack ? 1 : -1) * ($_POST["komi"] - 6.5);
+$myNewRating = calculateNewRating($myOldRating, $opponentOldRating, 0.0, $_POST["game_type"], $myHandicap, $myExtraKomi);
+$opponentNewRating = calculateNewRating($opponentOldRating, $myOldRating, 1.0, $_POST["game_type"], -$myHandicap, -$myExtraKomi);
 
 query("INSERT INTO
        game(winner_user_id,
@@ -48,7 +86,10 @@ query("INSERT INTO
             winner_new_rating,
             loser_old_rating,
             loser_new_rating,
-            sgf)
+            sgf,
+            winner_is_black,
+            handicap_stones,
+            komi)
        VALUES(".$opponent["id"].",".
                 userID().",".
                 escape($_POST["game_type"]).",".
@@ -58,7 +99,11 @@ query("INSERT INTO
                 escape($opponentNewRating).",".
                 escape($myOldRating).",".
                 escape($myNewRating).",".
-                escape($sgf).")");
+                escape($sgf).",".
+                $winnerIsBlack.",".
+                escape($_POST["handicap"]).",".
+                escape($_POST["komi"]).")");
+
 query("UPDATE user set rating=".$myNewRating." WHERE id=".userID());
 query("UPDATE user set rating=".$opponentNewRating." WHERE id=".escape($_POST["winner_user_id"]));
 
