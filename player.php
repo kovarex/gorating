@@ -28,6 +28,9 @@ $games = query("SELECT
                  game.winner_comment as winner_comment,
                  game.loser_comment as loser_comment,
                  game.timestamp as game_timestamp,
+                 game.winner_is_black as winner_is_black,
+                 game.handicap as handicap,
+                 game.komi as komi,
                  length(game.sgf) > 0 as has_sgf
                FROM game, user as winner, user as loser, game_type
                WHERE
@@ -40,7 +43,7 @@ $games = query("SELECT
 if ($games->num_rows != 0)
 {
   echo "<table class=\"data-table\">";
-  echo   "<tr><th>Result</th><th>Rating change</th><th>Opponent</th><th>Game type</th><th>Time</th><th>Location</th><th>Comment</th><th>Opponent</th><th>SGF</th></tr>";
+  echo   "<tr><th>Result</th><th>Rating change</th><th>Opponent</th><th>Game type</th><th>Color</th><th>Handicap</th><th>Time</th><th>Location</th><th>Comment</th><th>Opponent</th><th>SGF</th></tr>";
   while($row = $games->fetch_assoc())
   {
      echo "<tr>";
@@ -51,7 +54,23 @@ if ($games->num_rows != 0)
      echo "<td style=\"text-align:center;\">".($winner ? "WIN" : "LOSS")."</td>";
      echo "<td style=\"text-align:center;\"><span class=\"".$myResultName."\">".round($row[$myPrefix."old_rating"])."&rarr;".round($row[$myPrefix."new_rating"])."</span></td>";
      echo "<td>".playerLink($row[$prefix."id"], $row[$prefix."first_name"]." ".$row[$prefix."last_name"])." (".round($row[$prefix."new_rating"]).")</td>";
-     echo "<td>".$row["game_type_name"]."</td>";
+     echo "<td style=\"text-align:center;\">".$row["game_type_name"]."</td>";
+     echo "<td style=\"text-align:center;\">".(boolval($winner) == boolval($row["winner_is_black"]) ? "Black" : "White")."</td>";
+     echo "<td style=\"text-align:center;\">";
+       if ($row["handicap"] == 0 and ($row["komi"] == 6.5 or $row["komi"] == 7.5))
+         echo "Even";
+       else
+       {
+         if ($row["handicap"] != 0)
+         {
+           echo $row["handicap"]."h";
+           if ($row["komi"] != 0.5)
+             echo " komi ".$row["komi"];
+         }
+         else
+           echo "komi ".$row["komi"];
+       }
+     echo "</td>";
      echo "<td>".date("d. m. Y H:i", strtotime($row["game_timestamp"]))."</td>";
      echo "<td style=\"text-align:center;\">".$row["game_location"]."</td>";
      echo "<td style=\"text-align:center;\">".$row[$myPrefix."comment"]."</td>";

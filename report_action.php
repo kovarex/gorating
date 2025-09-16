@@ -88,7 +88,7 @@ query("INSERT INTO
             loser_new_rating,
             sgf,
             winner_is_black,
-            handicap_stones,
+            handicap,
             komi)
        VALUES(".$opponent["id"].",".
                 userID().",".

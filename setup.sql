@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS `game` (
   `loser_old_rating` double NOT NULL,
   `loser_new_rating` double NOT NULL,
   `winner_is_black` tinyint(1) NOT NULL DEFAULT '1',
-  `handicap_stones` int NOT NULL DEFAULT '0',
+  `handicap` int NOT NULL DEFAULT '0',
   `komi` double NOT NULL DEFAULT '6.5',
   PRIMARY KEY (`id`),
   INDEX `winner_user_id` (`winner_user_id`),
