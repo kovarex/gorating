@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS `game` (
   `winner_is_black` tinyint(1) NOT NULL DEFAULT '1',
   `handicap` int NOT NULL DEFAULT '0',
   `komi` double NOT NULL DEFAULT '6.5',
+  `egd_tournament_id` int unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   INDEX `winner_user_id` (`winner_user_id`),
   INDEX `loser_user_id` (`loser_user_id`),
@@ -126,6 +127,18 @@ CREATE TABLE IF NOT EXISTS `user` (
   INDEX `country_id` (`country_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `egd_tournament`
+(
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `egd_key` varchar(10) NOT NULL,
+  `timestamp` timestamp NOT NULL,
+  `country_id` int unsigned NOT NULL,
+  `game_type_id` int NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY (egd_key)
+  KEY `egd_key` (`timestamp`,`country_id`,`game_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+
 -- first user is inserted manually
 INSERT INTO `user` (`id`, `username`, `first_name`, `last_name`, `email`, `egd_pin`, `egd_rating`, `rating`, `country_id`, `password`, admin_level_id) VALUES
 (1, 'kovarex', 'Michal', 'Kovařík', 'kovarex@gmail.com', 13050378, 2206, 2206, 1, '$2y$10$OdqeMM4K7QwUsDRC38y1yezecOsHNi7wQj5T8EPNclZ.KWHLrkEMK', 1);
@@ -133,7 +146,8 @@ INSERT INTO `user` (`id`, `username`, `first_name`, `last_name`, `email`, `egd_p
 ALTER TABLE `game`
   ADD CONSTRAINT `game_fk_1` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`),
   ADD CONSTRAINT `game_fk_2` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`),
-  ADD CONSTRAINT `game_fk_3` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`);
+  ADD CONSTRAINT `game_fk_3` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`),
+  ADD CONSTRAINT `game_fk_4` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`);
   
 ALTER TABLE `user`
   ADD CONSTRAINT `user_fk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
@@ -142,3 +156,7 @@ ALTER TABLE `user`
 
 ALTER TABLE `invite`
   ADD CONSTRAINT `invite_fk_1` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`);
+
+ALTER TABLE `egd_tournament`
+  ADD CONSTRAINT `tournament_fk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
+  ADD CONSTRAINT `tournament_fk_2` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`);
