@@ -20,6 +20,7 @@ else
 echo "<div>";
 echo "<a href=\"/\">Home</a>";
 echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/players\">Players</a>";
+echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/about\">About</a>";
 if (adminLevel() <= ADMIN_LEVEL_USER)
   echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/invites\">Invites</a>";
 echo "</div>";

@@ -1,1 +1,2 @@
-<h1>Friendly go rating home page</h1>
+<h1>Home</h1>
+This page will contain the list of latest players and games, for more info go to about.

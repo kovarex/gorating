@@ -40,6 +40,8 @@ else
     require("register.php");
   elseif ($page == "/report")
     require("report.php");
+  elseif ($page == "/about")
+    require("about.php");
   else
     echo "Unknown page:".$page;
 }
