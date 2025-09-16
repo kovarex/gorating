@@ -45,7 +45,8 @@ query("INSERT INTO
             password,
             country_id,
             admin_level_id,
-            invited_by_user_id)
+            invited_by_user_id,
+            register_timestamp)
         values(".escape($_POST["username"]).",".
                  escape($invite["first_name"]).",".
                  escape($invite["last_name"]).",".
@@ -55,7 +56,8 @@ query("INSERT INTO
                  escape(password_hash($_POST["password"], PASSWORD_DEFAULT)).",".
                  "1,".
                  ADMIN_LEVEL_USER.",".
-                 $invite["from_user_id"].")");
+                 $invite["from_user_id"].",
+                 now())");
 $newUserID = lastInsertID();
 query("DELETE FROM invite WHERE id=".$invite["id"]);
 redirectWithMessageCustom("/player?id=".$newUserID, "Registration successful.");

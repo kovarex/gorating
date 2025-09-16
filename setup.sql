@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `password` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `admin_level_id` int unsigned NOT NULL,
   `invited_by_user_id` int unsigned DEFAULT NULL,
+  `register_timestamp` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY (username),
   UNIQUE KEY (email),

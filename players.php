@@ -6,6 +6,7 @@ $players = query("SELECT
                     user.last_name as last_name,
                     user.egd_pin as egd_pin,
                     user.email as email,
+                    user.register_timestamp as register_timestamp,
                     admin_level.name as admin_level_name,
                     inviter.id as inviter_id,
                     inviter.first_name as inviter_first_name,
@@ -29,6 +30,7 @@ if (canSeeInviters())
   echo "<th>Invited by</th>";
 if (canSeeEmails())
   echo "<th>email</th>";
+echo "<th>Registered</th>";
 if (userID())
   echo "<th>Report loss</th>";
 echo "</tr>";
@@ -44,6 +46,7 @@ while($row = $players->fetch_assoc())
     echo "<td>".playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"])."</td>";
   if (canSeeEmails())
     echo "<td>".$row["email"]."</td>";
+  echo "<td>".(empty($row["register_timestamp"]) ? "" : date("d. m. Y H:i", strtotime($row["register_timestamp"])))."</td>";
   if (userID())
   {
     echo "<td>";
