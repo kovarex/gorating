@@ -10,7 +10,6 @@
 <br/>
 TODO:
 <ul>
-  <li>Allow handicap game results</li>
   <li>Country selector</li>
   <li>Some styles</li>
   <li>Apply results from EGD tournaments into this rating automatically as they happen.</li>
