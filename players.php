@@ -1,4 +1,37 @@
 <?php
+
+echo "<div style=\"text-align:center;\">";
+echo "<form>";
+echo "<input type=\"text\" name=\"search\"/>";
+echo "</form>";
+echo "</div>";
+
+$search = @$_GET["search"];
+if (empty($search))
+  return;
+
+
+function addWithOr($query, $addition)
+{
+  if (empty($query))
+    return $addition;
+  return $query." or ".$addition;
+}
+
+$parts = explode(" ", $search);
+$searchQuery = "";
+
+foreach ($parts as $part)
+{
+  if (is_numeric($part) and strlen($part) == 8)
+    $searchQuery = addWithOr($searchQuery, "user.egd_pin=".escape($search));
+  else
+  {
+    $searchQuery = addWithOr($searchQuery, "MATCH(user.first_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
+    $searchQuery = addWithOr($searchQuery, "MATCH(user.last_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
+  }
+}
+
 $players = query("SELECT
                     user.id as id,
                     user.rating as rating,
@@ -17,8 +50,10 @@ $players = query("SELECT
                        country
                   WHERE
                     user.admin_level_id = admin_level.id and
-                    user.country_id = country.id
-                  ORDER BY user.rating DESC");
+                    user.country_id = country.id and
+                    (".$searchQuery.")
+                  ORDER BY user.rating DESC
+                  LIMIT 50");
 echo "<table class=\"data-table\">";
 echo "<tr>";
 echo "<th>Rating</th>";

@@ -149,8 +149,10 @@ CREATE TABLE IF NOT EXISTS `user` (
   UNIQUE KEY (username),
   UNIQUE KEY (email),
   UNIQUE KEY (egd_pin),
-  INDEX `invited_by_user_id` (`invited_by_user_id`),
-  INDEX `country_id` (`country_id`)
+  INDEX (invited_by_user_id),
+  INDEX (country_id),
+  FULLTEXT KEY (first_name),
+  FULLTEXT KEY (last_name)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `egd_tournament`

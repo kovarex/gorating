@@ -25,13 +25,10 @@ while ($line !== false)
   {
     $name = trim(substr($line, 11, 39));
     $nameSplit = explode(" ", $name);
-    $firstName = $nameSplit[0];
-    $lastName = $nameSplit[1];
-    if (empty($lastName))
-    {
-      $lastName = $firstName;
-      $lastName = " "; // some people have just a space as a first name
-    }
+    $lastName = $nameSplit[0];
+    $firstName = $nameSplit[1];
+    if (empty($firstName))
+      $firstName = " "; // some people have just a space as a first name
     $countryCode = substr($line, 49, 2);
     $countryID = $country[$countryCode];
     if (empty($countryID))
