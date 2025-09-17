@@ -26,9 +26,9 @@ if (!empty($existingTournament))
 
 function addEGDPlayerIfNotPresent($pin, $firstName, $lastName)
 {
-  $player = query("SELECT * FROM user WHERE egd_pin =".escape($pin))->fetch_assoc();
+  $player = query("SELECT id FROM user WHERE egd_pin =".escape($pin))->fetch_assoc();
   if (!empty($player))
-    return;
+    return $player["id"];
   $info = getEgdInfo($pin);
   query("INSERT INTO
            user(first_name,
@@ -45,6 +45,7 @@ function addEGDPlayerIfNotPresent($pin, $firstName, $lastName)
                     escape($info["rating"]).",".
                     escape($info["country"]["id"]).",".
                     ADMIN_LEVEL_UNREGISTERED.")");
+  return lastInsertID();
 }
 
 $doc = getPageDom("https://www.europeangodatabase.eu/EGD/Tournament_ShowGoR.php?key=".$key);
@@ -83,12 +84,19 @@ if (empty($date))
 if (empty($city))
   die("Tournament city couldn't be determined.");
 
+$timestamp = date("Y-m-d H:i:s", strtotime($date));
+
 $divs = $doc->getElementsByTagName("div");
 
-// process players first, before the transaction
+$db->begin_transaction();
+
 foreach ($divs as $div)
   if ($div->attributes->getNamedItem("class")->textContent == "thisdiv")
   {
+    $currentGor = $div->getElementsByTagname("b")[1]->nodeValue;
+    if (!is_numeric($currentGor))
+      die("The value of gor before tournament: \"".$currentGor." is not a number.");
+    
     $playerLink = $div->getElementsByTagname("a")[0]->nodeValue;
     $pieces = explode(" ", $playerLink);
     $pin = $pieces[0];
@@ -98,10 +106,85 @@ foreach ($divs as $div)
     $lastName = $pieces[3];
     for ($i = 4; $i < count($pieces); $i++)
       $lastName .= " ".$pieces[$i];
-    addEGDPlayerIfNotPresent($pin, $firstName, $lastName);
+    $userID = addEGDPlayerIfNotPresent($pin, $firstName, $lastName);
+    $rows = $div->getElementByTagName("tr");
+    $nextRound = 1;
+    foreach ($rows as $row)
+    {
+      $cells = $row->getElementByTagName("td");
+      $round = $cells[0]->nodeValue;
+      if (!is_numeric($round))
+        die("Round should be numeric, but is ".$round);
+      $gorChange = $cells[1]->nodeValue;
+      if (!is_numeric($gorChange))
+        die("gor change isn't numeric: \"".$gorChange."\"");
+
+      $color = $cells[3]->nodeValue;
+      if ($color != "w" and $color != "b")
+        die("Color value unexpected:\"".$color."\"");
+      $handicapText = $cells[4]->nodeValue;
+      $handicap = explode(" ", handicapText);
+      $resultText = $cells[5]->nodeValue;
+      if ($resultText != "Win" and $resultText != "Loss")
+        die("Result text has unexpected value:\"".$resultText."\"");
+      $userWon = ($resultText == "Win");
+      $opponentPin = $cells[6]->nodeValue;
+      if (!is_numeric($opponentPin))
+        die("Opponent pin ".$opponentPin." isn't numeric.");
+      $opponentName = $cells[7]->nodeValue;
+      // for some reason we see first_name first in this case (as opposed to the plaeyrs table)
+      $opponentNameSplit = explode(" ", $opponentName);
+      $opponentLastName = $opponentNameSplit[1];
+      $opponentFirstName = $opponentNameSplit[0];
+      if (empty($opponentLastName))
+      {
+        $opponentLastName = $opponentFirstName;
+        $opponentFirstName = " "; // some people have just a space as a first name
+      }
+      $opponentUserID = addEGDPlayerIfNotPresent($opponentPin, $opponentFirstName, $opponentLastName);
+      $opponentGor = $cells[9]->nodeValue;
+      if (!is_numeric($opponentGor))
+        die("Opponent gor not numeric.");
+      $opponentGorChange = $cells[10]->nodeValue;
+      if (!is_numeric($opponentGorChange))
+        die("Opponent gro Change is not numeric.");
+      
+      $winnerUserID = $userWon ? $userID : $opponentUserID;
+      $loserUserID = $userWon ? $opponentUserID : $userID;
+      $winnerOldGor = $userWon ? $currentGor : $opponentGor;
+      $winnerNewGor = $userWon ? ($currentGor + $gorChange) : ($opponentGor + $opponentGorChange);
+      $loserOldGor = $userWon ? $opponentGor : $currentGor;
+      $loserNewGor = $userWon ? ($opponentGor + $opponentGorChange) : ($currentGor + $gorChange);
+      query("INSERT INTO
+               game(winner_user_id,
+                    loser_user_id,
+                    game_type_id,
+                    timestamp,
+                    winner_old_egd_rating,
+                    winner_new_egd_rating,
+                    loser_old_egd_rating,
+                    loser_new_egd_rating,
+                    winner_is_black,
+                    handicap,
+                    egd_tournament_id,
+                    egd_tournament_round)
+               VALUES(".$winnerUserID.",".
+                        $loserUserID.",".
+                        $gameTypeID.",".
+                        $timestamp.",".
+                        $winnerOldGor.",".
+                        $winnerNewGor.",".
+                        $loserOldGor.",".
+                        $loserNewGor.","
+                        ($userWon == ($color == "b")).",".
+                        $handicap.",".
+                        ($handicap == 0 ? "6.5" : "0.5").",".
+                        escape($key).",".
+                        escape($round).")");
+      $currentGor = $currentGor + $gorChange;
+    }
   }
-  
-$db->begin_transaction();
+
 query("INSERT INTO
          egd_tournament(egd_key,
                         timestamp,
@@ -110,7 +193,7 @@ query("INSERT INTO
                         city,
                         name)
          VALUES(".escape($pin).",".
-                  escape(date("Y-m-d H:i:s", strtotime($date))).",".
+                  escape($timestamp).",".
                   escape($country["id"]).",".
                   escape($gameTypeID).",".
                   escape($city).",".

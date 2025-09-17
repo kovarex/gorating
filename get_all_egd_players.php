@@ -7,7 +7,7 @@ if (!empty(query("SELECT id from user")->fetch_assoc()))
   return;
 }
 
-$data = getUrlContent("https://www.europeangodatabase.eu/EGD/EGD_2_0/downloads/alleuro_lp.html");
+$data = getUrlContent("https://www.europeangodatabase.eu/EGD/EGD_2_0/downloads/allworld_lp.html");
 if (empty($data))
   die("Couldn't load the page.".$url);
 $countriesDBResult = query("SELECT * from country");
@@ -30,6 +30,8 @@ while ($line !== false)
     if (empty($firstName))
       $firstName = " "; // some people have just a space as a first name
     $countryCode = substr($line, 49, 2);
+    if ($countryCode == "xx")
+      $countryCode = "XX";
     $countryID = $country[$countryCode];
     if (empty($countryID))
       die("Unknown country code encountered:".$countryCode);
@@ -38,13 +40,28 @@ while ($line !== false)
     $escapedRating = ($rating == 0) ? "0" : escape($rating);
     if (!is_numeric($rating))
       die("pin=".$pin." Encountered non-numeric rating of:".$rating."");
-    query("INSERT INTO user(first_name, last_name, egd_pin, egd_rating, rating, country_id, admin_level_id)".
-          " VALUES(".escape($firstName).",".escape($lastName).",".escape($pin).",".$escapedRating.",".$escapedRating.",".escape($countryID).",".ADMIN_LEVEL_UNREGISTERED.")", true);
+    query("INSERT INTO user(first_name, last_name, egd_pin, egd_rating, rating, country_id, admin_level_id, club)".
+          " VALUES(".escape($firstName).",".escape($lastName).",".escape($pin).",".$escapedRating.",".$escapedRating.",".escape($countryID).",".ADMIN_LEVEL_UNREGISTERED.",".escape($club).")");
     $count++;
   }
     
   $line = strtok($separator);
 }
+
+$rating = query("SELECT egd_rating FROM user where egd_pin=13050378")->fetch_assoc()["egd_rating"];
+
+// setting up kovarex as the first user manually.
+query("UPDATE
+         user
+       SET
+         email='kovarex@gmail.com',
+         username='kovarex',
+         rating=".$rating.",
+         password='$2y$10\$OdqeMM4K7QwUsDRC38y1yezecOsHNi7wQj5T8EPNclZ.KWHLrkEMK',
+         admin_level_id=".ADMIN_LEVEL_OWNER.",
+         register_timestamp=now()
+       WHERE
+         egd_pin=13050378");
 $db->commit();
 echo "<br/><br/>Added ".$count." players.";
 ?>
