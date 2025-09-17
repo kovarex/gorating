@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS `game` (
   `handicap` int NOT NULL DEFAULT '0',
   `komi` double NOT NULL DEFAULT '6.5',
   `egd_tournament_id` int unsigned DEFAULT NULL,
+  `egd_tournament_round` int unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   INDEX `winner_user_id` (`winner_user_id`),
   INDEX `loser_user_id` (`loser_user_id`),
