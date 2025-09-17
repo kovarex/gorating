@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `egd_rating` double DEFAULT NULL,
   `rating` double NOT NULL,
   `country_id` int unsigned NOT NULL,
-  `password` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `admin_level_id` int unsigned NOT NULL,
   `invited_by_user_id` int unsigned DEFAULT NULL,
   `register_timestamp` timestamp NULL DEFAULT NULL,
@@ -132,12 +132,16 @@ CREATE TABLE IF NOT EXISTS `egd_tournament`
 (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `egd_key` varchar(10) NOT NULL,
+  `name` varchar(64) NOT NULL,
   `timestamp` timestamp NOT NULL,
   `country_id` int unsigned NOT NULL,
   `game_type_id` int NOT NULL,
+  `city` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY (egd_key)
-  KEY `egd_key` (`timestamp`,`country_id`,`game_type_id`)
+  UNIQUE KEY (egd_key),
+  INDEX `timestamp` (`timestamp`),
+  INDEX `country_id` (`country_id`),
+  INDEX `game_type_id` (`game_type_id`),
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 -- first user is inserted manually
