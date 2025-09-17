@@ -24,7 +24,6 @@ if (!empty($existingTournament))
   return;
 }
 
-
 function addEGDPlayerIfNotPresent($pin, $firstName, $lastName)
 {
   $player = query("SELECT * FROM user WHERE egd_pin =".escape($pin))->fetch_assoc();

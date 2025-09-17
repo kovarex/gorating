@@ -44,6 +44,8 @@ else
     require("report.php");
   elseif ($page == "/about")
     require("about.php");
+  elseif ($page == "/get_all_egd_players")
+    require("get_all_egd_players.php");
   else
     echo "Unknown page:".$page;
 }
