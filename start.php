@@ -23,6 +23,8 @@ elseif ($page == "/sgf")
   require("sgf.php");
 elseif ($page == "/process_tournament")
   require("process_tournament.php");
+elseif ($page == "/process_tournament_batch")
+  require("process_tournament_batch.php");
 else
 {
   require("src/header.php");

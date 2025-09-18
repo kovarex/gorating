@@ -101,4 +101,29 @@ function getEgdInfo($pin)
     return $result;
   die("Couldn't determine the rating from the EGD page. Link:".$url." rating:".$result["rating"]."</br>");
 }
+
+function addEGDPlayerIfNotPresent($pin, $firstName, $lastName)
+{
+  $player = query("SELECT id FROM user WHERE egd_pin =".escape($pin))->fetch_assoc();
+  if (!empty($player))
+    return $player["id"];
+  $info = getEgdInfo($pin);
+  query("INSERT INTO
+           user(first_name,
+                last_name,
+                egd_pin,
+                egd_rating,
+                rating,
+                country_id,
+                admin_level_id)
+           VALUES(".escape($firstName).",".
+                    escape($lastName).",".
+                    escape($pin).",".
+                    escape($info["rating"]).",".
+                    escape($info["rating"]).",".
+                    escape($info["country"]["id"]).",".
+                    ADMIN_LEVEL_UNREGISTERED.")");
+  return lastInsertID();
+}
+
 ?>
