@@ -216,6 +216,17 @@ CREATE TABLE IF NOT EXISTS `egd_tournament`
   INDEX `game_type_id` (`game_type_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `egd_tournament_result` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `egd_tournament_id` int unsigned NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  `placement` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `egd_tournament_id` (`egd_tournament_id`,`user_id`,`placement`),
+  UNIQUE KEY (`egd_tournament_id`, `placement`),
+  UNIQUE KEY (`egd_tournament_id`, `user_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `egd_tournament_to_process` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `egd_key` varchar(10) NOT NULL,
@@ -238,5 +249,9 @@ ALTER TABLE `invite`
   ADD CONSTRAINT `invite_fk_1` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`);
 
 ALTER TABLE `egd_tournament`
-  ADD CONSTRAINT `tournament_fk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
-  ADD CONSTRAINT `tournament_fk_2` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`);
+  ADD CONSTRAINT `egd_tournament_fk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
+  ADD CONSTRAINT `egd_tournament_fk_2` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`);
+
+ALTER TABLE `egd_tournament_result`
+  ADD CONSTRAINT `egd_tournament_result_fk_1` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`),
+  ADD CONSTRAINT `egd_tournament_result_fk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);

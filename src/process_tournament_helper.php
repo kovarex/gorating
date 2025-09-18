@@ -95,6 +95,7 @@ function processTournament($key)
   $tournamentID = lastInsertID();
 
   query("DELETE FROM egd_tournament_to_process WHERE egd_key=".escape($key));
+  $resultNumber = 1;
 
   foreach ($divs as $div)
     if ($div->attributes->getNamedItem("class")->textContent == "thisdiv")
@@ -113,6 +114,11 @@ function processTournament($key)
       for ($i = 4; $i < count($pieces); $i++)
         $lastName .= " ".$pieces[$i];
       $userID = addEGDPlayerIfNotPresent($playerPin, $firstName, $lastName);
+      query("INSERT INTO
+               egd_tournament_result(egd_tournament_id, user_id, placement)
+               VALUES(".escape($tournamentID).",".escape($userID).",".escape($resultNumber).")");
+      $resultNumber = $resultNumber + 1;
+
       $rows = $div->getElementsByTagName("table")[1]->getElementsByTagName("tr");
       foreach ($rows as $row)
       {

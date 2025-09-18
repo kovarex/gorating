@@ -1,5 +1,6 @@
 drop table invite;
 drop table game;
+drop table egd_tournament_result;
 drop table user;
 drop table egd_tournament;
 drop table admin_level;
