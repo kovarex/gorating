@@ -39,6 +39,10 @@ function processTournament($key)
       $date = $value;
     elseif ($inputName == "city")
       $city = $value;
+    elseif ($inputName == "rounds" and is_numeric($value))
+      $roundCount = $value;
+    elseif ($inputName == "total_player")
+      $playerCount = $value;
   }
 
   $spans = $doc->getElementsByTagName('span');
@@ -59,6 +63,10 @@ function processTournament($key)
     die("Tournament date couldn't be determined.");
   if (empty($city))
     die("Tournament city couldn't be determined.");
+  if (empty($playerCount))
+    die("Player count couldn't be determined. key=".$key);
+  if (empty($roundCount))
+    die("Round count couldn't be determined.");
 
   $timestamp = date("Y-m-d H:i:s", strtotime($date));
 
@@ -73,13 +81,17 @@ function processTournament($key)
                           country_id,
                           game_type_id,
                           city,
-                          name)
+                          name,
+                          player_count,
+                          round_count)
            VALUES(".escape($key).",".
                     escape($timestamp).",".
                     escape($country["id"]).",".
                     escape($gameTypeID).",".
                     escape($city).",".
-                    escape($tournamentName).")");
+                    escape($tournamentName).",".
+                    escape($playerCount).",".
+                    escape($roundCount).")");
   $tournamentID = lastInsertID();
 
   query("DELETE FROM egd_tournament_to_process WHERE egd_key=".escape($key));
