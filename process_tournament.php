@@ -116,7 +116,6 @@ foreach ($divs as $div)
     $playerLink = $div->getElementsByTagname("a")[0]->nodeValue;
     $pieces = explode(" ", $playerLink);
     $playerPin = $pieces[0];
-    $pinsProcessed[$playerPin] = true;
     if (!is_numeric($playerPin))
       die("Pin ".$playerPin." isn't numeric");
     $firstName = $pieces[2];
@@ -147,8 +146,6 @@ foreach ($divs as $div)
         die("Result text has unexpected value:\"".$resultText."\"");
       $userWon = ($resultText == "Win");
       $opponentPin = $cells[6]->nodeValue;
-      if ($pinsProcessed[$opponentPin])
-        continue;
       if (!is_numeric($opponentPin))
         die("Opponent pin ".$opponentPin." isn't numeric.");
       $opponentName = $cells[7]->nodeValue;
@@ -175,34 +172,43 @@ foreach ($divs as $div)
       $winnerNewGor = $userWon ? ($currentGor + $gorChange) : ($opponentGor + $opponentGorChange);
       $loserOldGor = $userWon ? $opponentGor : $currentGor;
       $loserNewGor = $userWon ? ($opponentGor + $opponentGorChange) : ($currentGor + $gorChange);
-      query("INSERT INTO
-               game(winner_user_id,
-                    loser_user_id,
-                    game_type_id,
-                    timestamp,
-                    winner_old_egd_rating,
-                    winner_new_egd_rating,
-                    loser_old_egd_rating,
-                    loser_new_egd_rating,
-                    winner_is_black,
-                    handicap,
-                    komi,
-                    egd_tournament_id,
-                    egd_tournament_round)
-               VALUES(".$winnerUserID.",".
-                        $loserUserID.",".
-                        $gameTypeID.",".
-                        escape($timestamp).",".
-                        $winnerOldGor.",".
-                        $winnerNewGor.",".
-                        $loserOldGor.",".
-                        $loserNewGor.",".
-                        (($userWon == ($color == "b")) ? "true" : "false").",".
-                        $handicap.",".
-                        ($handicap == 0 ? "6.5" : "0.5").",".
-                        escape($tournamentID).",".
-                        escape($round).")");
+
+      if (!empty($pinsProcessed[$opponentPin][$playerPin]))
+      {
+        $prefix = $userWon ? "winner_" : "loser_";
+        $id = $pinsProcessed[$opponentPin][$playerPin];
+        query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.",".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id);
+      }
+      else
+        query("INSERT INTO
+                 game(winner_user_id,
+                      loser_user_id,
+                      game_type_id,
+                      timestamp,
+                      winner_old_egd_rating,
+                      winner_new_egd_rating,
+                      loser_old_egd_rating,
+                      loser_new_egd_rating,
+                      winner_is_black,
+                      handicap,
+                      komi,
+                      egd_tournament_id,
+                      egd_tournament_round)
+                 VALUES(".$winnerUserID.",".
+                          $loserUserID.",".
+                          $gameTypeID.",".
+                          escape($timestamp).",".
+                          $winnerOldGor.",".
+                          $winnerNewGor.",".
+                          $loserOldGor.",".
+                          $loserNewGor.",".
+                          (($userWon == ($color == "b")) ? "true" : "false").",".
+                          $handicap.",".
+                          ($handicap == 0 ? "6.5" : "0.5").",".
+                          escape($tournamentID).",".
+                          escape($round).")");
       $currentGor = $currentGor + $gorChange;
+      $pinsProcessed[$playerPin][$opponentPin] = lastInsertID();
     }
   }
 $db->commit();
