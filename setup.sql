@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS `egd_tournament`
 (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `egd_key` varchar(10) NOT NULL,
-  `name` varchar(64) NOT NULL,
+  `name` varchar(128) NOT NULL,
   `timestamp` timestamp NOT NULL,
   `country_id` int unsigned NOT NULL,
   `game_type_id` int unsigned NOT NULL,

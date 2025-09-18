@@ -42,7 +42,9 @@ $games = query("SELECT
                  game.loser_user_id = loser.id and
                  game.game_type_id = game_type.id and
                  (winner_user_id=".escape($_GET["id"])." or loser_user_id=".escape($_GET["id"]).")
-               ORDER BY game.timestamp DESC");
+               ORDER BY
+                 game.timestamp DESC,
+                 game.egd_tournament_round DESC");
 
 if ($games->num_rows != 0)
 {
