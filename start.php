@@ -46,6 +46,8 @@ else
     require("about.php");
   elseif ($page == "/get_all_egd_players")
     require("get_all_egd_players.php");
+  elseif ($page == "/update_tournament_list")
+    require("update_tournament_list.php");
   else
     echo "Unknown page:".$page;
 }

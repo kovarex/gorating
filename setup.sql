@@ -212,7 +212,14 @@ CREATE TABLE IF NOT EXISTS `egd_tournament`
   INDEX `timestamp` (`timestamp`),
   INDEX `country_id` (`country_id`),
   INDEX `game_type_id` (`game_type_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `egd_tournament_to_process` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `egd_key` varchar(10) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `egd_key` (`egd_key`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE `game`
   ADD CONSTRAINT `game_fk_1` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`),
