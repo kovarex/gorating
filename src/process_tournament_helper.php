@@ -194,6 +194,6 @@ function processTournament($key)
       }
     }
   $db->commit();
-  echo "Tournament ".$key." processed succesfully<br/>";
+  echo $key." ";
   return true;
 }
