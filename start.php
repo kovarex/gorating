@@ -42,6 +42,8 @@ else
     require("invites.php");
   elseif ($page == "/tournaments")
     require("tournaments.php");
+  elseif ($page == "/tournament")
+    require("tournament.php");
   elseif ($page == "/register")
     require("register.php");
   elseif ($page == "/report")
