@@ -100,7 +100,7 @@ query("INSERT INTO
                 escape($myOldRating).",".
                 escape($myNewRating).",".
                 escape($sgf).",".
-                $winnerIsBlack.",".
+                ($winnerIsBlack ? "true" : "false").",".
                 escape($_POST["handicap"]).",".
                 escape($_POST["komi"]).")");
 

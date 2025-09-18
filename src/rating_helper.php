@@ -23,7 +23,7 @@ function calculateNewRating($rating, $opponentRating, $result, $gameType, $extra
 {
   // the effective handicap rating is just my approximation
   // the idea is, that 10 extra points would be one rank, and one handicap stone would be 0.8 of rank
-  $adjustedRating = $rating + 100 * (($extraHandicap * 0.8) + ($extraKomi / 10.0));
+  $adjustedRating = $rating + 100 * (($extraHandicap * 1.2) + ($extraKomi / 10.0));
 
   $Se = 1.0 / (1.0 + exp(beta($opponentRating)- beta($adjustedRating))); // for the probability of winning, the adjusted rating is used
   $con = pow(((3300 - $rating) / 200), 1.6); // for constant I use the normal rating, so playing handicap doesn't lower/enlarge the gain.
