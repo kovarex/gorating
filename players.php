@@ -81,7 +81,7 @@ while($row = $players->fetch_assoc())
     echo "<td>".playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"])."</td>";
   if (canSeeEmails())
     echo "<td>".$row["email"]."</td>";
-  echo "<td>".(empty($row["register_timestamp"]) ? "" : date("d. m. Y H:i", strtotime($row["register_timestamp"])))."</td>";
+  echo "<td>".(empty($row["register_timestamp"]) ? ("<a href=invites?pin=".$row["egd_pin"].">Invite</a>") : date("d. m. Y H:i", strtotime($row["register_timestamp"])))."</td>";
   if (userID())
   {
     echo "<td>";

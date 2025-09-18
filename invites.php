@@ -1,32 +1,34 @@
-<?php checkLoggedIn(); ?>
-<form method="post" action="invite">
-  <table>
-    <tr>
-      <td><label for="first_name">First name:</label></td>
-      <td><input type="text" name="first_name"/></td>
-    </tr>
-    <tr>
-      <td><label for="last_name">Last name:</label></td>
-      <td><input type="text" name="last_name"/></td>
-    </tr>
-    <tr>
-      <td><label for="egd_pin">EGD pin:</label></td>
-      <td><input type="text" name="egd_pin"/></td>
-    </tr>
-    <tr>
-      <td><label for="rating">Proposed rating (used when egd is not provided):</label></td>
-      <td><input type="text" name="rating"/></td>
-    </tr>
-    <tr>
-      <td><label for="email">email:</label></td>
-      <td><input type="text" name="email"/></td>
-    </tr>
-  </table>
-  <input type="hidden" name="redirect" value="invites"/>
-  <input type="submit" value="invite"/>
-</form>
-
 <?php
+checkLoggedIn();
+if (!empty(@$_GET["pin"]))
+  $player = query("SELECT first_name, last_name FROM user WHERE egd_pin=".escape($_GET["pin"]))->fetch_assoc();
+
+echo "<form method=\"post\" action=\"invite\">
+        <table>
+          <tr>
+            <td><label for=\"first_name\">First name:</label></td>
+            <td><input type=\"text\" name=\"first_name\" value=\"".@$player["first_name"]."\"/></td>
+          </tr>
+          <tr>
+            <td><label for=\"last_name\">Last name:</label></td>
+            <td><input type=\"text\" name=\"last_name\" value=\"".@$player["last_name"]."\"/></td>
+          </tr>
+          <tr>
+            <td><label for=\"egd_pin\">EGD pin:</label></td>
+            <td><input type=\"text\" name=\"egd_pin\" value=\"".@$_GET["pin"]."\"/></td>
+          </tr>
+          <tr>
+            <td><label for=\"rating\">Proposed rating (used when egd is not provided):</label></td>
+            <td><input type=\"text\" name=\"rating\"/></td>
+          </tr>
+          <tr>
+            <td><label for=\"email\">email:</label></td>
+            <td><input type=\"text\" name=\"email\"/></td>
+          </tr>
+        </table>
+        <input type=\"hidden\" name=\"redirect\" value=\"invites\"/>
+        <input type=\"submit\" value=\"invite\"/>
+      </form>";
 $result = query("SELECT
                     invite.first_name as first_name,
                     invite.last_name as last_name,

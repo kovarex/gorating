@@ -19,7 +19,8 @@ function checkRegistrationAvailability($inviteID, $secret)
   if (!empty($invite["egd_pin"]))
   {
     $existingUserWithSpecifiedEgdPin = query("SELECT * FROM user WHERE egd_pin=".escape($invite["egd_pin"]))->fetch_assoc();
-    if (!empty($existingUserWithSpecifiedEgdPin))
+    if (!empty($existingUserWithSpecifiedEgdPin) and
+        !empty($existingUserWithSpecifiedEgdPin["register_timestamp"]))
       return "User with this egd pin already present.";
   }
   return true;

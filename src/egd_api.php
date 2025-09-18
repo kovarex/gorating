@@ -79,7 +79,6 @@ function getEgdInfo($pin)
   $doc = getPageDom($url);
   
   $inputs = $doc->getElementsByTagName('input');
-  print_r($inputs);
   foreach ($inputs as $input)
     if ($input->attributes->getNamedItem("name")->textContent == "gor")
     {
