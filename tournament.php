@@ -83,6 +83,8 @@ while ($row = $data->fetch_assoc())
 
 for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
 {
+  if (!@$placementInfo[$placement])
+    continue;
   echo "<tr>";
   echo "<td>".$placement.". ".playerLink($placementInfo[$placement]["id"], $placementInfo[$placement]["name"])."</td>";
   for ($round = 1; $round <= $tournament["round_count"]; $round++)
