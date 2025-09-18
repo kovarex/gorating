@@ -2,5 +2,6 @@
   <hr/>
   Friendly go rating made by kovarex.
 </div>
+</div>
 </body>
 </html>

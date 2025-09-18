@@ -17,13 +17,14 @@ else
             <input type=\"submit\" value=\"Login\"/>
           </form>
         </div>";
-echo "<div>";
-echo "<a href=\"/\">Home</a>";
-echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/players\">Players</a>";
-echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/tournaments\">Tournaments</a>";
+echo "<div class=\"centered-div\">\n";
+echo "<div class=\"centered-div\">\n";
+echo "<a href=\"/\">Home</a>\n";
+echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/players\">Players</a>\n";
+echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/tournaments\">Tournaments</a>\n";
 if (adminLevel() <= ADMIN_LEVEL_USER)
-  echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/invites\">Invites</a>";
-echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/about\">About</a>";
+  echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/invites\">Invites</a>\n";
+echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/about\">About</a>\n";
 echo "</div>";
-echo "<br/><br/>";
+echo "<br/><br/>\n";
 ?>
