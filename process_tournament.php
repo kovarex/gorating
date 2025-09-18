@@ -90,6 +90,22 @@ $divs = $doc->getElementsByTagName("div");
 
 $db->begin_transaction();
 
+query("INSERT INTO
+         egd_tournament(egd_key,
+                        timestamp,
+                        country_id,
+                        game_type_id,
+                        city,
+                        name)
+         VALUES(".escape($key).",".
+                  escape($timestamp).",".
+                  escape($country["id"]).",".
+                  escape($gameTypeID).",".
+                  escape($city).",".
+                  escape($tournamentName).")");
+
+$tournamentID = lastInsertID();
+
 foreach ($divs as $div)
   if ($div->attributes->getNamedItem("class")->textContent == "thisdiv")
   {
@@ -99,22 +115,24 @@ foreach ($divs as $div)
     
     $playerLink = $div->getElementsByTagname("a")[0]->nodeValue;
     $pieces = explode(" ", $playerLink);
-    $pin = $pieces[0];
-    if (!is_numeric($pin))
-      die("Pin ".$pin." isn't numeric");
+    $playerPin = $pieces[0];
+    $pinsProcessed[$playerPin] = true;
+    if (!is_numeric($playerPin))
+      die("Pin ".$playerPin." isn't numeric");
     $firstName = $pieces[2];
     $lastName = $pieces[3];
     for ($i = 4; $i < count($pieces); $i++)
       $lastName .= " ".$pieces[$i];
-    $userID = addEGDPlayerIfNotPresent($pin, $firstName, $lastName);
-    $rows = $div->getElementByTagName("tr");
-    $nextRound = 1;
+    $userID = addEGDPlayerIfNotPresent($playerPin, $firstName, $lastName);
+    $rows = $div->getElementsByTagName("table")[1]->getElementsByTagName("tr");
     foreach ($rows as $row)
     {
-      $cells = $row->getElementByTagName("td");
+      $cells = $row->getElementsByTagName("td");
+      if (count($cells) == 0)
+        continue;
       $round = $cells[0]->nodeValue;
       if (!is_numeric($round))
-        die("Round should be numeric, but is ".$round);
+        die("Round should be numeric, but is \"".$round."\"");
       $gorChange = $cells[1]->nodeValue;
       if (!is_numeric($gorChange))
         die("gor change isn't numeric: \"".$gorChange."\"");
@@ -123,12 +141,14 @@ foreach ($divs as $div)
       if ($color != "w" and $color != "b")
         die("Color value unexpected:\"".$color."\"");
       $handicapText = $cells[4]->nodeValue;
-      $handicap = explode(" ", handicapText);
+      $handicap = explode(" ", $handicapText)[0];
       $resultText = $cells[5]->nodeValue;
       if ($resultText != "Win" and $resultText != "Loss")
         die("Result text has unexpected value:\"".$resultText."\"");
       $userWon = ($resultText == "Win");
       $opponentPin = $cells[6]->nodeValue;
+      if ($pinsProcessed[$opponentPin])
+        continue;
       if (!is_numeric($opponentPin))
         die("Opponent pin ".$opponentPin." isn't numeric.");
       $opponentName = $cells[7]->nodeValue;
@@ -166,38 +186,25 @@ foreach ($divs as $div)
                     loser_new_egd_rating,
                     winner_is_black,
                     handicap,
+                    komi,
                     egd_tournament_id,
                     egd_tournament_round)
                VALUES(".$winnerUserID.",".
                         $loserUserID.",".
                         $gameTypeID.",".
-                        $timestamp.",".
+                        escape($timestamp).",".
                         $winnerOldGor.",".
                         $winnerNewGor.",".
                         $loserOldGor.",".
-                        $loserNewGor.","
-                        ($userWon == ($color == "b")).",".
+                        $loserNewGor.",".
+                        (($userWon == ($color == "b")) ? "true" : "false").",".
                         $handicap.",".
                         ($handicap == 0 ? "6.5" : "0.5").",".
-                        escape($key).",".
+                        escape($tournamentID).",".
                         escape($round).")");
       $currentGor = $currentGor + $gorChange;
     }
   }
-
-query("INSERT INTO
-         egd_tournament(egd_key,
-                        timestamp,
-                        country_id,
-                        game_type_id,
-                        city,
-                        name)
-         VALUES(".escape($pin).",".
-                  escape($timestamp).",".
-                  escape($country["id"]).",".
-                  escape($gameTypeID).",".
-                  escape($city).",".
-                  escape($tournamentName).")");
 $db->commit();
 echo "Tournament processed succesfully";
 ?>
