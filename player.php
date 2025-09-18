@@ -35,8 +35,14 @@ $games = query("SELECT
                  game.winner_is_black as winner_is_black,
                  game.handicap as handicap,
                  game.komi as komi,
-                 length(game.sgf) > 0 as has_sgf
-               FROM game, user as winner, user as loser, game_type
+                 length(game.sgf) > 0 as has_sgf,
+                 egd_tournament.egd_key as egd_tournament_key,
+                 egd_tournament.name as egd_tournament_name,
+                 egd_tournament.id as egd_tournament_id
+               FROM game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
+                    user as winner,
+                    user as loser,
+                    game_type
                WHERE
                  game.winner_user_id = winner.id and
                  game.loser_user_id = loser.id and
@@ -49,7 +55,7 @@ $games = query("SELECT
 if ($games->num_rows != 0)
 {
   echo "<table class=\"data-table\">";
-  echo   "<tr><th>Result</th><th>Rating change</th><th>Opponent</th><th>Game type</th><th>Color</th><th>Handicap</th><th>Time</th><th>Location</th><th>Comment</th><th>Opponent</th><th>SGF</th></tr>";
+  echo   "<tr><th>Result</th><th>Rating change</th><th>Opponent</th><th>Game type</th><th>Color</th><th>Handicap</th><th>Time</th><th>Tournament</th><th>Location</th><th>Comment</th><th>Opponent</th><th>SGF</th></tr>";
   while($row = $games->fetch_assoc())
   {
      echo "<tr>";
@@ -92,6 +98,15 @@ if ($games->num_rows != 0)
        }
      echo "</td>";
      echo "<td>".date("d. m. Y H:i", strtotime($row["game_timestamp"]))."</td>";
+
+     echo "<td>";
+       if (!empty($row["egd_tournament_id"]))
+       {
+         $shortenedTournamentName = substr($row["egd_tournament_name"], 0, 30);
+         echo "<a href=\"https://www.europeangodatabase.eu/EGD/Tournament_Card.php?&key=".$row["egd_tournament_key"]."&pin=".$player["egd_pin"]."\">".$shortenedTournamentName."</a>";
+       }
+     echo "</td>";
+
      echo "<td style=\"text-align:center;\">".$row["game_location"]."</td>";
      echo "<td style=\"text-align:center;\">".$row[$myPrefix."comment"]."</td>";
      echo "<td style=\"text-align:center;\">".$row[$prefix."comment"]."</td>";
