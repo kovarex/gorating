@@ -43,29 +43,13 @@ $data = query("SELECT
                ORDER BY
                  LEAST(winner_result.placement, loser_result.placement),
                  game.egd_tournament_round");
-$roundCount = $tournament["round_count"];
-$lastRound = 100000;
 echo "<table class=\"data-table\">";
 
 echo "<tr>";
 echo "<th>Placement</th>";
-for ($i = 1; $i <= $roundCount; $i++)
+for ($i = 1; $i <= $tournament["round_count"]; $i++)
   echo "<th>Round ".$i."</th>";
-$placement = 0;
-
-function processMissingCell($resultToRepeat, $lastRound, $placement)
-{
-  echo "<td>";
-  $fromBefore = @$resultToRepeat[$lastRound][$placement];
-  if (!empty($fromBefore))
-  {
-    echo "<span class=\"".($fromBefore["result"] ? "winner" : "loser")."\">";
-     echo $fromBefore["result"] ? "WIN" : "LOSS";
-    echo "</span>";
-    echo " ".playerLink($fromBefore["opponent_id"], $fromBefore["opponent_name"]);
-  }
-  echo "</td>";
-}
+echo "</tr>";
 
 while ($row = $data->fetch_assoc())
 {
@@ -73,78 +57,48 @@ while ($row = $data->fetch_assoc())
   $winnerPlacement = $row["winner_placement"];
   $loserPlacement = $row["loser_placement"];
   $horizontalPlayerIsWinner = $winnerPlacement < $loserPlacement;
-  $horizontalPlacement = min($winnerPlacement, $loserPlacement);
-  $verticalPlacement = max($winnerPlacement, $loserPlacement);
   
   $thisPrefix = $horizontalPlayerIsWinner ? "winner_" : "loser_";
-  $otherPrefix = $horizontalPlayerIsWinner ? "loser_" : "winner_";
-  
   $thisUserID = $row[$thisPrefix."user_id"];
-  $otherUserID = $row[$thisPrefix."user_id"];
-  
   $thisName = $row[$thisPrefix."first_name"]." ".$row[$thisPrefix."last_name"];
+  
+  $otherPrefix = $horizontalPlayerIsWinner ? "loser_" : "winner_";
+  $otherUserID = $row[$otherPrefix."user_id"];
   $otherName = $row[$otherPrefix."first_name"]." ".$row[$otherPrefix."last_name"];
   
-  if ($round < $lastRound)
-  {
-    while ($lastRound <= $roundCount)
-    {
-      processMissingCell($resultToRepeat, $lastRound, $placement);
-      $lastRound++;
-    }
-    
-    $lastRound = 1;
-    $placement++;
-    
-    echo "</tr><tr>";
-    echo "<td>".$horizontalPlacement.". ".playerLink($thisUserID, $thisName)."</td>";
-  }
-
-  while ($lastRound < $round)
-  {
-    processMissingCell($resultToRepeat, $lastRound, $placement);
-    $lastRound++;
-  }
-
-  echo "<td>";
-  echo "<span class=\"".($horizontalPlayerIsWinner ? "winner" : "loser")."\">";
-  echo $horizontalPlayerIsWinner ? "WIN" : "LOSS";
-  echo "</span>";
-  echo " ".playerLink($otherUserID, $otherName);
+  $horizontalPlacement = min($winnerPlacement, $loserPlacement);
+  $table[$horizontalPlacement][$round]["id"] = $otherUserID;
+  $table[$horizontalPlacement][$round]["name"] = $otherName;
+  $table[$horizontalPlacement][$round]["result"] = $horizontalPlayerIsWinner;
+  $placementInfo[$horizontalPlacement]["id"] = $thisUserID;
+  $placementInfo[$horizontalPlacement]["name"] = $thisName;
   
-  if ($verticalPlacement > $horizontalPlacement)
-  {
-    $dataToReuse["user_id"] = $otherUserID;
-    $dataToReuse["user_name"] = $otherName;
-    $dataToReuse["opponent_id"] = $thisUserID;
-    $dataToReuse["opponent_name"] = $thisName;
-    $dataToReuse["result"] = !$horizontalPlayerIsWinner;
-    $resultToRepeat[$round][$verticalPlacement] = $dataToReuse;
-  }
-  echo "</td>";
-  
-  $lastRound++;
+  $verticalPlacement = max($winnerPlacement, $loserPlacement);
+  $table[$verticalPlacement][$round]["id"] = $thisUserID;
+  $table[$verticalPlacement][$round]["name"] = $thisName;
+  $table[$verticalPlacement][$round]["result"] = !$horizontalPlayerIsWinner;
+  $placementInfo[$verticalPlacement]["id"] = $otherUserID;
+  $placementInfo[$verticalPlacement]["name"] = $otherName;
 }
 
-while ($lastRound <= $roundCount)
-{
-  processMissingCell($resultToRepeat, $lastRound, $placement);
-  $lastRound++;
-}
-
-for ($placement = $placement + 1;$placement <= $tournament["player_count"]; ++$placement)
+for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
 {
   echo "<tr>";
-  $fromBefore = NULL;
-  for ($i = 1; $i <= $roundCount and empty($fromBefore); $i++)
-    $fromBefore = @$resultToRepeat[$i][$placement];
-  echo "<td>".$placement.". ".playerLink($fromBefore["user_id"], $fromBefore["user_name"])."</td>";
-  
-  for ($i = 1; $i < $roundCount; $i++)
-    processMissingCell($resultToRepeat, $i, $placement);
+  echo "<td>".$placement.". ".playerLink($placementInfo[$placement]["id"], $placementInfo[$placement]["name"])."</td>";
+  for ($round = 1; $round <= $tournament["round_count"]; $round++)
+  {
+    echo "<td>";
+    $cellData = @$table[$placement][$round];
+    if ($cellData != NULL)
+    {
+      echo "<span class=\"".($cellData["result"] ? "winner" : "loser")."\">";
+       echo $cellData["result"] ? "WIN" : "LOSS";
+      echo "</span>";
+      echo " ".playerLink($cellData["id"], $cellData["name"]);
+    }
+    echo "</td>";
+  }
   echo "</tr>";
 }
-  
-echo "</tr>";
 echo "</table>";
 ?>
