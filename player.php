@@ -100,11 +100,11 @@ if ($games->num_rows != 0)
      echo "<td>".date("d. m. Y H:i", strtotime($row["game_timestamp"]))."</td>";
 
      echo "<td>";
-       if (!empty($row["egd_tournament_id"]))
-       {
-         $shortenedTournamentName = substr($row["egd_tournament_name"], 0, 30);
-         echo "<a href=\"https://www.europeangodatabase.eu/EGD/Tournament_Card.php?&key=".$row["egd_tournament_key"]."&pin=".$player["egd_pin"]."\">".$shortenedTournamentName."</a>";
-       }
+     if (!empty($row["egd_tournament_id"]))
+     {
+       $shortenedTournamentName = substr($row["egd_tournament_name"], 0, 30);
+       echo tournamentLink($row["egd_tournament_id"], $shortenedTournamentName);
+     }
      echo "</td>";
 
      echo "<td style=\"text-align:center;\">".$row["game_location"]."</td>";

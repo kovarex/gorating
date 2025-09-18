@@ -33,4 +33,9 @@ function playerLink($playerID, $playerName)
 {
   return "<a href=\"/player?id=".$playerID."\">".$playerName."</a>";
 }
+
+function tournamentLink($tournamentID, $tournamentName)
+{
+  return "<a href=\"/tournament?id=".$tournamentID."\">".$tournamentName."</a>";
+}
 ?>
