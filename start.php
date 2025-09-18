@@ -8,8 +8,8 @@ foreach (explode('&', $query) as $chunk)
   if ($param)
     $_GET[urldecode($param[0])] = urldecode($param[1]);
 }
-require("src/link_helper.php");
-require("src/constants.php");
+require_once("src/link_helper.php");
+require_once("src/constants.php");
 
 if ($page == "/login")
   require("login.php");
