@@ -54,19 +54,19 @@ function processTournament($key)
     }
 
   if (empty($tournamentName))
-    die("Tournament name couldn't be determined.");
+    die("Tournament name couldn't be determined. key=".$key);
   if (empty($country))
-    die("Tournament country info couldn't be determined.");
+    die("Tournament country info couldn't be determined. key=".$key);
   if (empty($gameTypeID))
-    die("Game type info couldn't be determined.");
+    die("Game type info couldn't be determined. key=".$key);
   if (empty($date))
-    die("Tournament date couldn't be determined.");
-  if (empty($city))
-    die("Tournament city couldn't be determined.");
+    die("Tournament date couldn't be determined. key=".$key);
+  if ($city === NULL)
+    die("Tournament city couldn't be determined. key=".$key);
   if (empty($playerCount))
     die("Player count couldn't be determined. key=".$key);
   if (empty($roundCount))
-    die("Round count couldn't be determined.");
+    die("Round count couldn't be determined. key=".$key);
 
   $timestamp = date("Y-m-d H:i:s", strtotime($date));
 
