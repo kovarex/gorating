@@ -40,6 +40,8 @@ else
     require("invite.php");
   elseif ($page == "/invites")
     require("invites.php");
+  elseif ($page == "/tournaments")
+    require("tournaments.php");
   elseif ($page == "/register")
     require("register.php");
   elseif ($page == "/report")

@@ -80,9 +80,9 @@ function processTournament($key)
                     escape($gameTypeID).",".
                     escape($city).",".
                     escape($tournamentName).")");
-  query("DELETE FROM egd_tournament_to_process WHERE egd_key=".escape($key));
-
   $tournamentID = lastInsertID();
+
+  query("DELETE FROM egd_tournament_to_process WHERE egd_key=".escape($key));
 
   foreach ($divs as $div)
     if ($div->attributes->getNamedItem("class")->textContent == "thisdiv")
