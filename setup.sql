@@ -99,7 +99,8 @@ INSERT INTO `country` (`name`, `code`) VALUES
 ('Peru', 'PE'),
 ('Nepal', 'NP'),
 ('Madagascar', 'MG'),
-('French Guiana', 'GF');
+('French Guiana', 'GF'),
+('San Marino', 'SM');
 
 CREATE TABLE IF NOT EXISTS `game` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
