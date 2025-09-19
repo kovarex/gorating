@@ -24,6 +24,8 @@ function processTournament($key)
     return false;
   }
 
+  echo $key." ";
+
   $doc = getPageDom("https://www.europeangodatabase.eu/EGD/Tournament_ShowGoR.php?key=".$key);
 
   $inputs = $doc->getElementsByTagName('input');
@@ -212,6 +214,5 @@ function processTournament($key)
       }
     }
   $db->commit();
-  echo $key." ";
   return true;
 }
