@@ -15,19 +15,23 @@ function addWithOr($query, $addition)
   return $query." or ".$addition;
 }
 
-$parts = explode(" ", $search);
 $searchQuery = "";
 
-foreach ($parts as $part)
+if (!empty($search))
 {
-  if (empty($part))
-    continue;
-  if (is_numeric($part) and strlen($part) == 8)
-    $textQuery = addWithOr($searchQuery, "user.egd_pin=".escape($search));
-  else
+  $parts = explode(" ", $search);
+
+  foreach ($parts as $part)
   {
-    $textQuery = addWithOr($searchQuery, "MATCH(user.first_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
-    $textQuery = addWithOr($searchQuery, "MATCH(user.last_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
+    if (empty($part))
+      continue;
+    if (is_numeric($part) and strlen($part) == 8)
+      $textQuery = addWithOr($searchQuery, "user.egd_pin=".escape($search));
+    else
+    {
+      $textQuery = addWithOr($searchQuery, "MATCH(user.first_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
+      $textQuery = addWithOr($searchQuery, "MATCH(user.last_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
+    }
   }
 }
 
