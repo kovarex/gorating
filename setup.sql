@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS `egd_tournament`
 (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `egd_key` varchar(10) NOT NULL,
-  `name` varchar(128) NOT NULL,
+  `name` varchar(128) DEFAULT NULL,
   `player_count` int unsigned NOT NULL,
   `round_count` int unsigned NOT NULL,
   `timestamp` timestamp NOT NULL,

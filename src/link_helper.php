@@ -34,8 +34,15 @@ function playerLink($playerID, $playerName)
   return "<a href=\"/player?id=".$playerID."\">".$playerName."</a>";
 }
 
+function readableTournamentName($tournamentName)
+{
+  if (empty($tournamentName))
+    return "[no name]";
+  return $tournamentName;
+}
+
 function tournamentLink($tournamentID, $tournamentName)
 {
-  return "<a href=\"/tournament?id=".$tournamentID."\">".$tournamentName."</a>";
+  return "<a href=\"/tournament?id=".$tournamentID."\">".readableTournamentName($tournamentName)."</a>";
 }
 ?>

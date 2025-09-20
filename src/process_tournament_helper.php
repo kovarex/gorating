@@ -55,8 +55,7 @@ function processTournament($key)
       break;
     }
 
-  if (empty($tournamentName))
-    die("Tournament name couldn't be determined. key=".$key);
+  // tournament name is null sometimes
   if (empty($country))
     die("Tournament country info couldn't be determined. key=".$key);
   if (empty($gameTypeID))

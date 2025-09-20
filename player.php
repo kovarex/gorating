@@ -102,7 +102,7 @@ if ($games->num_rows != 0)
      echo "<td>";
      if (!empty($row["egd_tournament_id"]))
      {
-       $shortenedTournamentName = substr($row["egd_tournament_name"], 0, 30);
+       $shortenedTournamentName = substr(readableTournamentName($row["egd_tournament_name"]), 0, 30);
        echo tournamentLink($row["egd_tournament_id"], $shortenedTournamentName);
      }
      echo "</td>";
