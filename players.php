@@ -1,13 +1,13 @@
 <?php
 require("src/table_viewer.php");
 
+$search = @$_GET["search"];
+
 echo "<div style=\"text-align:center;\">";
 echo "<form >";
-echo "<input type=\"text\" name=\"search\"/><br/>";
+echo "<input type=\"text\" name=\"search\"".($search ? "value=\"".$search."\"" : "")."/><br/>";
 echo "</form>";
 echo "</div>";
-
-$search = @$_GET["search"];
 
 function addWithOr($query, $addition)
 {
