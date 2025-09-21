@@ -13,19 +13,35 @@ echo "<tr><td>Rating:</td><td>".round($player["rating"])."</td></tr>";
 echo "<tr><td>EGD Rating:</td><td>".$player["egd_rating"]."</td></tr>";
 echo "</table>";
 
+/*$table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
+                          user as winner,
+                          user as loser,
+                          game_type
+                          WHERE
+                            game.winner_user_id = winner.id and
+                            game.loser_user_id = loser.id and
+                            game.game_type_id = game_type.id and
+                            (winner_user_id=".escape($_GET["id"])." or loser_user_id=".escape($_GET["id"]).")",
+                          $_GET);
+
+$table->setPrimarySort(new SortDefinition("game.timestamp", false));
+$table->setLastSort(new SortDefinition("game.egd_tournament_round", false));
+$table->addColumn("result",
+                  "Result",
+                  array(array("IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS')", "result")),
+                  function($row) { echo $row["result"]; });*/
+
 $games = query("SELECT
                  game.id as game_id,
                  winner.id as winner_id,
-                 winner.first_name as winner_first_name,
-                 winner.last_name as winner_last_name,
+                 CONCAT(winner.first_name, ' ', winner.last_name) as winner_name,
                  winner.egd_pin as winner_egd_pin,
                  game.winner_old_rating as winner_old_rating,
                  game.winner_new_rating as winner_new_rating,
                  game.winner_old_egd_rating as winner_old_egd_rating,
                  game.winner_new_egd_rating as winner_new_egd_rating,
                  loser.id as loser_id,
-                 loser.first_name as loser_first_name,
-                 loser.last_name as loser_last_name,
+                 CONCAT(loser.first_name, ' ', loser.last_name) as loser_name,
                  loser.egd_pin as loser_egd_pin,
                  game.loser_old_rating as loser_old_rating,
                  game.loser_new_rating as loser_new_rating,
@@ -42,11 +58,13 @@ $games = query("SELECT
                  length(game.sgf) > 0 as has_sgf,
                  egd_tournament.egd_key as egd_tournament_key,
                  egd_tournament.name as egd_tournament_name,
-                 egd_tournament.id as egd_tournament_id
-               FROM game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
-                    user as winner,
-                    user as loser,
-                    game_type
+                 egd_tournament.id as egd_tournament_id,
+                 IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS') as result
+               FROM
+                 game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
+                 user as winner,
+                 user as loser,
+                 game_type
                WHERE
                  game.winner_user_id = winner.id and
                  game.loser_user_id = loser.id and
@@ -63,11 +81,11 @@ if ($games->num_rows != 0)
   while($row = $games->fetch_assoc())
   {
      echo "<tr>";
-     $winner = ($row["winner_id"] == $_GET["id"]);
+     $winner = ($row["result"] == "WIN");
      $prefix = $winner ? "loser_" : "winner_";
      $myResultName = $winner ? "winner" : "loser";
      $myPrefix = $myResultName."_";
-     echo "<td style=\"text-align:center;\">".($winner ? "WIN" : "LOSS")."</td>";
+     echo "<td style=\"text-align:center;\">".$row["result"]."</td>";
      echo "<td style=\"text-align:center;\">";
 
      $suffix = "_rating";
@@ -83,7 +101,7 @@ if ($games->num_rows != 0)
      $ratingToShow = $row[$prefix."new_rating"];
      if (empty($ratingToShow))
        $ratingToShow = $row[$prefix."new_egd_rating"];
-     echo "<td>".playerLink($row[$prefix."id"], $row[$prefix."first_name"]." ".$row[$prefix."last_name"])." (".round($ratingToShow).")</td>";
+     echo "<td>".playerLink($row[$prefix."id"], $row[$prefix."name"])." (".round($ratingToShow).")</td>";
      echo "<td style=\"text-align:center;\">".$row["game_type_name"]."</td>";
      echo "<td style=\"text-align:center;\">".(boolval($winner) == boolval($row["winner_is_black"]) ? "Black" : "White")."</td>";
      echo "<td style=\"text-align:center;\">";

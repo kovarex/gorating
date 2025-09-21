@@ -146,6 +146,8 @@ class TableViewer
       $sortBuilder->add($this->fixedSort);
     if ($this->currentSort)
       $sortBuilder->add($this->currentSort);
+    if ($this->lastSort)
+      $sortBuilder->add($this->lastSort);
     return $sortBuilder->result;
   }
 
@@ -191,11 +193,17 @@ class TableViewer
     $this->currentSort = $primarySort;
   }
 
+  public function setLastSort($lastSort)
+  {
+    $this->lastSort = $lastSort;
+  }
+
   public $queryCore;
   private $columns;
   private $get;
   private $fixedSort;
   private $currentSort;
+  private $lastSort;
 };
 
 ?>
