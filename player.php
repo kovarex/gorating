@@ -4,6 +4,10 @@ if (empty($player))
   die("Unknown player with id=".$_GET["id"]);
 
 echo "<h1>".$player["first_name"]." ".$player["last_name"]."</h1>";
+
+if (userID() && userID() != $player["id"])
+  echo "<div class=\"centered-div\"><a class=\"report-loss-link\" href=\"report?id=".$player["id"]."\">Report loss</a></div>";
+
 echo "<table class=\"centered-table\">";
 echo "<tr><td>Rating:</td><td>".round($player["rating"])."</td></tr>";
 echo "<tr><td>EGD Rating:</td><td>".$player["egd_rating"]."</td></tr>";

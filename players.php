@@ -96,10 +96,5 @@ $table->addColumn("registered",
                     else if (canInvite())
                       echo "<a href=invites?pin=".$row["egd_pin"].">Invite</a>";
                   });
-if (userID())
-  $table->addColumn("",
-                    "Report loss",
-                    array(),
-                    function($row) { if ($row["id"] != userID()) echo "<a href=\"report?id=".$row["id"]."\"/>Report</a>"; });
 $table->render();
 ?>
