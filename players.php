@@ -69,16 +69,18 @@ $table->addColumn("role",
                   "Role",
                   array(array("admin_level.name", "admin_level_name")),
                   function($row) { echo $row["admin_level_name"]; });
-$table->addColumn("invited_by",
-                  "Invited By",
-                  array(array("inviter.id", "inviter_id"),
-                        array("inviter.first_name", "inviter_first_name"),
-                        array("inviter.last_name", "inviter_last_name")),
-                  function($row) { echo playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"]); });
-$table->addColumn("email",
-                  "Email",
-                  array(array("user.email", "user_email")),
-                  function($row) { echo $row["user_email"]; });
+if (canSeeInviters())
+  $table->addColumn("invited_by",
+                    "Invited By",
+                    array(array("inviter.id", "inviter_id"),
+                          array("inviter.first_name", "inviter_first_name"),
+                          array("inviter.last_name", "inviter_last_name")),
+                    function($row) { echo playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"]); });
+if (canSeeEmails())
+  $table->addColumn("email",
+                    "Email",
+                    array(array("user.email", "user_email")),
+                    function($row) { echo $row["user_email"]; });
 $table->addColumn("registered",
                   "Registered",
                   array(array("user.register_timestamp", "register_timestamp")),
@@ -86,12 +88,13 @@ $table->addColumn("registered",
                   {
                     if (!empty($row["register_timestamp"]))
                       echo date("d. m. Y H:i", strtotime($row["register_timestamp"]));
-                    else
+                    else if (canInvite())
                       echo "<a href=invites?pin=".$row["egd_pin"].">Invite</a>";
                   });
-$table->addColumn("",
-                  "Report loss",
-                  array(),
-                  function($row) { if ($row["id"] != userID()) echo "<a href=\"report?id=".$row["id"]."\"/>Report</a>"; });
+if (userID())
+  $table->addColumn("",
+                    "Report loss",
+                    array(),
+                    function($row) { if ($row["id"] != userID()) echo "<a href=\"report?id=".$row["id"]."\"/>Report</a>"; });
 $table->render();
 ?>

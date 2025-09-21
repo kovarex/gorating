@@ -41,6 +41,11 @@ function canSeeEmails()
   return userCanDo(ADMIN_LEVEL_MOD);
 }
 
+function canInvite()
+{
+  return userCanDo(ADMIN_LEVEL_USER);
+}
+
 function checkLoggedIn()
 {
   if (!userID())
