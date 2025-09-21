@@ -21,17 +21,18 @@ $searchQuery = "";
 if (!empty($search))
 {
   $parts = explode(" ", $search);
+  $textQuery = "";
 
   foreach ($parts as $part)
   {
     if (empty($part))
       continue;
     if (is_numeric($part) and strlen($part) == 8)
-      $textQuery = addWithOr($searchQuery, "user.egd_pin=".escape($search));
+      $textQuery = addWithOr($textQuery, "user.egd_pin=".escape($search));
     else
     {
-      $textQuery = addWithOr($searchQuery, "MATCH(user.first_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
-      $textQuery = addWithOr($searchQuery, "MATCH(user.last_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
+      $textQuery = addWithOr($textQuery, "MATCH(user.first_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
+      $textQuery = addWithOr($textQuery, "MATCH(user.last_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
     }
   }
 }
@@ -46,6 +47,11 @@ $table = new TableViewer("user LEFT JOIN user as inviter ON inviter.id = user.in
                             user.admin_level_id = admin_level.id and
                             user.country_id = country.id".$searchQuery,
                          $_GET);
+$table->setFixedSort(new SortDefinition("user_register_timestamp is null", true));
+if (empty($search))
+  $table->setPrimarySort(new SortDefinition("rating", false));
+else
+  $table->setPrimarySort(new SortDefinition("name"));
 $table->addColumn("rating",
                   "Rating",
                   array(array("user.rating", "rating")),
@@ -53,10 +59,9 @@ $table->addColumn("rating",
                   "style=\"text-align: right;\"");
 $table->addColumn("name",
                   "Name",
-                  array(array("user.first_name", "first_name"),
-                        array("user.last_name", "last_name"),
+                  array(array("CONCAT(user.first_name, ' ', user.last_name)", "name"),
                         array("user.id", "id")),
-                  function($row) { echo playerLink($row["id"], $row["first_name"]." ".$row["last_name"]); });
+                  function($row) { echo playerLink($row["id"], $row["name"]); });
 $table->addColumn("egd_link",
                   "EGD",
                   array(array("user.egd_pin", "egd_pin")),
@@ -83,11 +88,11 @@ if (canSeeEmails())
                     function($row) { echo $row["user_email"]; });
 $table->addColumn("registered",
                   "Registered",
-                  array(array("user.register_timestamp", "register_timestamp")),
+                  array(array("user.register_timestamp", "user_register_timestamp")),
                   function($row)
                   {
-                    if (!empty($row["register_timestamp"]))
-                      echo date("d. m. Y H:i", strtotime($row["register_timestamp"]));
+                    if (!empty($row["user_register_timestamp"]))
+                      echo date("d. m. Y H:i", strtotime($row["user_register_timestamp"]));
                     else if (canInvite())
                       echo "<a href=invites?pin=".$row["egd_pin"].">Invite</a>";
                   });

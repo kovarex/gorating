@@ -104,7 +104,7 @@ function processTournament($key)
       $currentGor = $div->getElementsByTagname("b")[1]->nodeValue;
       if (!is_numeric($currentGor))
         die("The value of gor before tournament: \"".$currentGor." is not a number.");
-      
+
       $playerLink = $div->getElementsByTagname("a")[0]->nodeValue;
       $pieces = explode(" ", $playerLink);
       $playerPin = $pieces[0];
@@ -166,7 +166,7 @@ function processTournament($key)
         $opponentGorChange = $cells[10]->nodeValue;
         if (!is_numeric($opponentGorChange))
           die("Opponent gro Change is not numeric.");
-        
+
         $winnerUserID = $userWon ? $userID : $opponentUserID;
         $loserUserID = $userWon ? $opponentUserID : $userID;
         $winnerOldGor = $userWon ? $currentGor : $opponentGor;

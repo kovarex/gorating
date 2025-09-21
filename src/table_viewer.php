@@ -1,5 +1,35 @@
 <?php
 
+class SortDefinition
+{
+  function __construct($column, $ascending = true)
+  {
+    $this->column = $column;
+    $this->ascending = $ascending;
+  }
+
+  function render()
+  {
+    return $this->column.($this->ascending ? "" : " DESC");
+  }
+
+  public $column;
+  public $ascending;
+};
+
+class SortBuilder
+{
+  public function add($sortDefinition)
+  {
+    if (empty($this->result))
+      $this->result = " ORDER BY \n";
+    else
+      $this->result .= ",\n";
+    $this->result .= $sortDefinition->render();
+  }
+  public $result;
+}
+
 class SqlFromFiller
 {
   public function add($sql, $as)
@@ -22,7 +52,7 @@ class TableColumn
     $this->cellParameters = $cellParameters;
     $this->sort = @$get[$name];
   }
-  
+
   public function fillFrom(&$sqlFromFiller)
   {
     foreach ($this->sql as $part)
@@ -33,7 +63,7 @@ class TableColumn
   {
     echo "<th>".$this->caption."</th>";
   }
-  
+
   public function renderCell($row)
   {
     echo "<td".$this->getCellParameters().">";
@@ -41,7 +71,7 @@ class TableColumn
     $filler($row);
     echo "</td>";
   }
-  
+
   private function getCellParameters()
   {
     if (empty($this->cellParameters))
@@ -78,6 +108,16 @@ class TableViewer
     echo "</tr>";
   }
 
+  private function buildSort()
+  {
+    $sortBuilder = new SortBuilder();
+    if ($this->fixedSort)
+      $sortBuilder->add($this->fixedSort);
+    if ($this->currentSort)
+      $sortBuilder->add($this->currentSort);
+    return $sortBuilder->result;
+  }
+
   private function buildQuery()
   {
     $result = "SELECT \n";
@@ -87,10 +127,11 @@ class TableViewer
     $result .= $sqlFromFiller->result;
     $result .= " FROM \n";
     $result .= $this->queryCore;
+    $result .= $this->buildSort();
     $result .= " LIMIT 100";
     return $result;
   }
-  
+
   private function renderRow($row)
   {
     echo "<tr>";
@@ -109,9 +150,21 @@ class TableViewer
     echo "</table>";
   }
 
+  public function setFixedSort($fixedSort)
+  {
+    $this->fixedSort = $fixedSort;
+  }
+
+  public function setPrimarySort($primarySort)
+  {
+    $this->currentSort = $primarySort;
+  }
+
   public $queryCore;
   private $columns;
   private $get;
+  private $fixedSort;
+  private $currentSort;
 };
 
 ?>
