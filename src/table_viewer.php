@@ -1,4 +1,5 @@
 <?php
+require_once("link_helper.php");
 
 class SortDefinition
 {
@@ -50,6 +51,7 @@ class TableColumn
     $this->sql = $sql;
     $this->cellFiller = $cellFiller;
     $this->cellParameters = $cellParameters;
+    $this->get = $get;
     $this->sort = @$get[$name];
   }
 
@@ -61,7 +63,14 @@ class TableColumn
 
   public function renderHeader()
   {
-    echo "<th>".$this->caption."</th>";
+    echo "<th>";
+    $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+    $getCopy = $this->get;
+    $getCopy["sort"] = $this->name;
+    echo "<a href=\"".generateAddress($url, $getCopy)."\">";
+    echo $this->caption;
+    echo "</a>";
+    echo "</th>";
   }
 
   public function renderCell($row)
@@ -79,6 +88,12 @@ class TableColumn
     return " ".$this->cellParameters;
   }
 
+  public function getSort()
+  {
+    return new SortDefinition($this->sql[0][1]);
+  }
+
+  private $get;
   public $name;
   public $caption;
   public $sql;
@@ -98,6 +113,8 @@ class TableViewer
   public function addColumn($name, $caption, $sql, $cellFiller, $cellParameters = NULL)
   {
     $this->columns[$name] = new TableColumn($name, $caption, $sql, $cellFiller, $cellParameters, $this->get);
+    if (@$_GET["sort"] == $name)
+      $this->currentSort = $this->columns[$name]->getSort();
   }
 
   public function renderHeader()

@@ -45,4 +45,23 @@ function tournamentLink($tournamentID, $tournamentName)
 {
   return "<a href=\"/tournament?id=".$tournamentID."\">".readableTournamentName($tournamentName)."</a>";
 }
+
+function generateAddress($url, $get)
+{
+  if (empty($get))
+    return $url;
+  $parameters = "";
+  foreach($get as $key =>$value)
+  {
+    if (empty($key))
+      continue; // php are you drunk?
+    if (empty($parameters))
+      $parameters .= "?";
+    else
+      $parameters .= "&amp;";
+    $parameters .= urlencode($key)."=".urlencode($value);
+  }
+  return $url.$parameters;
+}
+
 ?>
