@@ -1,4 +1,5 @@
 <?php
+require("src/table_viewer.php");
 
 echo "<div style=\"text-align:center;\">";
 echo "<form >";
@@ -38,74 +39,59 @@ if (!empty($search))
 if (!empty($textQuery))
   $searchQuery .= " and (".$textQuery.")";
 
-echo "<table class=\"data-table\">";
-echo "<tr>";
-echo "<th>Rating</th>";
-echo "<th>Name</th>";
-echo "<th>EGD link</th>";
-echo "<th>Country</th>";
-echo "<th>Role</th>";
-if (canSeeInviters())
-  echo "<th>Invited by</th>";
-if (canSeeEmails())
-  echo "<th>email</th>";
-echo "<th>Registered</th>";
-if (userID())
-  echo "<th>Report loss</th>";
-echo "</tr>";
-
-
-function showPlayers($searchQuery)
-{
-
-  $players = query("SELECT
-                      user.id as id,
-                      user.rating as rating,
-                      user.first_name as first_name,
-                      user.last_name as last_name,
-                      user.egd_pin as egd_pin,
-                      user.email as email,
-                      user.register_timestamp as register_timestamp,
-                      admin_level.name as admin_level_name,
-                      inviter.id as inviter_id,
-                      inviter.first_name as inviter_first_name,
-                      inviter.last_name as inviter_last_name,
-                      country.code as country_code
-                    FROM user LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id,
-                         admin_level,
-                         country
-                    WHERE
-                      user.admin_level_id = admin_level.id and
-                      user.country_id = country.id".$searchQuery."
-                    ORDER BY user.rating DESC
-                    LIMIT 50");
-
-  while($row = $players->fetch_assoc())
-  {
-    echo "<tr>";
-    echo "<td style=\"text-align: right;\">".round($row["rating"])."</td>";
-    echo "<td>".playerLink($row["id"], $row["first_name"]." ".$row["last_name"])."</td>";
-    echo "<td>".egdLink($row["egd_pin"])."</td>";
-    echo "<td style=\"text-align: center;\">".$row["country_code"]."</td>";
-    echo "<td>".$row["admin_level_name"]."</td>";
-    if (canSeeInviters())
-      echo "<td>".playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"])."</td>";
-    if (canSeeEmails())
-      echo "<td>".$row["email"]."</td>";
-    echo "<td>".(empty($row["register_timestamp"]) ? ("<a href=invites?pin=".$row["egd_pin"].">Invite</a>") : date("d. m. Y H:i", strtotime($row["register_timestamp"])))."</td>";
-    if (userID())
-    {
-      echo "<td>";
-      if ($row["id"] != userID())
-        echo "<a href=\"report?id=".$row["id"]."\"/>Report</a>";
-      echo "</td>";
-    }
-    echo "</tr>";
-  }
-}
-
-showPlayers($searchQuery." and user.username is not NULL");
-showPlayers($searchQuery." and user.username is NULL");
-
-echo "</table>";
+$table = new TableViewer("user LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id,
+                          admin_level,
+                          country
+                          WHERE
+                            user.admin_level_id = admin_level.id and
+                            user.country_id = country.id".$searchQuery,
+                         $_GET);
+$table->addColumn("rating",
+                  "Rating",
+                  array(array("user.rating", "rating")),
+                  function($row) { echo round($row["rating"]); },
+                  "style=\"text-align: right;\"");
+$table->addColumn("name",
+                  "Name",
+                  array(array("user.first_name", "first_name"),
+                        array("user.last_name", "last_name"),
+                        array("user.id", "id")),
+                  function($row) { echo playerLink($row["id"], $row["first_name"]." ".$row["last_name"]); });
+$table->addColumn("egd_link",
+                  "EGD",
+                  array(array("user.egd_pin", "egd_pin")),
+                  function($row) { echo egdLink($row["egd_pin"]); });
+$table->addColumn("country",
+                  "Country",
+                  array(array("country.code", "country_code")),
+                  function($row) { echo $row["country_code"]; });
+$table->addColumn("role",
+                  "Role",
+                  array(array("admin_level.name", "admin_level_name")),
+                  function($row) { echo $row["admin_level_name"]; });
+$table->addColumn("invited_by",
+                  "Invited By",
+                  array(array("inviter.id", "inviter_id"),
+                        array("inviter.first_name", "inviter_first_name"),
+                        array("inviter.last_name", "inviter_last_name")),
+                  function($row) { echo playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"]); });
+$table->addColumn("email",
+                  "Email",
+                  array(array("user.email", "user_email")),
+                  function($row) { echo $row["user_email"]; });
+$table->addColumn("registered",
+                  "Registered",
+                  array(array("user.register_timestamp", "register_timestamp")),
+                  function($row)
+                  {
+                    if (!empty($row["register_timestamp"]))
+                      echo date("d. m. Y H:i", strtotime($row["register_timestamp"]));
+                    else
+                      echo "<a href=invites?pin=".$row["egd_pin"].">Invite</a>";
+                  });
+$table->addColumn("",
+                  "Report loss",
+                  array(),
+                  function($row) { if ($row["id"] != userID()) echo "<a href=\"report?id=".$row["id"]."\"/>Report</a>"; });
+$table->render();
 ?>
