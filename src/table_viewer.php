@@ -1,9 +1,11 @@
 <?php
 require_once("link_helper.php");
+define("SORT_ASCEND", 1);
+define("SORT_DESCEND", 0);
 
 class SortDefinition
 {
-  function __construct($column, $ascending = true)
+  function __construct($column, $ascending = SORT_ASCEND)
   {
     $this->column = $column;
     $this->ascending = $ascending;
@@ -44,7 +46,7 @@ class SqlFromFiller
 
 class TableColumn
 {
-  function __construct($name, $caption, $sql, $cellFiller, $cellParameters, $get)
+  function __construct($name, $caption, $sql, $cellFiller, $cellParameters, $get, $defaultSortAscend = SORT_ASCEND)
   {
     $this->name = $name;
     $this->caption = $caption;
@@ -52,7 +54,7 @@ class TableColumn
     $this->cellFiller = $cellFiller;
     $this->cellParameters = $cellParameters;
     $this->get = $get;
-    $this->sort = @$get[$name];
+    $this->defaultSortAscend = $defaultSortAscend;
   }
 
   public function fillFrom(&$sqlFromFiller)
@@ -61,15 +63,27 @@ class TableColumn
       $sqlFromFiller->add($part[0], $part[1]);
   }
 
-  public function renderHeader()
+  public function renderHeader($currentSort)
   {
     echo "<th>";
     $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
     $getCopy = $this->get;
+    $thisIsSorted = $currentSort->column == $this->name;
     $getCopy["sort"] = $this->name;
-    echo "<a href=\"".generateAddress($url, $getCopy)."\">";
+    if ($thisIsSorted)
+      $getCopy["d"] = $currentSort->ascending ? "down" : "up";
+    else
+      $getCopy["d"] = $this->defaultSortAscend ? "up" : "down";
+
+    echo "<span style=\"vertical-align: middle;\"><a href=\"".generateAddress($url, $getCopy)."\">";
     echo $this->caption;
     echo "</a>";
+    if ($thisIsSorted)
+    {
+      global $imageAddress;
+      echo "<img class=\"sorting-image\" src=\"".$imageAddress."/arrow-".($currentSort->ascending ? "up" : "down").".png\"/>";
+    }
+    echo "</span>";
     echo "</th>";
   }
 
@@ -88,9 +102,9 @@ class TableColumn
     return " ".$this->cellParameters;
   }
 
-  public function getSort()
+  public function getSort($textualDirection)
   {
-    return new SortDefinition($this->sql[0][1]);
+    return new SortDefinition($this->sql[0][1], $textualDirection ? ($textualDirection == "up") : $this->defaultSortAscend);
   }
 
   private $get;
@@ -99,7 +113,7 @@ class TableColumn
   public $sql;
   public $cellFiller;
   public $cellParameters;
-  public $sort;
+  public $defaultSortAscend;
 };
 
 class TableViewer
@@ -114,14 +128,14 @@ class TableViewer
   {
     $this->columns[$name] = new TableColumn($name, $caption, $sql, $cellFiller, $cellParameters, $this->get);
     if (@$_GET["sort"] == $name)
-      $this->currentSort = $this->columns[$name]->getSort();
+      $this->currentSort = $this->columns[$name]->getSort(@$_GET["d"]);
   }
 
   public function renderHeader()
   {
     echo "<tr>";
     foreach ($this->columns as $column)
-      $column->renderHeader();
+      $column->renderHeader($this->currentSort);
     echo "</tr>";
   }
 

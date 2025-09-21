@@ -62,31 +62,30 @@ $table->addColumn("name",
                   array(array("CONCAT(user.first_name, ' ', user.last_name)", "name"),
                         array("user.id", "id")),
                   function($row) { echo playerLink($row["id"], $row["name"]); });
-$table->addColumn("egd_link",
+$table->addColumn("egd_pin",
                   "EGD",
                   array(array("user.egd_pin", "egd_pin")),
                   function($row) { echo egdLink($row["egd_pin"]); });
-$table->addColumn("country",
+$table->addColumn("country_code",
                   "Country",
                   array(array("country.code", "country_code")),
                   function($row) { echo $row["country_code"]; });
-$table->addColumn("role",
+$table->addColumn("admin_level_name",
                   "Role",
                   array(array("admin_level.name", "admin_level_name")),
                   function($row) { echo $row["admin_level_name"]; });
 if (canSeeInviters())
-  $table->addColumn("invited_by",
+  $table->addColumn("inviter_name",
                     "Invited By",
                     array(array("inviter.id", "inviter_id"),
-                          array("inviter.first_name", "inviter_first_name"),
-                          array("inviter.last_name", "inviter_last_name")),
-                    function($row) { echo playerLink($row["inviter_id"], $row["inviter_first_name"]." ".$row["inviter_last_name"]); });
+                          array("CONCAT(inviter.first_name, ' ', user.inviter_last_name)", "inviter_name")),
+                    function($row) { echo playerLink($row["inviter_id"], $row["inviter_name"]); });
 if (canSeeEmails())
-  $table->addColumn("email",
+  $table->addColumn("user_email",
                     "Email",
                     array(array("user.email", "user_email")),
                     function($row) { echo $row["user_email"]; });
-$table->addColumn("registered",
+$table->addColumn("user_register_timestamp",
                   "Registered",
                   array(array("user.register_timestamp", "user_register_timestamp")),
                   function($row)

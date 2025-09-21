@@ -13,5 +13,6 @@
   align-content: center;
   justify-content: center;
 }
+.sorting-image {width:16px;height:16px;vertical-align:middle;}
 .report-loss-link {font-size:40px;}
 h1 { width:500px; margin: 0 auto; text-align: center;}
