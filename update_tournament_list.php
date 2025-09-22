@@ -5,13 +5,7 @@ $data = getUrlContent("https://www.europeangodatabase.eu/EGD/EGD_2_0/downloads/t
 if (empty($data))
   die("Couldn't load the page.".$url);
 
-$processedTournamentsResult = query("select egd_key FROM egd_tournament");
-while ($row = $processedTournamentsResult->fetch_assoc())
-  $tournamentsToIgnore[$row["egd_key"]] = true;
-
-$tournamentsMarkedForUpdate = query("select egd_key FROM egd_tournament_to_process");
-while ($row = $tournamentsMarkedForUpdate->fetch_assoc())
-  $tournamentsToIgnore[$row["egd_key"]] = true;
+$tournamentsToIgnore = getTournamentsToIgnore();
 
 $separator = "\r\n";
 $line = strtok($data, $separator);
@@ -20,15 +14,10 @@ $tournamentsToProcessInReversedOrder = [];
 while ($line !== false)
 {
   $keyCandidate = substr($line, 0, 11);
-  if ($keyCandidate[0] == " " and
-      $keyCandidate[10] == " " and
-      ($keyCandidate[1] == "T" or
-       $keyCandidate[1] == "W" or
-       $keyCandidate[1] == "E" or
-       $keyCandidate[1] == "G"))
+  if ($keyCandidate[0] == " " and $keyCandidate[10] == " ")
   {
     $key = trim($keyCandidate);
-    if (!@$tournamentsToIgnore[$key])
+    if (isTournamentKey($key) && !@$tournamentsToIgnore[$key])
       array_push($tournamentsToProcessInReversedOrder, $key);
   }
   $line = strtok($separator);

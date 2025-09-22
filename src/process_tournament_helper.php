@@ -1,7 +1,18 @@
 <?php
-require("db.php");
-require("egd_api.php");
+require_once("db.php");
+require_once("egd_api.php");
 
+function getTournamentsToIgnore()
+{
+  $processedTournamentsResult = query("select egd_key FROM egd_tournament");
+  while ($row = $processedTournamentsResult->fetch_assoc())
+    $tournamentsToIgnore[$row["egd_key"]] = true;
+
+  $tournamentsMarkedForUpdate = query("select egd_key FROM egd_tournament_to_process");
+  while ($row = $tournamentsMarkedForUpdate->fetch_assoc())
+    $tournamentsToIgnore[$row["egd_key"]] = true;
+  return $tournamentsToIgnore;
+}
 function processTournament($key)
 {
   if (empty($key))
@@ -11,7 +22,7 @@ function processTournament($key)
       $key = $result["egd_key"];
     else
     {
-      echo "No tournament key provided and nothing to process.";
+      echo "Nothing to process.";
       return false;
     }
   }
@@ -20,7 +31,7 @@ function processTournament($key)
 
   if (!empty($existingTournament))
   {
-    echo "Tournament already exists.";
+    echo "Tournament \"".$key."\" already exists.";
     return false;
   }
 

@@ -1,6 +1,7 @@
 <?php
+require_once("constants.php");
 
-function getUrlContent($url)
+function getUrlContent($url, $post_data = NULL)
 {
   fopen("cookies.txt", "w");
   $parts = parse_url($url);
@@ -24,15 +25,17 @@ function getUrlContent($url)
   curl_setopt($ch, CURLOPT_COOKIEFILE, 'cookies.txt');
   curl_setopt($ch, CURLOPT_COOKIEJAR, 'cookies.txt');
   curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+  if ($post_data)
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
   $result = curl_exec($ch);
   curl_close($ch);
   return $result;
 }
 
-function getPageDom($url)
+function getPageDom($url, $post_data = NULL)
 {
   tryAgain:
-  $data = getUrlContent($url);
+  $data = getUrlContent($url, $post_data);
   if (empty($data))
     die("Couldn't load the page.".$url);
   if ($data == "error code: 1015")
@@ -77,7 +80,7 @@ function getEgdInfo($pin)
 {
   $url = "https://www.europeangodatabase.eu/EGD/Player_Card.php?&key=".$pin;
   $doc = getPageDom($url);
-  
+
   $inputs = $doc->getElementsByTagName('input');
   foreach ($inputs as $input)
     if ($input->attributes->getNamedItem("name")->textContent == "gor")
@@ -124,6 +127,20 @@ function addEGDPlayerIfNotPresent($pin, $firstName, $lastName)
                     escape($info["country"]["id"]).",".
                     ADMIN_LEVEL_UNREGISTERED.")");
   return lastInsertID();
+}
+
+function isTournamentKey($key)
+{
+  if (strlen($key) < 4)
+    return false;
+
+  if (strlen($key) > 10)
+    return false;
+
+  if ($key[0] != "T" and $key[0] != "W" and $key[0] != "E" and $key[0] != "G")
+    return false;
+
+  return true;
 }
 
 ?>
