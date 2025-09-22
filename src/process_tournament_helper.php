@@ -108,6 +108,7 @@ function processTournament($key)
 
   query("DELETE FROM egd_tournament_to_process WHERE egd_key=".escape($key));
   $placement = 1;
+  $ratingUpdates = "";
 
   foreach ($divs as $div)
     if ($div->attributes->getNamedItem("class")->textContent == "thisdiv")
@@ -186,6 +187,7 @@ function processTournament($key)
         $winnerNewGor = $userWon ? ($currentGor + $gorChange) : ($opponentGor + $opponentGorChange);
         $loserOldGor = $userWon ? $opponentGor : $currentGor;
         $loserNewGor = $userWon ? ($opponentGor + $opponentGorChange) : ($currentGor + $gorChange);
+        $winnerIsBlack = ($userWon == ($color == "b"));
 
         if (!empty($pinsProcessed[$opponentPin][$playerPin]))
         {
@@ -216,21 +218,32 @@ function processTournament($key)
                             escape($winnerNewGor).",".
                             escape($loserOldGor).",".
                             escape($loserNewGor).",".
-                            (($userWon == ($color == "b")) ? "true" : "false").",".
+                            ($winnerIsBlack ? "true" : "false").",".
                             escape($handicap).",".
                             escape($komi).",".
                             escape($tournamentID).",".
                             escape($round).")");
+        if (!empty($user["username"]))
+        {
+          $opponent = query("SELECT * FROM user where id=".escape($opponentID));
+          $user["rating"] = calculateNewRating($user["rating"],
+                                               $opponent["rating"],
+                                               $userWon ? 1 : -1,
+                                               $gameTypeID,
+                                               ($color == "b" ? $extraHandicap : -$extraHandicap),
+                                               ($color == "b" ? -1 : 1) * ($komi - 6.5),
+                                               $extraKomi);
+        }
         $currentGor = $currentGor + $gorChange;
         $pinsProcessed[$playerPin][$opponentPin] = lastInsertID();
       }
 
       $ratingUpdateQuery = "UPDATE user SET egd_rating=".escape($currentGor);
-      if (empty($user["username"]))
-        $ratingUpdateQuery .= ", rating=".escape($currentGor);
+      $ratingUpdateQuery .= ", rating=".escape(empty($user["username"]) ? $currentGor : $user["rating"]);
       $ratingUpdateQuery .= " WHERE user.id=".escape($user["id"]);
-      query($ratingUpdateQuery);
+      $ratingUpdates .= $ratingQuery.";";
     }
+  query($ratingUpdates);
   $db->commit();
   return true;
 }
