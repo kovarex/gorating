@@ -7,7 +7,7 @@ echo "<div style=\"text-align:center;\">";
 echo "<form>";
 echo "<table class=\"centered-table\">";
 echo "<tr><td><label for=\"search\">Search (name, pin)</label></td><td><input type=\"text\" name=\"search\"".($search ? "value=\"".$search."\"" : "")."/></td></tr>";
-echo "<tr><td><label for=\"country_code\">Country:</label></td><td>".countrySelector()."</td></tr>";
+echo "<tr><td><label for=\"country_code\">Country:</label></td><td>".countrySelector(@$_GET["country_code"])."</td></tr>";
 echo "<tr><td colspan=2><input type=\"submit\" value=\"Submit\"/></td></tr>";
 echo "</table>";
 echo "</form>";
@@ -42,17 +42,15 @@ if (!empty($search))
 }
 
 if (!empty($textQuery))
-  $searchQuery .= " and (".$textQuery.")";
+  $searchQuery .= (empty($searchQuery) ? " and " : " WHERE ")."(".$textQuery.")";
 
 if (!empty($_GET["country_code"]))
-  $searchQuery .= " and country.code=".escape($_GET["country_code"]);
+  $searchQuery .= (empty($searchQuery) ? " and " : " WHERE ")."country.code=".escape($_GET["country_code"]);
 
-$table = new TableViewer("user LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id,
-                          admin_level,
-                          country
-                          WHERE
-                            user.admin_level_id = admin_level.id and
-                            user.country_id = country.id".$searchQuery,
+$table = new TableViewer("user
+                            LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id
+                            JOIN admin_level ON admin_level.id = user.admin_level_id
+                            JOIN country ON country.id = user.country_id".$searchQuery,
                          $_GET);
 $table->setFixedSort(new SortDefinition("user_register_timestamp is null", true));
 if (empty($search))

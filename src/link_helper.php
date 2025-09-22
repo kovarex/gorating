@@ -70,7 +70,7 @@ function countrySelector($selected = NULL)
   $result .= "<option value=\"\">Any</option>";
   $data = query("SELECT * from country");
   while ($row = $data->fetch_assoc())
-    $result .= "<option value=\"".$row["code"].($selected == $row["code"] ? " selected=\"selected\"" : "")."\">".$row["name"]."</option>";
+    $result .= "<option value=\"".$row["code"]."\"".($selected == $row["code"] ? " selected=\"selected\"" : "").">".$row["name"]."</option>";
   $result .= "</select>";
   return $result;
 }
