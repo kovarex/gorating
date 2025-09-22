@@ -128,7 +128,10 @@ CREATE TABLE IF NOT EXISTS `game` (
   PRIMARY KEY (`id`),
   INDEX `winner_user_id` (`winner_user_id`),
   INDEX `loser_user_id` (`loser_user_id`),
-  INDEX `game_type_id` (`game_type_id`)
+  INDEX `timestamp` (`timestamp`),
+  INDEX `game_type_id` (`game_type_id`),
+  INDEX `egd_tournament_id` (`egd_tournament_id`),
+  INDEX `egd_tournament_round` (`egd_tournament_round`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 CREATE TABLE IF NOT EXISTS `game_type` (
@@ -241,7 +244,7 @@ ALTER TABLE `game`
   ADD CONSTRAINT `game_fk_2` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`),
   ADD CONSTRAINT `game_fk_3` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`),
   ADD CONSTRAINT `game_fk_4` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`);
-  
+
 ALTER TABLE `user`
   ADD CONSTRAINT `user_fk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
   ADD CONSTRAINT `user_fk_2` FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`),
