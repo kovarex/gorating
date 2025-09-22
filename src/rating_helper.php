@@ -30,4 +30,5 @@ function calculateNewRating($rating, $opponentRating, $result, $gameType, $extra
   $bonus = log(1 + exp((2300 - $rating) / 80)) / 5; // for bonus also the normal rating
   return $rating + modifier($gameType) * ($con * ($result - $Se) + $bonus);
 }
+
 ?>

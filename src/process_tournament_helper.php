@@ -107,7 +107,7 @@ function processTournament($key)
   $tournamentID = lastInsertID();
 
   query("DELETE FROM egd_tournament_to_process WHERE egd_key=".escape($key));
-  $resultNumber = 1;
+  $placement = 1;
 
   foreach ($divs as $div)
     if ($div->attributes->getNamedItem("class")->textContent == "thisdiv")
@@ -126,10 +126,11 @@ function processTournament($key)
       for ($i = 4; $i < count($pieces); $i++)
         $lastName .= " ".$pieces[$i];
       $userID = addEGDPlayerIfNotPresent($playerPin, $firstName, $lastName);
+      $user = query("SELECT * from user WHERE user.id=".escape($userID))->fetch_assoc();
       query("INSERT INTO
                egd_tournament_result(egd_tournament_id, user_id, placement)
-               VALUES(".escape($tournamentID).",".escape($userID).",".escape($resultNumber).")");
-      $resultNumber = $resultNumber + 1;
+               VALUES(".escape($tournamentID).",".escape($userID).",".escape($placement).")");
+      $placement = $placement + 1;
 
       $rows = $div->getElementsByTagName("table")[1]->getElementsByTagName("tr");
       foreach ($rows as $row)
@@ -151,6 +152,7 @@ function processTournament($key)
           die("Color value unexpected:\"".$color."\"");
         $handicapText = $cells[4]->nodeValue;
         $handicap = explode(" ", $handicapText)[0];
+        $komi = ($handicap == 0 ? 6.5 : 0.5);
         $resultText = $cells[5]->nodeValue;
         if ($resultText == "Jigo")
           continue; // I just ignore ties
@@ -210,18 +212,24 @@ function processTournament($key)
                             $loserUserID.",".
                             $gameTypeID.",".
                             escape($timestamp).",".
-                            $winnerOldGor.",".
-                            $winnerNewGor.",".
-                            $loserOldGor.",".
-                            $loserNewGor.",".
+                            escape($winnerOldGor).",".
+                            escape($winnerNewGor).",".
+                            escape($loserOldGor).",".
+                            escape($loserNewGor).",".
                             (($userWon == ($color == "b")) ? "true" : "false").",".
-                            $handicap.",".
-                            ($handicap == 0 ? "6.5" : "0.5").",".
+                            escape($handicap).",".
+                            escape($komi).",".
                             escape($tournamentID).",".
                             escape($round).")");
         $currentGor = $currentGor + $gorChange;
         $pinsProcessed[$playerPin][$opponentPin] = lastInsertID();
       }
+
+      $ratingUpdateQuery = "UPDATE user SET egd_rating=".escape($currentGor);
+      if (empty($user["username"]))
+        $ratingUpdateQuery .= ", rating=".escape($currentGor);
+      $ratingUpdateQuery .= " WHERE user.id=".escape($user["id"]);
+      query($ratingUpdateQuery);
     }
   $db->commit();
   return true;
