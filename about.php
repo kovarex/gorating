@@ -12,9 +12,7 @@ TODO:
 <ul>
   <li>Update player EGD rating when processing tournaments</li>
   <li>Update our rating when tournament games are processed (for users which registered before the tournament)</li>
-  <li>Process all tournaments, and then automatically check for new tournaments and apply them.</li>
   <li>Country selector</li>
   <li>Some styles</li>
-  <li>Import EGD game history into our database, so we can see all games and history including tournament and non tournament games.</li>
   <li>More functionality for higher admin roles (rating change + log of it in the list of games), removal of games or users, adding sgf files to others etc.</li>
 </ul>
