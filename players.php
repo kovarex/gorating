@@ -61,7 +61,7 @@ $table->addColumn("name",
                   "Name",
                   array(array("CONCAT(user.first_name, ' ', user.last_name)", "name"),
                         array("user.id", "id")),
-                  function($row) { echo playerLink($row["id"], $row["name"]); });
+                  function($row){ echo playerLink($row["id"], $row["name"]); });
 $table->addColumn("egd_pin",
                   "EGD",
                   array(array("user.egd_pin", "egd_pin")),

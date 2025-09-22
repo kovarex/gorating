@@ -1,4 +1,5 @@
 <?php
+require("src/table_viewer.php");
 $player = query("SELECT * from user where id=".escape($_GET["id"]))->fetch_assoc();
 if (empty($player))
   die("Unknown player with id=".$_GET["id"]);
@@ -13,7 +14,7 @@ echo "<tr><td>Rating:</td><td>".round($player["rating"])."</td></tr>";
 echo "<tr><td>EGD Rating:</td><td>".$player["egd_rating"]."</td></tr>";
 echo "</table>";
 
-/*$table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
+$table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
                           user as winner,
                           user as loser,
                           game_type
@@ -29,119 +30,125 @@ $table->setLastSort(new SortDefinition("game.egd_tournament_round", false));
 $table->addColumn("result",
                   "Result",
                   array(array("IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS')", "result")),
-                  function($row) { echo $row["result"]; });*/
+                  function($row) { echo $row["result"]; },
+                  "style=\"text-align:center;\"");
 
-$games = query("SELECT
-                 game.id as game_id,
-                 winner.id as winner_id,
-                 CONCAT(winner.first_name, ' ', winner.last_name) as winner_name,
-                 winner.egd_pin as winner_egd_pin,
-                 game.winner_old_rating as winner_old_rating,
-                 game.winner_new_rating as winner_new_rating,
-                 game.winner_old_egd_rating as winner_old_egd_rating,
-                 game.winner_new_egd_rating as winner_new_egd_rating,
-                 loser.id as loser_id,
-                 CONCAT(loser.first_name, ' ', loser.last_name) as loser_name,
-                 loser.egd_pin as loser_egd_pin,
-                 game.loser_old_rating as loser_old_rating,
-                 game.loser_new_rating as loser_new_rating,
-                 game.loser_old_egd_rating as loser_old_egd_rating,
-                 game.loser_new_egd_rating as loser_new_egd_rating,
-                 game_type.name as game_type_name,
-                 game.location as game_location,
-                 game.winner_comment as winner_comment,
-                 game.loser_comment as loser_comment,
-                 game.timestamp as game_timestamp,
-                 game.winner_is_black as winner_is_black,
-                 game.handicap as handicap,
-                 game.komi as komi,
-                 length(game.sgf) > 0 as has_sgf,
-                 egd_tournament.egd_key as egd_tournament_key,
-                 egd_tournament.name as egd_tournament_name,
-                 egd_tournament.id as egd_tournament_id,
-                 IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS') as result
-               FROM
-                 game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
-                 user as winner,
-                 user as loser,
-                 game_type
-               WHERE
-                 game.winner_user_id = winner.id and
-                 game.loser_user_id = loser.id and
-                 game.game_type_id = game_type.id and
-                 (winner_user_id=".escape($_GET["id"])." or loser_user_id=".escape($_GET["id"]).")
-               ORDER BY
-                 game.timestamp DESC,
-                 game.egd_tournament_round DESC");
+$table->addColumn("rating_change",
+                  "Rating change",
+                  array(array("IF(winner.id = ".escape($_GET["id"]).", ".
+                                "IF(game.winner_new_rating, game.winner_new_rating, game.winner_new_egd_rating) -".
+                                "IF(game.winner_old_rating, game.winner_old_rating, game.winner_old_egd_rating),".
+                                "IF(game.loser_new_rating, game.loser_new_rating, game.loser_new_egd_rating) -".
+                                "IF(game.loser_old_rating, game.loser_old_rating, game.loser_old_egd_rating))", "rating_change"),
+                        array("game.winner_old_rating", "winner_old_rating"),
+                        array("game.winner_new_rating", "winner_new_rating"),
+                        array("game.winner_old_egd_rating", "winner_old_egd_rating"),
+                        array("game.winner_new_egd_rating", "winner_new_egd_rating"),
+                        array("game.loser_old_rating", "loser_old_rating"),
+                        array("game.loser_new_rating", "loser_new_rating"),
+                        array("game.loser_old_egd_rating", "loser_old_egd_rating"),
+                        array("game.loser_new_egd_rating", "loser_new_egd_rating")),
+                  function($row)
+                  {
+                    $winner = ($row["result"] == "WIN");
+                    $myResultName = $winner ? "winner" : "loser";
+                    $suffix = "_rating";
+                    if (empty($row[$myResultName."_old_rating"]))
+                    {
+                      $suffix = "_egd_rating";
+                      echo "(EGD) ";
+                    }
+                    echo   "<span class=\"".$myResultName."\">".round($row[$myResultName."_old".$suffix])."&rarr;".round($row[$myResultName."_new".$suffix])."</span>";
+                  },
+                  "style=\"text-align:center;\"");
 
-if ($games->num_rows != 0)
-{
-  echo "<table class=\"data-table\">";
-  echo   "<tr><th>Result</th><th>Rating change</th><th>Opponent</th><th>Game type</th><th>Color</th><th>Handicap</th><th>Time</th><th>Tournament</th><th>Location</th><th>Comment</th><th>Opponent</th><th>SGF</th></tr>";
-  while($row = $games->fetch_assoc())
-  {
-     echo "<tr>";
-     $winner = ($row["result"] == "WIN");
-     $prefix = $winner ? "loser_" : "winner_";
-     $myResultName = $winner ? "winner" : "loser";
-     $myPrefix = $myResultName."_";
-     echo "<td style=\"text-align:center;\">".$row["result"]."</td>";
-     echo "<td style=\"text-align:center;\">";
+$table->addColumn("opponent_name",
+                  "Opponent",
+                  array(array("IF(winner.id = ".escape($_GET["id"]).", CONCAT(loser.first_name, ' ', loser.last_name), CONCAT(winner.first_name, ' ', winner.last_name))", "opponent_name"),
+                        array("IF(winner.id = ".escape($_GET["id"]).", game.loser_user_id, game.winner_user_id)", "opponent_id"),
+                        array("IF(winner.id = ".escape($_GET["id"]).", loser.egd_pin, winner.egd_pin)", "opponent_egd_pin"),
+                        array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_rating, game.loser_new_rating)", "opponent_rating"),
+                        array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_egd_rating, game.loser_new_egd_rating)", "opponent_egd_rating")),
+                  function($row)
+                  {
+                    $ratingToShow = $row["opponent_rating"];
+                    if (empty($ratingToShow))
+                      $ratingToShow = $row["opponent_egd_rating"];
+                    echo playerLink($row["opponent_id"], $row["opponent_name"])." (".round($ratingToShow).")";
+                  });
 
-     $suffix = "_rating";
-     if (empty($row[$myPrefix."old_rating"]))
-     {
-       $suffix = "_egd_rating";
-       echo "(EGD) ";
-     }
+$table->addColumn("game_type_name",
+                  "Game type",
+                  array(array("game_type.name", "game_type_name")),
+                  function($row) { echo $row["game_type_name"]; },
+                  "style=\"text-align:center;\"");
 
-     echo   "<span class=\"".$myResultName."\">".round($row[$myPrefix."old".$suffix])."&rarr;".round($row[$myPrefix."new".$suffix])."</span>";
-     echo "</td>";
+$table->addColumn("color",
+                  "Color",
+                  array(array("IF((winner.id = ".escape($_GET["id"])." = winner_is_black), 'Black', 'White')", "color")),
+                  function($row) { echo $row["color"]; },
+                  "style=\"text-align:center;\"");
 
-     $ratingToShow = $row[$prefix."new_rating"];
-     if (empty($ratingToShow))
-       $ratingToShow = $row[$prefix."new_egd_rating"];
-     echo "<td>".playerLink($row[$prefix."id"], $row[$prefix."name"])." (".round($ratingToShow).")</td>";
-     echo "<td style=\"text-align:center;\">".$row["game_type_name"]."</td>";
-     echo "<td style=\"text-align:center;\">".(boolval($winner) == boolval($row["winner_is_black"]) ? "Black" : "White")."</td>";
-     echo "<td style=\"text-align:center;\">";
-       if ($row["handicap"] == 0 and ($row["komi"] == 6.5 or $row["komi"] == 7.5))
-         echo "Even";
-       else
-       {
-         if ($row["handicap"] != 0)
-         {
-           echo $row["handicap"]."h";
-           if ($row["komi"] != 0.5)
-             echo " komi ".$row["komi"];
-         }
-         else
-           echo "komi ".$row["komi"];
-       }
-     echo "</td>";
-     echo "<td>".date("d. m. Y H:i", strtotime($row["game_timestamp"]))."</td>";
+$table->addColumn("handicap",
+                  "Handicap",
+                  array(array("game.handicap", "handicap"),
+                        array("game.komi", "komi"),),
+                  function($row)
+                  {
+                    if ($row["handicap"] == 0 and ($row["komi"] == 6.5 or $row["komi"] == 7.5))
+                      echo "Even";
+                    else
+                    {
+                      if ($row["handicap"] != 0)
+                      {
+                        echo $row["handicap"]."h";
+                        if ($row["komi"] != 0.5)
+                          echo " komi ".$row["komi"];
+                      }
+                      else
+                        echo "komi ".$row["komi"];
+                    }
+                  },
+                  "style=\"text-align:center;\"");
 
-     echo "<td>";
-     if (!empty($row["egd_tournament_id"]))
-     {
-       $shortenedTournamentName = substr(readableTournamentName($row["egd_tournament_name"]), 0, 30);
-       echo tournamentLink($row["egd_tournament_id"], $shortenedTournamentName);
-     }
-     echo "</td>";
+$table->addColumn("game_timestamp",
+                  "Time",
+                  array(array("game.timestamp", "game_timestamp")),
+                  function($row) { echo date("d. m. Y H:i", strtotime($row["game_timestamp"])); });
 
-     echo "<td style=\"text-align:center;\">".$row["game_location"]."</td>";
-     echo "<td style=\"text-align:center;\">".$row[$myPrefix."comment"]."</td>";
-     echo "<td style=\"text-align:center;\">".$row[$prefix."comment"]."</td>";
+$table->addColumn("egd_tournament_name",
+                  "Tournament",
+                  array(array("egd_tournament.name", "egd_tournament_name"),
+                        array("egd_tournament.egd_key", "egd_tournament_key"),
+                        array("egd_tournament.id", "egd_tournament_id")),
+                  function($row)
+                  {
+                    if (empty($row["egd_tournament_id"]))
+                      return;
+                    $shortenedTournamentName = substr(readableTournamentName($row["egd_tournament_name"]), 0, 30);
+                    echo tournamentLink($row["egd_tournament_id"], $shortenedTournamentName);
+                  });
 
-     echo "<td>";
-     if ($row["has_sgf"])
-       echo "<a href=\"/sgf?id=".$row["game_id"]."\">SGF</a>";
-     echo "</td>";
+$table->addColumn("game_location",
+                  "Location",
+                  array(array("game.location", "game_location")),
+                  function($row){ echo $row["game_location"]; });
 
-     echo "</tr>";
-  }
-  echo "</table>";
-}
-else
-  echo "No games."
+$table->addColumn("comment",
+                  "Comment",
+                  array(array("IF(winner.id = ".escape($_GET["id"]).", game.winner_comment, game.loser_comment)", "comment")),
+                  function($row){ echo $row["comment"]; });
+
+$table->addColumn("opponent_comment",
+                  "Opponent comment",
+                  array(array("IF(winner.id = ".escape($_GET["id"]).", game.loser_comment, game.winner_comment)", "opponent_comment")),
+                  function($row){ echo $row["opponent_comment"]; });
+
+$table->addColumn("has_sgf",
+                  "SGF",
+                  array(array("length(game.sgf) > 0", "has_sgf"),
+                        array("game.id", "game_id")),
+                  function($row){ if ($row["has_sgf"]) echo "<a href=\"/sgf?id=".$row["game_id"]."\">SGF</a>"; });
+
+$table->render();
 ?>
