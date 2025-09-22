@@ -153,6 +153,14 @@ class TableViewer
     return $sortBuilder->result;
   }
 
+  private function getStart()
+  {
+    $result = @$this->get["start"];
+    if ($result and is_numeric($result))
+      return $result;
+    return 1;
+  }
+
   private function buildQuery()
   {
     $result = "SELECT \n";
@@ -163,7 +171,10 @@ class TableViewer
     $result .= " FROM \n";
     $result .= $this->queryCore;
     $result .= $this->buildSort();
-    $result .= " LIMIT 100";
+    $result .= " LIMIT ".TABLE_PAGE_SIZE;
+    $start = $this->getStart();
+    if ($start > 1)
+      $result .= " OFFSET ".($start - 1);
     return $result;
   }
 
@@ -181,7 +192,28 @@ class TableViewer
     $data = query($this->buildQuery());
     $total = query("SELECT COUNT(*) as total FROM ".$this->queryCore)->fetch_assoc()["total"];
     if ($data->num_rows < $total)
-      echo "<caption>1-".$data->num_rows." of ".$total."</caption>";
+    {
+      echo "<caption>";
+      $start = $this->getStart();
+      if ($start > 1)
+      {
+        $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+        $getCopy = $this->get;
+        $getCopy["start"] = max($start - TABLE_PAGE_SIZE, 1);
+        echo "<a href=\"".generateAddress($url, $getCopy)."\">Previous</a> ";
+      }
+
+      echo  $start."-".min($start + $data->num_rows, $total)." of ".$total;
+
+      if ($start + $data->num_rows < $total)
+      {
+        $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+        $getCopy = $this->get;
+        $getCopy["start"] = $start + TABLE_PAGE_SIZE;
+        echo " <a href=\"".generateAddress($url, $getCopy)."\">Next</a> ";
+      }
+      echo "</caption>";
+    }
     $this->renderHeader();
     while ($row = $data->fetch_assoc())
       $this->renderRow($row);

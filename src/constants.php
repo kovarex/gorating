@@ -12,4 +12,5 @@ define("GAME_TYPE_EGD_D", 4);
 define("GAME_TYPE_SERIOUS", 5);
 define("GAME_TYPE_RAPID", 6);
 define("GAME_TYPE_BLITZ", 7);
+define("TABLE_PAGE_SIZE", 100);
 ?>
