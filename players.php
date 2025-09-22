@@ -4,8 +4,12 @@ require("src/table_viewer.php");
 $search = @$_GET["search"];
 
 echo "<div style=\"text-align:center;\">";
-echo "<form >";
-echo "<input type=\"text\" name=\"search\"".($search ? "value=\"".$search."\"" : "")."/><br/>";
+echo "<form>";
+echo "<table class=\"centered-table\">";
+echo "<tr><td><label for=\"search\">Search (name, pin)</label></td><td><input type=\"text\" name=\"search\"".($search ? "value=\"".$search."\"" : "")."/></td></tr>";
+echo "<tr><td><label for=\"country_code\">Country:</label></td><td>".countrySelector()."</td></tr>";
+echo "<tr><td colspan=2><input type=\"submit\" value=\"Submit\"/></td></tr>";
+echo "</table>";
 echo "</form>";
 echo "</div>";
 
@@ -39,6 +43,9 @@ if (!empty($search))
 
 if (!empty($textQuery))
   $searchQuery .= " and (".$textQuery.")";
+
+if (!empty($_GET["country_code"]))
+  $searchQuery .= " and country.code=".escape($_GET["country_code"]);
 
 $table = new TableViewer("user LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id,
                           admin_level,
