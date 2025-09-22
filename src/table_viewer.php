@@ -35,11 +35,13 @@ class SortBuilder
 
 class SqlFromFiller
 {
-  public function add($sql, $as)
+  public function add($sql, $as = NULL)
   {
     if (!empty($this->result))
       $this->result .= ",\n";
-    $this->result .= $sql." as ".$as."";
+    $this->result .= $sql;
+    if ($as)
+      $this->result .= " as ".$as;
   }
   public $result;
 };
@@ -176,8 +178,11 @@ class TableViewer
   public function render()
   {
     echo "<table class=\"data-table\">";
-    $this->renderHeader();
     $data = query($this->buildQuery());
+    $total = query("SELECT COUNT(*) as total FROM ".$this->queryCore)->fetch_assoc()["total"];
+    if ($data->num_rows < $total)
+      echo "<caption>1-".$data->num_rows." of ".$total."</caption>";
+    $this->renderHeader();
     while ($row = $data->fetch_assoc())
       $this->renderRow($row);
     echo "</table>";
