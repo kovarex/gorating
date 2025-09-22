@@ -22,14 +22,23 @@ function query($query, $show = false)
   global $db;
   if ($show)
     echo "Debug query: ".$query;
-  $result = $db->query($query);
-  if (!empty($db->error))
+  try
   {
-    echo "<div>Sql error:".$db->error."</div>";
-    echo "<pre>Query:".$query."</pre>";
-    die();
+    $result = $db->query($query);
+    if (!empty($db->error))
+    {
+      echo "<div>Sql error:".$db->error."</div>";
+      echo "<pre>Query:".$query."</pre>";
+      die();
+    }
+    return $result;
   }
-  return $result;
+  catch (Exception $e)
+  {
+      echo "<div>Sql error:".$e->getMessage()."</div>";
+      echo "<pre>Query:".$query."</pre>";
+      die();
+  }
 }
 
 function lastInsertID()

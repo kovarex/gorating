@@ -1,7 +1,5 @@
 <?php
 require_once("src/egd_api.php");
-require_once("src/egd_api.php");
-require_once("src/db.php");
 require_once("src/process_tournament_helper.php");
 
 $post_data = array('ricerca' => '1',

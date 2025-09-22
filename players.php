@@ -78,7 +78,7 @@ if (canSeeInviters())
   $table->addColumn("inviter_name",
                     "Invited By",
                     array(array("inviter.id", "inviter_id"),
-                          array("CONCAT(inviter.first_name, ' ', user.inviter_last_name)", "inviter_name")),
+                          array("CONCAT(inviter.first_name, ' ', inviter.last_name)", "inviter_name")),
                     function($row) { echo playerLink($row["inviter_id"], $row["inviter_name"]); });
 if (canSeeEmails())
   $table->addColumn("user_email",

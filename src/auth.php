@@ -46,6 +46,11 @@ function canInvite()
   return userCanDo(ADMIN_LEVEL_USER);
 }
 
+function canEditPlayerName()
+{
+  return userCanDo(ADMIN_LEVEL_USER);
+}
+
 function checkLoggedIn()
 {
   if (!userID())

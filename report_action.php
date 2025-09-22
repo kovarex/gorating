@@ -1,7 +1,6 @@
 <?php
-require("src/db.php");
-require("src/auth.php");
 require("src/rating_helper.php");
+
 if (empty(userID()))
 {
   echo "Can't report game when not logged in.";

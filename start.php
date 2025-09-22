@@ -8,8 +8,11 @@ foreach (explode('&', $query) as $chunk)
   if ($param)
     $_GET[urldecode($param[0])] = urldecode($param[1]);
 }
+
+require_once("src/auth.php");
 require_once("src/link_helper.php");
 require_once("src/constants.php");
+require_once("src/db.php");
 
 if ($page == "/login")
   require("login.php");
@@ -19,6 +22,8 @@ elseif ($page == "/register_action")
   require("register_action.php");
 elseif ($page == "/report_action")
   require("report_action.php");
+elseif ($page == "/edit_player_name_action")
+  require("edit_player_name_action.php");
 elseif ($page == "/sgf")
   require("sgf.php");
 elseif ($page == "/process_tournament")

@@ -4,7 +4,22 @@ $player = query("SELECT * from user where id=".escape($_GET["id"]))->fetch_assoc
 if (empty($player))
   die("Unknown player with id=".$_GET["id"]);
 
-echo "<h1>".$player["first_name"]." ".$player["last_name"]."</h1>";
+echo "<div class=\"centered-div\">";
+echo "<h1 style=\"display: inline;\">".$player["first_name"]." ".$player["last_name"]."</h1>";
+if (canEditPlayerName())
+  echo "<button type=\"button\" onclick=\"showEditDialog(event);\">Edit</button>";
+echo "</div>";
+
+echo "<div id=\"edit-dialog\" style=\"position:absolute;background: white;display:none;\">";
+echo "<form action=\"edit_player_name_action\" method=\"post\" class=\"data-form\">";
+echo "<table>";
+echo "<tr><td><label for=\"first_name\">First name:</label></td><td><input type=\"text\" name=\"first_name\" value=\"".$player["first_name"]."\"/></td></tr>";
+echo "<tr><td><label for=\"last_name\">Last name:</label></td><td><input type=\"text\" name=\"last_name\" value=\"".$player["last_name"]."\"/></td></tr>";
+echo "</table>";
+echo "<input type=\"hidden\" name=\"id\" value=\"".$player["id"]."\"/>";
+echo "<input type=\"submit\" value=\"Submit\"/>";
+echo "</form>";
+echo "</div>";
 
 if (userID() && userID() != $player["id"])
   echo "<div class=\"centered-div\"><a class=\"report-loss-link\" href=\"report?id=".$player["id"]."\">Report loss</a></div>";

@@ -1,5 +1,4 @@
 <?php
-require("src/db.php");
 
 if (empty($_GET["id"]))
 {

@@ -1,5 +1,4 @@
 <?php
-require("src/db.php");
 require("src/register_helper.php");
 require("src/egd_api.php");
 $checkResult = checkRegistrationAvailability($_POST["invite_id"], $_POST["secret"]);
