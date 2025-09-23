@@ -100,5 +100,30 @@ $table->addColumn("user_register_timestamp",
                     else if (canInvite())
                       echo "<a href=invites?pin=".$row["egd_pin"].">Invite</a>";
                   });
+
+$table->addColumn("games",
+                  "Games",
+                  array(array("user.win_count + user.loss_count + user.egd_win_count + user.egd_loss_count", "games")),
+                  function ($row) { echo $row["games"]; },
+                  "style=\"text-align: right;\"");
+
+$table->addColumn("wins",
+                  "Wins",
+                  array(array("user.win_count + user.egd_win_count", "wins")),
+                  function ($row) { echo $row["wins"]; },
+                  "style=\"text-align: right;\"");
+
+$table->addColumn("losses",
+                  "Losses",
+                  array(array("user.loss_count + user.egd_loss_count", "losses")),
+                  function ($row) { echo $row["losses"]; },
+                  "style=\"text-align: right;\"");
+
+$table->addColumn("friendly_games",
+                  "Friendly Games",
+                  array(array("user.win_count + user.loss_count", "friendly_games")),
+                  function ($row) { echo $row["friendly_games"]; },
+                  "style=\"text-align: right;\"");
+
 $table->render();
 ?>
