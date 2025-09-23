@@ -137,17 +137,18 @@ CREATE TABLE IF NOT EXISTS `game` (
 CREATE TABLE IF NOT EXISTS `game_type` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(64) NOT NULL,
+  `egd` boolean NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3 AUTO_INCREMENT=1;
 
 INSERT INTO `game_type` (`id`, `name`) VALUES
-(1, 'EGD - class A'),
-(2, 'EGD - class B'),
-(3, 'EGD - class C'),
-(4, 'EGD - class D'),
-(5, 'Serious'),
-(6, 'Rapid'),
-(7, 'Blitz');
+(1, 'EGD - class A', true),
+(2, 'EGD - class B', true),
+(3, 'EGD - class C', true),
+(4, 'EGD - class D', true),
+(5, 'Serious', false),
+(6, 'Rapid', false),
+(7, 'Blitz', false);
 
 CREATE TABLE IF NOT EXISTS `invite` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
@@ -193,6 +194,10 @@ CREATE TABLE IF NOT EXISTS `user` (
   `invited_by_user_id` int unsigned DEFAULT NULL,
   `register_timestamp` timestamp NULL DEFAULT NULL,
   `club` varchar(10) DEFAULT 'xxx',
+  `win_count` int unsigned NOT NULL DEFAULT 0,
+  `loss_count` int unsigned NOT NULL DEFAULT 0,
+  `egd_win_count` int unsigned NOT NULL DEFAULT 0,
+  `egd_loss_count` int unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY (username),
   UNIQUE KEY (email),
@@ -238,6 +243,76 @@ CREATE TABLE IF NOT EXISTS `egd_tournament_to_process` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `egd_key` (`egd_key`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_game_count_to_update`
+(
+  `user_id` int unsigned NOT NULL,
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DELIMITER //
+CREATE PROCEDURE update_user_game_count (local_user_id int unsigned)
+BEGIN
+  DECLARE local_win_count int unsigned;
+  DECLARE local_loss_count int unsigned;
+  DECLARE local_egd_win_count int unsigned;
+  DECLARE local_egd_loss_count int unsigned;
+
+  SELECT COUNT(*) INTO local_win_count
+  FROM game JOIN game_type ON game.game_type_id=game_type.id
+  WHERE
+    game.winner_user_id = local_user_id and
+    game_type.egd = false;
+
+  SELECT COUNT(*) INTO local_loss_count
+  FROM game JOIN game_type ON game.game_type_id=game_type.id
+  WHERE
+    game.loser_user_id = local_user_id and
+    game_type.egd = false;
+
+  SELECT COUNT(*) INTO local_egd_win_count
+  FROM game JOIN game_type ON game.game_type_id=game_type.id
+  WHERE
+    game.winner_user_id = local_user_id and
+    game_type.egd = true;
+
+  SELECT COUNT(*) INTO local_egd_loss_count
+  FROM game JOIN game_type ON game.game_type_id=game_type.id
+  WHERE
+    game.loser_user_id = local_user_id and
+    game_type.egd = true;
+
+  UPDATE user SET
+    win_count = local_win_count,
+    loss_count = local_loss_count,
+    egd_win_count = local_egd_win_count,
+    egd_loss_count = local_egd_loss_count
+  WHERE
+    user.id = local_user_id;
+  DELETE FROM user_game_count_to_update WHERE user_id = local_user_id;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE process_user_game_count_to_update()
+BEGIN
+  DECLARE finished INTEGER DEFAULT 0;
+  DECLARE _user_id INT unsigned;
+  DEClARE curlo CURSOR FOR SELECT user_id FROM user_game_count_to_update;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
+  OPEN curlo;
+
+  getDat: LOOP
+      FETCH curlo INTO _user_id;
+      IF finished = 1 THEN
+          LEAVE getDat;
+      END IF;
+
+      CALL update_user_game_count(_user_id);
+  END LOOP getDat;
+  CLOSE curlo;
+END //
+DELIMITER ;
 
 ALTER TABLE `game`
   ADD CONSTRAINT `game_fk_1` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`),
