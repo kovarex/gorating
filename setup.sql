@@ -376,10 +376,28 @@ CREATE TABLE IF NOT EXISTS `rating_update` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 DELIMITER //
+CREATE PROCEDURE add_or_update_user_rating_update_value(my_user_id int unsigned, user_rating double, change_timestamp timestamp)
+BEGIN
+  DECLARE existing_timestamp timestamp;
+  SELECT `timestamp` FROM rating_update_values WHERE user_id=my_user_id INTO existing_timestamp;
+  IF existing_timestamp IS NULL THEN
+    INSERT INTO rating_update_values(user_id, rating, timestamp) VALUES(my_user_id, user_rating, change_timestamp);
+  ELSE
+    IF change_timestamp < existing_timestamp THEN
+      UPDATE rating_update_values SET rating = user_rating, timestamp = change_timestamp WHERE user_id = my_user_id;
+    END IF;
+  END IF;
+END //
+DELIMITER ;
+
+
+DELIMITER //
 CREATE PROCEDURE start_rating_update(user1_id int unsigned, user1_rating double, user2_id int unsigned, user2_rating double, start_timestamp timestamp)
 BEGIN
   DECLARE last_id int unsigned;
   DECLARE last_timestamp timestamp;
+  DECLARE user1_rating_timestamp timestamp;
+  DECLARE user2_rating_timestamp timestamp;
   IF user1_rating IS NOT NULL THEN
     SELECT
       `id`, `timestamp`
@@ -389,16 +407,13 @@ BEGIN
     INTO last_id, last_timestamp;
 
     IF last_id IS NOT NULL THEN
-      DELETE FROM rating_update_values;
+      CALL add_or_update_user_rating_update_value(user1_id, user1_rating, start_timestamp);
+      CALL add_or_update_user_rating_update_value(user2_id, user2_rating, start_timestamp);
       UPDATE rating_update SET timestamp = LEAST(last_timestamp, start_timestamp), id = last_id + 1 WHERE id = last_id;
-    ELSEIF
-      last_id IS NULL THEN INSERT INTO rating_update(timestamp) VALUES(start_timestamp);
+    ELSEIF last_id IS NULL THEN
+      INSERT INTO rating_update(timestamp) VALUES(start_timestamp);
+      INSERT INTO rating_update_values(user_id, rating, timestamp) VALUES(user1_id, user1_rating, start_timestamp), (user2_id, user2_rating, start_timestamp);
     END IF;
-
-    INSERT INTO
-      rating_update_values(user_id, rating)
-    VALUES(user1_id, user1_rating),
-          (user2_id, user2_rating);
   END IF;
 END //
 DELIMITER ;
