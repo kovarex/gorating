@@ -335,3 +335,35 @@ ALTER TABLE `egd_tournament`
 ALTER TABLE `egd_tournament_result`
   ADD CONSTRAINT `egd_tournament_result_fk_1` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`),
   ADD CONSTRAINT `egd_tournament_result_fk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
+
+DELIMITER //
+CREATE TRIGGER `game_after_insert` AFTER INSERT ON `game`
+ FOR EACH ROW
+ BEGIN
+   CALL update_user_game_count(NEW.winner_user_id);
+   CALL update_user_game_count(NEW.loser_user_id);
+ END;
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER `game_after_delete` AFTER DELETE ON `game`
+ FOR EACH ROW
+ BEGIN
+   CALL update_user_game_count(OLD.winner_user_id);
+   CALL update_user_game_count(OLD.loser_user_id);
+ END;
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER `game_after_update` AFTER UPDATE ON `game`
+ FOR EACH ROW
+ BEGIN
+   CALL update_user_game_count(OLD.winner_user_id);
+   CALL update_user_game_count(OLD.loser_user_id);
+   CALL update_user_game_count(NEW.winner_user_id);
+   CALL update_user_game_count(NEW.loser_user_id);
+ END;
+//
+DELIMITER ;

@@ -49,7 +49,7 @@ function lastInsertID()
 
 function escape($input)
 {
-  if (empty($input))
+  if ($input == NULL)
     return "NULL";
   global $db;
   return "'".$db->real_escape_string($input)."'";
