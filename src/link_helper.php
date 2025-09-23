@@ -26,7 +26,10 @@ function redirectWithMessageCustom($redirect, $message)
 
 function redirectWithMessage($message)
 {
-  redirectWithMessageCustom($_POST["redirect"], $message);
+  $redirect = $_POST["redirect"];
+  if (!$redirect)
+    $redirect = $_GET["redirect"];
+  redirectWithMessageCustom($redirect, $message);
 }
 
 function playerLink($playerID, $playerName)

@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS `game` (
   `winner_new_egd_rating` double DEFAULT NULL,
   `loser_old_egd_rating` double DEFAULT NULL,
   `loser_new_egd_rating` double DEFAULT NULL,
+  `last_rating_update_id` int unsigned DEFAULT NULL,
   `winner_is_black` tinyint(1) NOT NULL DEFAULT '1',
   `handicap` int NOT NULL DEFAULT '0',
   `komi` double NOT NULL DEFAULT '6.5',
@@ -342,8 +343,7 @@ CREATE TRIGGER `game_after_insert` AFTER INSERT ON `game`
  BEGIN
    CALL update_user_game_count(NEW.winner_user_id);
    CALL update_user_game_count(NEW.loser_user_id);
- END;
-//
+ END; //
 DELIMITER ;
 
 DELIMITER //
@@ -352,8 +352,9 @@ CREATE TRIGGER `game_after_delete` AFTER DELETE ON `game`
  BEGIN
    CALL update_user_game_count(OLD.winner_user_id);
    CALL update_user_game_count(OLD.loser_user_id);
- END;
-//
+   CALL start_rating_update(OLD.winner_user_id, OLD.winner_old_rating, OLD.loser_user_id, OLD.loser_old_rating, OLD.timestamp);
+   CALL update
+ END; //
 DELIMITER ;
 
 DELIMITER //
@@ -364,6 +365,40 @@ CREATE TRIGGER `game_after_update` AFTER UPDATE ON `game`
    CALL update_user_game_count(OLD.loser_user_id);
    CALL update_user_game_count(NEW.winner_user_id);
    CALL update_user_game_count(NEW.loser_user_id);
- END;
-//
+ END; //
+DELIMITER ;
+
+CREATE TABLE IF NOT EXISTS `rating_update` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `timestamp` timestamp NOT NULL,
+  `finished` boolean DEFAULT false
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+
+DELIMITER //
+CREATE PROCEDURE start_rating_update(user1_id int unsigned, user1_rating double, user2_id int unsigned, user2_rating double, start_timestamp timestamp)
+BEGIN
+  DECLARE last_id int unsigned;
+  DECLARE last_timestamp timestamp;
+  IF user1_rating IS NOT NULL THEN
+    SELECT
+      `id`, `timestamp`
+    FROM rating_update
+    WHERE finished = false
+    ORDER BY id DESC
+    INTO last_id, last_timestamp;
+
+    IF last_id IS NOT NULL THEN
+      DELETE FROM rating_update_values;
+      UPDATE rating_update SET timestamp = LEAST(last_timestamp, start_timestamp), id = last_id + 1 WHERE id = last_id;
+    ELSEIF
+      last_id IS NULL THEN INSERT INTO rating_update(timestamp) VALUES(start_timestamp);
+    END IF;
+
+    INSERT INTO
+      rating_update_values(user_id, rating)
+    VALUES(user1_id, user1_rating),
+          (user2_id, user2_rating);
+  END IF;
+END //
 DELIMITER ;

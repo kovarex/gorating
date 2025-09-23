@@ -24,6 +24,8 @@ elseif ($page == "/report_action")
   require("report_action.php");
 elseif ($page == "/edit_player_name_action")
   require("edit_player_name_action.php");
+elseif ($page == "/delete_game_action")
+  require("delete_game_action.php");
 elseif ($page == "/sgf")
   require("sgf.php");
 elseif ($page == "/process_tournament")

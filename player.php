@@ -29,6 +29,14 @@ echo "<tr><td>Rating:</td><td>".round($player["rating"])."</td></tr>";
 echo "<tr><td>EGD Rating:</td><td>".$player["egd_rating"]."</td></tr>";
 echo "</table>";
 
+echo "<script>\n";
+echo "function tryToDeleteGame(id)\n";
+echo "{\n";
+echo "  if (confirm('Are you sure to delete the game?'))\n";
+echo "    window.location.replace('/delete_game_action?id=' + id + '&redirect=".urlencode($_SERVER["REQUEST_URI"])."');\n";
+echo "}\n";
+echo "</script>\n";
+
 $table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
                           user as winner,
                           user as loser,
@@ -173,6 +181,13 @@ $table->addColumn("has_sgf",
                   array(array("length(game.sgf) > 0", "has_sgf"),
                         array("game.id", "game_id")),
                   function($row){ if ($row["has_sgf"]) echo "<a href=\"/sgf?id=".$row["game_id"]."\">SGF</a>"; });
+
+if (canDeleteAnyGame())
+  $table->addColumn("delete",
+                    "Delete",
+                    array(),
+                    function($row) { echo "<button onclick=\"tryToDeleteGame(".$row["game_id"].")\">X</button>"; });
+
 
 $table->render();
 ?>
