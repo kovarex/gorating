@@ -14,26 +14,17 @@ require_once("src/link_helper.php");
 require_once("src/constants.php");
 require_once("src/db.php");
 
-if ($page == "login")
-  require("login.php");
-elseif ($page == "logout")
-  require("logout.php");
-elseif ($page == "register_action")
-  require("register_action.php");
-elseif ($page == "report_action")
-  require("report_action.php");
-elseif ($page == "edit_player_name_action")
-  require("edit_player_name_action.php");
-elseif ($page == "delete_game_action")
-  require("delete_game_action.php");
-elseif ($page == "sgf")
-  require("sgf.php");
-elseif ($page == "process_tournament")
-  require("process_tournament.php");
-elseif ($page == "update_rating")
-  require("update_rating.php");
-elseif ($page == "process_tournament_batch")
-  require("process_tournament_batch.php");
+if ($page == "login" or
+    $page == "logout" or
+    $page == "register_action" or
+    $page == "report_action" or
+    $page == "edit_player_name_action" or
+    $page == "delete_game_action" or
+    $page == "sgf" or
+    $page == "process_tournament" or
+    $page == "update_rating" or
+    $page == "process_tournament_batch")
+  require($page.".php");
 else
 {
   require("src/header.php");
@@ -41,28 +32,19 @@ else
     echo "<div class=\"message-div\"><h3><b>Message:</b></h3></br>".$_GET["message"]."</div>";
   if ($page == "")
     require("home.php");
-  elseif ($page == "player")
-    require("player.php");
-  elseif ($page == "players")
-    require("players.php");
-  elseif ($page == "invite")
-    require("invite.php");
-  elseif ($page == "invites")
-    require("invites.php");
-  elseif ($page == "tournaments")
-    require("tournaments.php");
-  elseif ($page == "tournament")
-    require("tournament.php");
-  elseif ($page == "register")
-    require("register.php");
-  elseif ($page == "report")
-    require("report.php");
-  elseif ($page == "about")
-    require("about.php");
-  elseif ($page == "get_all_egd_players")
-    require("get_all_egd_players.php");
-  elseif ($page == "update_tournament_list")
-    require("update_tournament_list.php");
+  elseif ($page == "player" or
+          $page == "players" or
+          $page == "invite" or
+          $page == "invites" or
+          $page == "tournaments" or
+          $page == "tournament" or
+          $page == "register" or
+          $page == "register.php" or
+          $page == "report" or
+          $page == "about" or
+          $page == "get_all_egd_players" or
+          $page == "update_tournament_list")
+    require($page.".php");
   else
   {
     $player = query("SELECT user.id as id from user WHERE user.username=".escape($page))->fetch_assoc();
