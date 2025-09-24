@@ -35,6 +35,7 @@ $data = query("SELECT
                  egd_tournament_result as winner_result,
                  egd_tournament_result as loser_result
                WHERE
+                 game.deleted = false and
                  game.egd_tournament_id=".escape($id)." and
                  game.winner_user_id = winner.id and
                  winner_result.user_id = winner.id and

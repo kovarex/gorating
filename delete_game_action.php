@@ -18,7 +18,7 @@ if (!is_numeric($id))
   return;
 }
 
-query("DELETE FROM game WHERE id=".escape($id));
+query("UPDATE game SET deleted=true WHERE id=".escape($id));
 $message = "Game with id=".$id." deleted.<br/>\n";
 $message .= processRating(50);
 redirectWithMessage($message);

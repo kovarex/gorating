@@ -42,6 +42,7 @@ $table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_i
                           user as loser,
                           game_type
                           WHERE
+                            game.deleted = false and
                             game.winner_user_id = winner.id and
                             game.loser_user_id = loser.id and
                             game.game_type_id = game_type.id and

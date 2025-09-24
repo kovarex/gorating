@@ -40,7 +40,8 @@ foreach (array("player",
                "report",
                "about",
                "get_all_egd_players",
-               "update_tournament_list") as $target)
+               "update_tournament_list",
+               "deleted_games") as $target)
   $pages[$target] = NORMAL_PAGE;
 
 if ($pagePath == "")

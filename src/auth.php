@@ -56,6 +56,11 @@ function canDeleteAnyGame()
   return userCanDo(ADMIN_LEVEL_USER);
 }
 
+function canAccessDeletedGames()
+{
+  return userCanDo(ADMIN_LEVEL_USER);
+}
+
 function checkLoggedIn()
 {
   if (!userID())

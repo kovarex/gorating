@@ -22,6 +22,8 @@ echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/players\">Players</a>\n";
 echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/tournaments\">Tournaments</a>\n";
 if (adminLevel() <= ADMIN_LEVEL_USER)
   echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/invites\">Invites</a>\n";
+if (canAccessDeletedGames())
+  echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/deleted_games\">Deleted games</a>\n";
 echo "&nbsp;&nbsp;:&nbsp;&nbsp;<a href=\"/about\">About</a>\n";
 echo "</div>";
 echo "<br/><br/>\n";

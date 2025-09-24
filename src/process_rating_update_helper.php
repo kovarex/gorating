@@ -22,7 +22,7 @@ function reportRatingFinishedResults()
   $data = query("SELECT
                    user.id as id,
                    CONCAT(user.first_name, ' ', user.last_name) as name,
-                   user.username as username
+                   user.username as username,
                    user.rating as old_value,
                    rating_update_value.rating as new_value
                  FROM
@@ -84,6 +84,7 @@ function processRating($iterationCount)
                             FROM
                               rating_update_value JOIN game ON rating_update_value.user_id=game.winner_user_id
                             WHERE
+                              game.deleted = false and
                               game.rating_update_version < ".$ratingUpdateVersion." and
                               game.timestamp >= '".$ratingUpdateTimestamp."'
 
@@ -108,6 +109,7 @@ function processRating($iterationCount)
                             FROM
                               rating_update_value JOIN game ON rating_update_value.user_id=game.loser_user_id
                             WHERE
+                              game.deleted = false and
                               game.rating_update_version < ".$ratingUpdateVersion." and
                               game.timestamp >= '".$ratingUpdateTimestamp."'
                             ORDER BY game_timestamp) as tmp

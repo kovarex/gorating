@@ -168,6 +168,7 @@ CREATE TABLE `game` (
   `komi` DOUBLE NOT NULL DEFAULT '6.5',
   `egd_tournament_id` INT UNSIGNED NULL DEFAULT NULL,
   `egd_tournament_round` INT UNSIGNED NULL DEFAULT NULL,
+  `deleted` boolean DEFAULT false NOT NULL,
   PRIMARY KEY (`id`),
   INDEX `winner_user_id` (`winner_user_id`),
   INDEX `loser_user_id` (`loser_user_id`),
@@ -234,6 +235,17 @@ CREATE TRIGGER `game_after_update` AFTER UPDATE ON `game`
      CALL update_user_game_count(OLD.loser_user_id);
      CALL update_user_game_count(NEW.loser_user_id);
    END IF;
+   IF OLD.deleted != NEW.deleted THEN
+     CALL update_user_game_count(OLD.winner_user_id);
+     CALL start_rating_update(OLD.winner_user_id, OLD.winner_old_rating, OLD.loser_user_id, OLD.loser_old_rating, OLD.timestamp);
+     IF OLD.winner_user_id != NEW.winner_user_id THEN
+       CALL update_user_game_count(NEW.winner_user_id);
+     END IF;
+     CALL update_user_game_count(OLD.loser_user_id);
+     IF OLD.loser_user_id != NEW.loser_user_id THEN
+       CALL update_user_game_count(NEW.loser_user_id);
+     END IF;
+   END IF;
  END; //
 DELIMITER ;
 
@@ -250,6 +262,7 @@ BEGIN
   FROM game
   JOIN game_type ON game.game_type_id=game_type.id
   WHERE
+    game.deleted = false,
     game.winner_user_id = local_user_id and
     game_type.egd = false;
 
@@ -257,6 +270,7 @@ BEGIN
   FROM game
   JOIN game_type ON game.game_type_id=game_type.id
   WHERE
+    game.deleted = false,
     game.loser_user_id = local_user_id and
     game_type.egd = false;
 
@@ -264,6 +278,7 @@ BEGIN
   FROM game
   JOIN game_type ON game.game_type_id=game_type.id
   WHERE
+    game.deleted = false,
     game.winner_user_id = local_user_id and
     game_type.egd = true;
 
@@ -271,6 +286,7 @@ BEGIN
   FROM game
   JOIN game_type ON game.game_type_id=game_type.id
   WHERE
+    game.deleted = false,
     game.loser_user_id = local_user_id and
     game_type.egd = true;
 
@@ -300,7 +316,6 @@ BEGIN
       IF finished = 1 THEN
           LEAVE getDat;
       END IF;
-
       CALL update_user_game_count(_user_id);
   END LOOP getDat;
   CLOSE curlo;
