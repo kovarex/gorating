@@ -355,6 +355,7 @@ CREATE TABLE IF NOT EXISTS `rating_update_value` (
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
+DROP TRIGGER IF EXISTS game_after_insert;
 DELIMITER //
 CREATE TRIGGER `game_after_insert` AFTER INSERT ON `game`
  FOR EACH ROW
@@ -364,6 +365,7 @@ CREATE TRIGGER `game_after_insert` AFTER INSERT ON `game`
  END; //
 DELIMITER ;
 
+DROP TRIGGER IF EXISTS game_after_delete;
 DELIMITER //
 CREATE TRIGGER `game_after_delete` AFTER DELETE ON `game`
  FOR EACH ROW
@@ -375,6 +377,7 @@ CREATE TRIGGER `game_after_delete` AFTER DELETE ON `game`
  END; //
 DELIMITER ;
 
+DROP TRIGGER IF EXISTS game_after_update;
 DELIMITER //
 CREATE TRIGGER `game_after_update` AFTER UPDATE ON `game`
  FOR EACH ROW
@@ -390,7 +393,7 @@ CREATE TRIGGER `game_after_update` AFTER UPDATE ON `game`
  END; //
 DELIMITER ;
 
-DROP IF EXISTS PROCEDURE add_or_update_user_rating_update_value;
+DROP PROCEDURE IF EXISTS add_or_update_user_rating_update_value;
 DELIMITER //
 CREATE PROCEDURE add_or_update_user_rating_update_value(my_user_id int unsigned, user_rating double, change_timestamp timestamp)
 BEGIN
@@ -406,7 +409,7 @@ BEGIN
 END //
 DELIMITER ;
 
-DROP IF EXISTS PROCEDURE add_or_force_update_user_rating_update_value;
+DROP PROCEDURE IF EXISTS add_or_force_update_user_rating_update_value;
 DELIMITER //
 CREATE PROCEDURE add_or_force_update_user_rating_update_value(my_user_id int unsigned, user_rating double, change_timestamp timestamp)
 BEGIN
@@ -420,7 +423,7 @@ BEGIN
 END //
 DELIMITER ;
 
-DROP IF EXISTS PROCEDURE start_rating_update;
+DROP PROCEDURE IF EXISTS start_rating_update;
 DELIMITER //
 CREATE PROCEDURE start_rating_update(user1_id int unsigned, user1_rating double, user2_id int unsigned, user2_rating double, start_timestamp timestamp)
 BEGIN
