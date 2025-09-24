@@ -78,9 +78,9 @@ CREATE TABLE `user` (
   INDEX `admin_level_id` (`admin_level_id`),
   FULLTEXT INDEX `first_name` (`first_name`),
   FULLTEXT INDEX `last_name` (`last_name`),
-  FOREIGN KEY (`country_id`) REFERENCES `country` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
-  FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
-  FOREIGN KEY (`invited_by_user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+  FOREIGN KEY (`country_id`) REFERENCES `country` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  FOREIGN KEY (`invited_by_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
 )COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
 CREATE TABLE `invite` (
@@ -95,7 +95,7 @@ CREATE TABLE `invite` (
   `timestamp` TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP),
   PRIMARY KEY (`id`),
   INDEX `from_user_id` (`from_user_id`),
-  FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+  FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
 ) COLLATE='utf8mb4_0900_ai_ci'ENGINE=INNODB;
 
 CREATE TABLE `egd_tournament` (
@@ -113,8 +113,8 @@ CREATE TABLE `egd_tournament` (
   INDEX `timestamp` (`timestamp`),
   INDEX `country_id` (`country_id`),
   INDEX `game_type_id` (`game_type_id`),
-  FOREIGN KEY (`country_id`) REFERENCES `country` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
-  FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+  FOREIGN KEY (`country_id`) REFERENCES `country` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
 CREATE TABLE `egd_tournament_result` (
@@ -127,8 +127,8 @@ CREATE TABLE `egd_tournament_result` (
   UNIQUE INDEX `egd_tournament_id_3` (`egd_tournament_id`, `user_id`),
   INDEX `egd_tournament_id` (`egd_tournament_id`, `user_id`, `placement`),
   INDEX `user_id` (`user_id`),
-  FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
-  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+  FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
 CREATE TABLE `egd_tournament_to_process` (
@@ -141,7 +141,7 @@ CREATE TABLE `egd_tournament_to_process` (
 CREATE TABLE `user_game_count_to_update` (
   `user_id` INT UNSIGNED NOT NULL,
   PRIMARY KEY (`user_id`),
-  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
 CREATE TABLE `game` (
@@ -175,10 +175,10 @@ CREATE TABLE `game` (
   INDEX `game_type_id` (`game_type_id`),
   INDEX `egd_tournament_id` (`egd_tournament_id`),
   INDEX `egd_tournament_round` (`egd_tournament_round`),
-  CONSTRAINT `game_ibfk_1` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT `game_ibfk_2` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT `game_ibfk_3` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
-  CONSTRAINT `game_ibfk_4` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT `game_ibfk_1` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT `game_ibfk_2` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT `game_ibfk_3` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT `game_ibfk_4` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
 ) COLLATE='utf8mb4_0900_ai_ci' ENGINE=INNODB;
 
 CREATE TABLE `variable` (
@@ -197,7 +197,7 @@ CREATE TABLE `rating_update_value` (
   `rating` double NOT NULL,
   `timestamp` timestamp NOT NULL,
   PRIMARY KEY (`user_id`),
-  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
 
 DROP TRIGGER IF EXISTS game_after_insert;
