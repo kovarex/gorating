@@ -65,8 +65,9 @@ $table->addColumn("rating",
 $table->addColumn("name",
                   "Name",
                   array(array("CONCAT(user.first_name, ' ', user.last_name)", "name"),
-                        array("user.id", "id")),
-                  function($row){ echo playerLink($row["id"], $row["name"]); });
+                        array("user.id", "id"),
+                        array("user.username", "username")),
+                  function($row){ echo playerLink($row["id"], $row["name"], $row["username"]); });
 $table->addColumn("egd_pin",
                   "EGD",
                   array(array("user.egd_pin", "egd_pin")),
@@ -83,8 +84,9 @@ if (canSeeInviters())
   $table->addColumn("inviter_name",
                     "Invited By",
                     array(array("inviter.id", "inviter_id"),
-                          array("CONCAT(inviter.first_name, ' ', inviter.last_name)", "inviter_name")),
-                    function($row) { echo playerLink($row["inviter_id"], $row["inviter_name"]); });
+                          array("CONCAT(inviter.first_name, ' ', inviter.last_name)", "inviter_name"),
+                          array("inviter.username", "inviter_username")),
+                    function($row) { echo playerLink($row["inviter_id"], $row["inviter_name"], $row["inviter_username"]); });
 if (canSeeEmails())
   $table->addColumn("user_email",
                     "Email",

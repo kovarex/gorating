@@ -32,9 +32,15 @@ function redirectWithMessage($message)
   redirectWithMessageCustom($redirect, $message);
 }
 
-function playerLink($playerID, $playerName)
+function playerLink($playerID, $playerName, $username)
 {
-  return "<a href=\"/player?id=".$playerID."\">".$playerName."</a>";
+  global $page;
+  if ($username and !@$page[$username])
+    $path = $username;
+  else
+    $path = "/player?id=".$playerID;
+
+  return "<a href=\"".$path."\">".$playerName."</a>";
 }
 
 function readableTournamentName($tournamentName)

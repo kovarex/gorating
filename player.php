@@ -97,6 +97,7 @@ $table->addColumn("egd_rating_change",
 $table->addColumn("opponent_name",
                   "Opponent",
                   array(array("IF(winner.id = ".escape($_GET["id"]).", CONCAT(loser.first_name, ' ', loser.last_name), CONCAT(winner.first_name, ' ', winner.last_name))", "opponent_name"),
+                        array("IF(winner.id = ".escape($_GET["id"]).", loser.username, winner.username)", "opponent_username"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.loser_user_id, game.winner_user_id)", "opponent_id"),
                         array("IF(winner.id = ".escape($_GET["id"]).", loser.egd_pin, winner.egd_pin)", "opponent_egd_pin"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_rating, game.loser_new_rating)", "opponent_rating"),
@@ -106,7 +107,7 @@ $table->addColumn("opponent_name",
                     $ratingToShow = $row["opponent_rating"];
                     if (empty($ratingToShow))
                       $ratingToShow = $row["opponent_egd_rating"];
-                    echo playerLink($row["opponent_id"], $row["opponent_name"])." (".round($ratingToShow).")";
+                    echo playerLink($row["opponent_id"], $row["opponent_name"], $row["opponent_username"])." (".round($ratingToShow).")";
                   });
 
 $table->addColumn("game_type_name",

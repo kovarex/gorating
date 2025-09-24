@@ -8,8 +8,8 @@ if (empty($opponent))
 
 echo "<form method=\"post\" enctype=\"multipart/form-data\" action=\"report_action\">";
 echo "<table class=\"data-table\">";
-echo "<tr><td>Winner:</td><td>".playerLink($opponent["id"], $opponent["first_name"]." ".$opponent["last_name"])." (".round($opponent["rating"]).")</td></tr>";
-echo "<tr><td>Loser:</td><td>".playerLink($_SESSION["user"]["id"], $_SESSION["user"]["first_name"]." ".$_SESSION["user"]["last_name"])." (".round($_SESSION["user"]["rating"]).")</td></tr>";
+echo "<tr><td>Winner:</td><td>".playerLink($opponent["id"], $opponent["first_name"]." ".$opponent["last_name"], $opponent["username"])." (".round($opponent["rating"]).")</td></tr>";
+echo "<tr><td>Loser:</td><td>".playerLink($_SESSION["user"]["id"], $_SESSION["user"]["first_name"]." ".$_SESSION["user"]["last_name"], $_SESSION["user"]["username"])." (".round($_SESSION["user"]["rating"]).")</td></tr>";
 echo "<tr><td>Game type:</td>";
 echo   "<td>";
 echo     "<input type=\"radio\" id=\"serious\" name=\"game_type\" value=\"".GAME_TYPE_SERIOUS."\" checked=\"checked\"/>";

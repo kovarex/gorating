@@ -35,8 +35,8 @@ $result = query("SELECT
                     invite.email as email,
                     invite.egd_pin as egd_pin,
                     invite.from_user_id as from_user_id,
-                    user.first_name as from_user_first_name,
-                    user.last_name as from_user_last_name
+                    CONCAT(user.first_name, ' ', user.last_name) as from_user_name,
+                    user.username as from_user_username
                  FROM
                    invite, user
                  WHERE
@@ -58,7 +58,7 @@ while($row = $result->fetch_assoc())
   echo "<td>".egdLink($row["egd_pin"])."</td>";
   echo "<td>".$row["email"]."</td>";
   if (canAccessAllInvites())
-    echo "<td>".playerLink($row["from_user_id"], $row["from_user_first_name"]." ".$row["from_user_last_name"])."</td>";
+    echo "<td>".playerLink($row["from_user_id"], $row["from_user_name"], $row["from_user_username"])."</td>";
   echo "</tr>";
 }
 echo "</table>";
