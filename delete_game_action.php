@@ -1,4 +1,5 @@
 <?php
+require_once("src/process_rating_update_helper.php");
 if (!canDeleteAnyGame())
 {
   echo "No rights to delete this game.";
@@ -18,5 +19,7 @@ if (!is_numeric($id))
 }
 
 query("DELETE FROM game WHERE id=".escape($id));
-redirectWithMessage("Game with id=".$id." deleted.");
+$message = "Game with id=".$id." deleted.<br/>\n";
+$message .= processRating(50);
+redirectWithMessage($message);
 ?>

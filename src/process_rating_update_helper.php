@@ -17,6 +17,24 @@ function getRatingToUse($rating, $ratingTimestmap, $gameRating, $gameRatingTimes
   return $ratingTimestmap < $gameRatingTimestamp ? $rating : $gameRating;
 }
 
+function reportRatingFinishedResults()
+{
+  $data = query("SELECT
+                   user.id as id,
+                   CONCAT(user.first_name, ' ', user.last_name) as name,
+                   user.rating as old_value,
+                   rating_update_value.rating as new_value
+                 FROM
+                   rating_update_value JOIN user ON rating_update_value.user_id=user.id");
+  $result = "<table class=\"data-table\">";
+  $result .= "<caption>Rating changes</caption>";
+  $result .= "<tr><th>Name</th><th>Rating change</th></tr>";
+  while ($row = $data->fetch_assoc())
+    $result .= "<tr><td>".playerLink($row["id"], $row["name"])."</td><td><span class=\"".($row["old_value"] < $row["new_value"] ? "winner" : "loser")."\">".round($row["old_value"], 1)."&rarr;".round($row["new_value"], 1)."</span></td></tr>";
+  $result .= "</table>";
+  return $result;
+}
+
 function processRating($iterationCount)
 {
   beginTransaction();
@@ -97,17 +115,19 @@ function processRating($iterationCount)
     $row = $gameToProcess->fetch_assoc();
     if (!$row)
     {
+      $result .= "Rating update finished<br/><br/>\n\n";
+      $result .= reportRatingFinishedResults();
       query("UPDATE user JOIN rating_update_value ON rating_update_value.user_id=user.id SET user.rating=rating_update_value.rating");
       query("DELETE FROM rating_update_value");
       query("update variable SET value='0' WHERE name='rating_update_in_progress'");
       commitTransaction();
-      return $result."Rating update finished<br/>\n";
+      return $result;
     }
 
     $gameTimestamp = $row["game_timestamp"];
     $gameType = $row["game_type_id"];
 
-    $winnerOldRating = getRatingToUse($row["winner_rating"], $row["winner_rating_timestamp"], $row["game_winner_game"], $gameTimestamp);
+    $winnerOldRating = getRatingToUse($row["winner_rating"], $row["winner_rating_timestamp"], $row["game_winner_rating"], $gameTimestamp);
     $loserOldRating = getRatingToUse($row["loser_rating"], $row["loser_rating_timestamp"], $row["game_loser_rating"], $gameTimestamp);
 
     $winnerExtraHandicap = ($winnerIsBlack ? 1 : -1) * $row["game_handicap"];
