@@ -21,7 +21,7 @@ echo "<input type=\"submit\" value=\"Submit\"/>";
 echo "</form>";
 echo "</div>";
 
-if (userID() && userID() != $player["id"])
+if (userID() && userID() != $player["id"] and $player["username"])
   echo "<div class=\"centered-div\"><a class=\"report-loss-link\" href=\"report?id=".$player["id"]."\">Report loss</a></div>";
 
 echo "<table class=\"centered-table\">";
