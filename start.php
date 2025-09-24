@@ -39,7 +39,7 @@ else
   require("src/header.php");
   if (!empty($_GET["message"]))
     echo "<div class=\"message-div\"><h3><b>Message:</b></h3></br>".$_GET["message"]."</div>";
-  if ($page == "/")
+  if ($page == "")
     require("home.php");
   elseif ($page == "player")
     require("player.php");
