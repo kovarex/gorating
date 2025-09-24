@@ -1,178 +1,48 @@
-CREATE TABLE IF NOT EXISTS `country` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(10) NOT NULL,
+CREATE TABLE `country` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(64) NOT NULL,
+  `code` VARCHAR(10) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY (`name`),
-  UNIQUE KEY (`code`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3 AUTO_INCREMENT=1;
+  UNIQUE INDEX `name` (`name`),
+  UNIQUE INDEX `code` (`code`)
+) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
 
-INSERT INTO `country` (`name`, `code`) VALUES
-('Czechia', 'CZ'),
-('Germany', 'DE'),
-('Poland', 'PL'),
-('Slovakia', 'SK'),
-('Belgium', 'BE'),
-('Bulgaria', 'BG'),
-('Denmark', 'DK'),
-('Estonia', 'EE'),
-('Ireland', 'IE'),
-('Greece', 'GR'),
-('Spain', 'ES'),
-('France', 'FR'),
-('Croatia', 'HR'),
-('Italy', 'IT'),
-('Cyprus', 'CY'),
-('Latvia', 'LV'),
-('Lithuania', 'LT'),
-('Luxembourg', 'LU'),
-('Hungary', 'HU'),
-('Malta', 'MT'),
-('Netherlands', 'NL'),
-('Austria', 'AT'),
-('Portugal', 'PT'),
-('Romania', 'RO'),
-('Slovenia', 'SI'),
-('Finland', 'FI'),
-('Sweden', 'SE'),
-('United Kingdom', 'UK'),
-('United States', 'US'),
-('Bosnia and Herzegovina', 'BA'),
-('Republic of Serbia', 'RS'),
-('Armenia', 'AM'),
-('Azerbaijan', 'AZ'),
-('Europe', 'EU'),
-('Israel', 'IL'),
-('Iceland', 'IS'),
-('Kyrgyzstan', 'KG'),
-('Kazakhstan', 'KZ'),
-('Moldova', 'MD'),
-('North Makedonia', 'MK'),
-('Russia', 'RU'),
-('Turkey', 'TR'),
-('Ukraine', 'UA'),
-('Yugoslavia', 'YU'),
-('Andora', 'AD'),
-('Switzerland', 'CH'),
-('Norway', 'NO'),
-('Georgia', 'GE'),
-('Belarus', 'BY'),
-('Undefined', 'XX'),
-('Canada', 'CA'),
-('Korea', 'KR'),
-('Japan', 'JP'),
-('China', 'CN'),
-('Taiwan', 'TW'),
-('Philippines', 'PH'),
-('Cuba', 'CU'),
-('Chile', 'CL'),
-('Colombia', 'CO'),
-('Costa Rica', 'CR'),
-('Thailand', 'TH'),
-('Ecuador', 'EC'),
-('Argentina', 'AR'),
-('Mongolia', 'MN'),
-('Uzbekistan', 'UZ'),
-('Venezuela', 'VE'),
-('Brunei Darussalam', 'BN'),
-('Morocco', 'MA'),
-('Brazil', 'BR'),
-('Iran', 'IR'),
-('Singapore', 'SG'),
-('Mexico', 'MX'),
-('Indonesia', 'ID'),
-('Uruguay', 'UY'),
-('Australia', 'AU'),
-('New Zeland', 'NZ'),
-('South Africa', 'ZA'),
-('Viet Nam', 'VN'),
-('India', 'IN'),
-('Guatemala', 'GT'),
-('North Korea', 'KP'),
-('Hong Kong', 'HK'),
-('Malaysia', 'MY'),
-('Macao', 'MO'),
-('Syria', 'SY'),
-('Dominican Republic', 'DO'),
-('Lao', 'LA'),
-('Panama', 'PA'),
-('Peru', 'PE'),
-('Nepal', 'NP'),
-('Madagascar', 'MG'),
-('French Guiana', 'GF'),
-('San Marino', 'SM');
+INSERT INTO country (name, code) VALUES
+('Czechia', 'CZ'),('Germany', 'DE'),('Poland', 'PL'),('Slovakia', 'SK'),('Belgium', 'BE'),('Bulgaria', 'BG'),
+('Denmark', 'DK'),('Estonia', 'EE'),('Ireland', 'IE'),('Greece', 'GR'),('Spain', 'ES'),('France', 'FR'),
+('Croatia', 'HR'),('Italy', 'IT'),('Cyprus', 'CY'),('Latvia', 'LV'),('Lithuania', 'LT'),('Luxembourg', 'LU'),
+('Hungary', 'HU'),('Malta', 'MT'),('Netherlands', 'NL'),('Austria', 'AT'),('Portugal', 'PT'),('Romania', 'RO'),
+('Slovenia', 'SI'),('Finland', 'FI'),('Sweden', 'SE'),('United Kingdom', 'UK'),('United States', 'US'),
+('Bosnia and Herzegovina', 'BA'),('Republic of Serbia', 'RS'),('Armenia', 'AM'),('Azerbaijan', 'AZ'),
+('Europe', 'EU'),('Israel', 'IL'),('Iceland', 'IS'),('Kyrgyzstan', 'KG'),('Kazakhstan', 'KZ'),('Moldova', 'MD'),
+('North Makedonia', 'MK'),('Russia', 'RU'),('Turkey', 'TR'),('Ukraine', 'UA'),('Yugoslavia', 'YU'),('Andora', 'AD'),
+('Switzerland', 'CH'),('Norway', 'NO'),('Georgia', 'GE'),('Belarus', 'BY'),('Undefined', 'XX'),('Canada', 'CA'),
+('Korea', 'KR'),('Japan', 'JP'),('China', 'CN'),('Taiwan', 'TW'),('Philippines', 'PH'),('Cuba', 'CU'),('Chile', 'CL'),
+('Colombia', 'CO'),('Costa Rica', 'CR'),('Thailand', 'TH'),('Ecuador', 'EC'),('Argentina', 'AR'),('Mongolia', 'MN'),
+('Uzbekistan', 'UZ'),('Venezuela', 'VE'),('Brunei Darussalam', 'BN'),('Morocco', 'MA'),('Brazil', 'BR'),
+('Iran', 'IR'),('Singapore', 'SG'),('Mexico', 'MX'),('Indonesia', 'ID'),('Uruguay', 'UY'),('Australia', 'AU'),
+('New Zeland', 'NZ'),('South Africa', 'ZA'),('Viet Nam', 'VN'),('India', 'IN'),('Guatemala', 'GT'),
+('North Korea', 'KP'),('Hong Kong', 'HK'),('Malaysia', 'MY'),('Macao', 'MO'),('Syria', 'SY'),('Dominican Republic', 'DO'),
+('Lao', 'LA'),('Panama', 'PA'),('Peru', 'PE'),('Nepal', 'NP'),('Madagascar', 'MG'),('French Guiana', 'GF'),('San Marino', 'SM');
 
-CREATE TABLE IF NOT EXISTS `game` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `winner_user_id` int unsigned NOT NULL,
-  `loser_user_id` int unsigned NOT NULL,
-  `game_type_id` int unsigned NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `location` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `winner_comment` varchar(128) DEFAULT NULL,
-  `loser_comment` varchar(128) DEFAULT NULL,
-  `sgf` blob,
-  `winner_old_rating` double DEFAULT NULL,
-  `winner_new_rating` double DEFAULT NULL,
-  `loser_old_rating` double DEFAULT NULL,
-  `loser_new_rating` double DEFAULT NULL,
-  `winner_old_egd_rating` double DEFAULT NULL,
-  `winner_new_egd_rating` double DEFAULT NULL,
-  `loser_old_egd_rating` double DEFAULT NULL,
-  `loser_new_egd_rating` double DEFAULT NULL,
-  `rating_update_version` int unsigned DEFAULT '0',
-  `winner_is_black` tinyint(1) NOT NULL DEFAULT '1',
-  `handicap` int NOT NULL DEFAULT '0',
-  `komi` double NOT NULL DEFAULT '6.5',
-  `egd_tournament_id` int unsigned DEFAULT NULL,
-  `egd_tournament_round` int unsigned DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  INDEX `winner_user_id` (`winner_user_id`),
-  INDEX `loser_user_id` (`loser_user_id`),
-  INDEX `timestamp` (`timestamp`),
-  INDEX `game_type_id` (`game_type_id`),
-  INDEX `egd_tournament_id` (`egd_tournament_id`),
-  INDEX `egd_tournament_round` (`egd_tournament_round`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
-CREATE TABLE IF NOT EXISTS `game_type` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) NOT NULL,
-  `egd` boolean NOT NULL,
+CREATE TABLE `game_type` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(64) NOT NULL,
+  `egd` BOOLEAN NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3 AUTO_INCREMENT=1;
+) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
 
-INSERT INTO `game_type` (`id`, `name`) VALUES
-(1, 'EGD - class A', true),
-(2, 'EGD - class B', true),
-(3, 'EGD - class C', true),
-(4, 'EGD - class D', true),
-(5, 'Serious', false),
-(6, 'Rapid', false),
-(7, 'Blitz', false);
+INSERT INTO game_type (id, name, egd) VALUES
+(1, 'EGD - class A', true),(2, 'EGD - class B', true),(3, 'EGD - class C', true),(4, 'EGD - class D', TRUE),(5, 'Serious', false),(6, 'Rapid', false),(7, 'Blitz', false);
 
-CREATE TABLE IF NOT EXISTS `invite` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `from_user_id` int unsigned NOT NULL,
-  `egd_pin` int DEFAULT NULL,
-  `first_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `last_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(256) NOT NULL,
-  `secret` int NOT NULL,
-  `rating` double DEFAULT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `from_user_id` (`from_user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
-CREATE TABLE IF NOT EXISTS `admin_level` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) NOT NULL,
-  `description` varchar(128) NOT NULL,
+CREATE TABLE `admin_level` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(64) NOT NULL,
+  `description` VARCHAR(128) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb3;
+) COLLATE='utf8mb4_0900_ai_ci' ENGINE=INNODB;
 
-INSERT INTO `admin_level` (`id`, `name`, `description`) VALUES
+INSERT INTO `admin_level` (id, `name`, `description`) VALUES
 (1, 'Owner', 'Can do anything'),
 (2, 'Admin', 'Anything but promoting/demoting admins'),
 (3, 'Mod', 'Full access to invites'),
@@ -180,180 +50,155 @@ INSERT INTO `admin_level` (`id`, `name`, `description`) VALUES
 (5, 'User', 'Can only insert his losses'),
 (6, 'Unregistered', 'Player who didn''t register but is present as opponent from EGD (or other) database.');
 
-CREATE TABLE IF NOT EXISTS `user` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `first_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `last_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `egd_pin` int DEFAULT NULL,
-  `egd_rating` double DEFAULT NULL,
-  `rating` double NOT NULL,
-  `country_id` int unsigned NOT NULL,
-  `password` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `admin_level_id` int unsigned NOT NULL,
-  `invited_by_user_id` int unsigned DEFAULT NULL,
-  `register_timestamp` timestamp NULL DEFAULT NULL,
-  `club` varchar(10) DEFAULT 'xxx',
-  `win_count` int unsigned NOT NULL DEFAULT 0,
-  `loss_count` int unsigned NOT NULL DEFAULT 0,
-  `egd_win_count` int unsigned NOT NULL DEFAULT 0,
-  `egd_loss_count` int unsigned NOT NULL DEFAULT 0,
+CREATE TABLE `user` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(64) NULL DEFAULT NULL,
+  `first_name` VARCHAR(64) NOT NULL,
+  `last_name` VARCHAR(64) NOT NULL,
+  `email` VARCHAR(256) NULL DEFAULT NULL,
+  `egd_pin` INT NULL DEFAULT NULL,
+  `egd_rating` DOUBLE NULL DEFAULT NULL,
+  `rating` DOUBLE NOT NULL,
+  `country_id` INT UNSIGNED NOT NULL,
+  `password` VARCHAR(512) NULL DEFAULT NULL,
+  `admin_level_id` INT UNSIGNED NOT NULL,
+  `invited_by_user_id` INT UNSIGNED NULL DEFAULT NULL,
+  `register_timestamp` TIMESTAMP NULL DEFAULT NULL,
+  `club` VARCHAR(10) NULL DEFAULT 'xxx',
+  `win_count` INT UNSIGNED NOT NULL DEFAULT '0',
+  `loss_count` INT UNSIGNED NOT NULL DEFAULT '0',
+  `egd_win_count` INT UNSIGNED NOT NULL DEFAULT '0',
+  `egd_loss_count` INT UNSIGNED NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY (username),
-  UNIQUE KEY (email),
-  UNIQUE KEY (egd_pin),
-  INDEX (invited_by_user_id),
-  INDEX (country_id),
-  FULLTEXT KEY (first_name),
-  FULLTEXT KEY (last_name)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE INDEX `username` (`username`),
+  UNIQUE INDEX `email` (`email`),
+  UNIQUE INDEX `egd_pin` (`egd_pin`),
+  INDEX `invited_by_user_id` (`invited_by_user_id`),
+  INDEX `country_id` (`country_id`),
+  INDEX `admin_level_id` (`admin_level_id`),
+  FULLTEXT INDEX `first_name` (`first_name`),
+  FULLTEXT INDEX `last_name` (`last_name`),
+  FOREIGN KEY (`country_id`) REFERENCES `country` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  FOREIGN KEY (`invited_by_user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `egd_tournament`
-(
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `egd_key` varchar(10) NOT NULL,
-  `name` varchar(128) DEFAULT NULL,
-  `player_count` int unsigned NOT NULL,
-  `round_count` int unsigned NOT NULL,
-  `timestamp` timestamp NOT NULL,
-  `country_id` int unsigned NOT NULL,
-  `game_type_id` int unsigned NOT NULL,
-  `city` varchar(64) DEFAULT NULL,
+CREATE TABLE `invite` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `from_user_id` INT UNSIGNED NOT NULL,
+  `egd_pin` INT NULL DEFAULT NULL,
+  `first_name` VARCHAR(64) NOT NULL,
+  `last_name` VARCHAR(64) NOT NULL,
+  `email` VARCHAR(256) NOT NULL,
+  `secret` INT NOT NULL,
+  `rating` DOUBLE NULL DEFAULT NULL,
+  `timestamp` TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP),
   PRIMARY KEY (`id`),
-  UNIQUE KEY (egd_key),
+  INDEX `from_user_id` (`from_user_id`),
+  FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) COLLATE='utf8mb4_0900_ai_ci'ENGINE=INNODB;
+
+CREATE TABLE `egd_tournament` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `egd_key` VARCHAR(10) NOT NULL,
+  `name` VARCHAR(128) NULL DEFAULT NULL,
+  `player_count` INT UNSIGNED NOT NULL,
+  `round_count` INT UNSIGNED NOT NULL,
+  `timestamp` TIMESTAMP NOT NULL,
+  `country_id` INT UNSIGNED NOT NULL,
+  `game_type_id` INT UNSIGNED NOT NULL,
+  `city` VARCHAR(64) NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `egd_key` (`egd_key`),
   INDEX `timestamp` (`timestamp`),
   INDEX `country_id` (`country_id`),
-  INDEX `game_type_id` (`game_type_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  INDEX `game_type_id` (`game_type_id`),
+  FOREIGN KEY (`country_id`) REFERENCES `country` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
-CREATE TABLE IF NOT EXISTS `egd_tournament_result` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `egd_tournament_id` int unsigned NOT NULL,
-  `user_id` int unsigned NOT NULL,
-  `placement` int unsigned NOT NULL,
+CREATE TABLE `egd_tournament_result` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `egd_tournament_id` INT UNSIGNED NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `placement` INT UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `egd_tournament_id` (`egd_tournament_id`,`user_id`,`placement`),
-  UNIQUE KEY (`egd_tournament_id`, `placement`),
-  UNIQUE KEY (`egd_tournament_id`, `user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE INDEX `egd_tournament_id_2` (`egd_tournament_id`, `placement`),
+  UNIQUE INDEX `egd_tournament_id_3` (`egd_tournament_id`, `user_id`),
+  INDEX `egd_tournament_id` (`egd_tournament_id`, `user_id`, `placement`),
+  INDEX `user_id` (`user_id`),
+  FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
-CREATE TABLE IF NOT EXISTS `egd_tournament_to_process` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `egd_key` varchar(10) NOT NULL,
+CREATE TABLE `egd_tournament_to_process` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `egd_key` VARCHAR(10) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `egd_key` (`egd_key`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE INDEX `egd_key` (`egd_key`)
+) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
-CREATE TABLE IF NOT EXISTS `user_game_count_to_update`
-(
-  `user_id` int unsigned NOT NULL,
-  PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `user_game_count_to_update` (
+  `user_id` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`user_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
-DELIMITER //
-CREATE PROCEDURE update_user_game_count (local_user_id int unsigned)
-BEGIN
-  DECLARE local_win_count int unsigned;
-  DECLARE local_loss_count int unsigned;
-  DECLARE local_egd_win_count int unsigned;
-  DECLARE local_egd_loss_count int unsigned;
+CREATE TABLE `game` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `winner_user_id` INT UNSIGNED NOT NULL,
+  `loser_user_id` INT UNSIGNED NOT NULL,
+  `game_type_id` INT UNSIGNED NOT NULL,
+  `timestamp` TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  `location` VARCHAR(64) NULL DEFAULT NULL,
+  `winner_comment` VARCHAR(128) NULL DEFAULT NULL,
+  `loser_comment` VARCHAR(128) NULL DEFAULT NULL,
+  `sgf` BLOB NULL DEFAULT NULL,
+  `winner_old_rating` DOUBLE NULL DEFAULT NULL,
+  `winner_new_rating` DOUBLE NULL DEFAULT NULL,
+  `loser_old_rating` DOUBLE NULL DEFAULT NULL,
+  `loser_new_rating` DOUBLE NULL DEFAULT NULL,
+  `winner_old_egd_rating` DOUBLE NULL DEFAULT NULL,
+  `winner_new_egd_rating` DOUBLE NULL DEFAULT NULL,
+  `loser_old_egd_rating` DOUBLE NULL DEFAULT NULL,
+  `loser_new_egd_rating` DOUBLE NULL DEFAULT NULL,
+  `rating_update_version` INT UNSIGNED NULL DEFAULT '0',
+  `winner_is_black` BOOLEAN NOT NULL DEFAULT 1,
+  `handicap` INT NOT NULL DEFAULT '0',
+  `komi` DOUBLE NOT NULL DEFAULT '6.5',
+  `egd_tournament_id` INT UNSIGNED NULL DEFAULT NULL,
+  `egd_tournament_round` INT UNSIGNED NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `winner_user_id` (`winner_user_id`),
+  INDEX `loser_user_id` (`loser_user_id`),
+  INDEX `timestamp` (`timestamp`),
+  INDEX `game_type_id` (`game_type_id`),
+  INDEX `egd_tournament_id` (`egd_tournament_id`),
+  INDEX `egd_tournament_round` (`egd_tournament_round`),
+  CONSTRAINT `game_ibfk_1` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT `game_ibfk_2` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT `game_ibfk_3` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT `game_ibfk_4` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) COLLATE='utf8mb4_0900_ai_ci' ENGINE=INNODB;
 
-  SELECT COUNT(*) INTO local_win_count
-  FROM game JOIN game_type ON game.game_type_id=game_type.id
-  WHERE
-    game.winner_user_id = local_user_id and
-    game_type.egd = false;
-
-  SELECT COUNT(*) INTO local_loss_count
-  FROM game JOIN game_type ON game.game_type_id=game_type.id
-  WHERE
-    game.loser_user_id = local_user_id and
-    game_type.egd = false;
-
-  SELECT COUNT(*) INTO local_egd_win_count
-  FROM game JOIN game_type ON game.game_type_id=game_type.id
-  WHERE
-    game.winner_user_id = local_user_id and
-    game_type.egd = true;
-
-  SELECT COUNT(*) INTO local_egd_loss_count
-  FROM game JOIN game_type ON game.game_type_id=game_type.id
-  WHERE
-    game.loser_user_id = local_user_id and
-    game_type.egd = true;
-
-  UPDATE user SET
-    win_count = local_win_count,
-    loss_count = local_loss_count,
-    egd_win_count = local_egd_win_count,
-    egd_loss_count = local_egd_loss_count
-  WHERE
-    user.id = local_user_id;
-  DELETE FROM user_game_count_to_update WHERE user_id = local_user_id;
-END //
-DELIMITER ;
-
-DELIMITER //
-CREATE PROCEDURE process_user_game_count_to_update()
-BEGIN
-  DECLARE finished INTEGER DEFAULT 0;
-  DECLARE _user_id INT unsigned;
-  DEClARE curlo CURSOR FOR SELECT user_id FROM user_game_count_to_update;
-  DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
-  OPEN curlo;
-
-  getDat: LOOP
-      FETCH curlo INTO _user_id;
-      IF finished = 1 THEN
-          LEAVE getDat;
-      END IF;
-
-      CALL update_user_game_count(_user_id);
-  END LOOP getDat;
-  CLOSE curlo;
-END //
-DELIMITER ;
-
-ALTER TABLE `game`
-  ADD CONSTRAINT `game_fk_1` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`),
-  ADD CONSTRAINT `game_fk_2` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`),
-  ADD CONSTRAINT `game_fk_3` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`),
-  ADD CONSTRAINT `game_fk_4` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`);
-
-ALTER TABLE `user`
-  ADD CONSTRAINT `user_fk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
-  ADD CONSTRAINT `user_fk_2` FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`),
-  ADD CONSTRAINT `user_fk_3` FOREIGN KEY (`invited_by_user_id`) REFERENCES `user` (`id`);
-
-ALTER TABLE `invite`
-  ADD CONSTRAINT `invite_fk_1` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`);
-
-ALTER TABLE `egd_tournament`
-  ADD CONSTRAINT `egd_tournament_fk_1` FOREIGN KEY (`country_id`) REFERENCES `country` (`id`),
-  ADD CONSTRAINT `egd_tournament_fk_2` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`);
-
-ALTER TABLE `egd_tournament_result`
-  ADD CONSTRAINT `egd_tournament_result_fk_1` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`),
-  ADD CONSTRAINT `egd_tournament_result_fk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
-
-CREATE TABLE IF NOT EXISTS `variable` (
-  `name` varchar(64) NOT NULL,
-  `value` varchar(64) NOT NULL,
+CREATE TABLE `variable` (
+  `name` VARCHAR(64) NOT NULL,
+  `value` VARCHAR(64) NOT NULL,
   PRIMARY KEY (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
 INSERT INTO `variable` (`name`, `value`) VALUES
 ('rating_update_in_progress', '0'),
 ('rating_update_timestamp', '1975-01-01'),
 ('rating_update_version', '0');
 
-CREATE TABLE IF NOT EXISTS `rating_update_value` (
+CREATE TABLE `rating_update_value` (
   `user_id` int unsigned NOT NULL,
   `rating` double NOT NULL,
   `timestamp` timestamp NOT NULL,
-  PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+  PRIMARY KEY (`user_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
 
 DROP TRIGGER IF EXISTS game_after_insert;
 DELIMITER //
@@ -391,6 +236,75 @@ CREATE TRIGGER `game_after_update` AFTER UPDATE ON `game`
    END IF;
  END; //
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS update_user_game_count;
+DELIMITER //
+CREATE PROCEDURE update_user_game_count (local_user_id int unsigned)
+BEGIN
+  DECLARE local_win_count int unsigned;
+  DECLARE local_loss_count int unsigned;
+  DECLARE local_egd_win_count int unsigned;
+  DECLARE local_egd_loss_count int unsigned;
+
+  SELECT COUNT(*) INTO local_win_count
+  FROM game
+  JOIN game_type ON game.game_type_id=game_type.id
+  WHERE
+    game.winner_user_id = local_user_id and
+    game_type.egd = false;
+
+  SELECT COUNT(*) INTO local_loss_count
+  FROM game
+  JOIN game_type ON game.game_type_id=game_type.id
+  WHERE
+    game.loser_user_id = local_user_id and
+    game_type.egd = false;
+
+  SELECT COUNT(*) INTO local_egd_win_count
+  FROM game
+  JOIN game_type ON game.game_type_id=game_type.id
+  WHERE
+    game.winner_user_id = local_user_id and
+    game_type.egd = true;
+
+  SELECT COUNT(*) INTO local_egd_loss_count
+  FROM game
+  JOIN game_type ON game.game_type_id=game_type.id
+  WHERE
+    game.loser_user_id = local_user_id and
+    game_type.egd = true;
+
+  UPDATE user SET
+    win_count = local_win_count,
+    loss_count = local_loss_count,
+    egd_win_count = local_egd_win_count,
+    egd_loss_count = local_egd_loss_count
+  WHERE
+    user.id = local_user_id;
+  DELETE FROM user_game_count_to_update WHERE user_id = local_user_id;
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS process_user_game_count_to_update;
+DELIMITER //
+CREATE PROCEDURE process_user_game_count_to_update()
+BEGIN
+  DECLARE finished INTEGER DEFAULT 0;
+  DECLARE _user_id INT unsigned;
+  DEClARE curlo CURSOR FOR SELECT user_id FROM user_game_count_to_update;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET finished = 1;
+  OPEN curlo;
+
+  getDat: LOOP
+      FETCH curlo INTO _user_id;
+      IF finished = 1 THEN
+          LEAVE getDat;
+      END IF;
+
+      CALL update_user_game_count(_user_id);
+  END LOOP getDat;
+  CLOSE curlo;
+END //
 
 DROP PROCEDURE IF EXISTS add_or_update_user_rating_update_value;
 DELIMITER //
