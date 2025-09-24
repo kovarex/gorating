@@ -373,7 +373,6 @@ CREATE TRIGGER `game_after_delete` AFTER DELETE ON `game`
    CALL update_user_game_count(OLD.winner_user_id);
    CALL update_user_game_count(OLD.loser_user_id);
    CALL start_rating_update(OLD.winner_user_id, OLD.winner_old_rating, OLD.loser_user_id, OLD.loser_old_rating, OLD.timestamp);
-   CALL update
  END; //
 DELIMITER ;
 
