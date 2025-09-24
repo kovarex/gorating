@@ -1,5 +1,5 @@
 <?php
-$page = substr(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), 1);
+$pagePath = substr(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), 1);
 $query = parse_url($_SERVER["REQUEST_URI"], PHP_URL_QUERY);
 
 foreach (explode('&', $query) as $chunk)
@@ -14,48 +14,62 @@ require_once("src/link_helper.php");
 require_once("src/constants.php");
 require_once("src/db.php");
 
-if ($page == "login" or
-    $page == "logout" or
-    $page == "register_action" or
-    $page == "report_action" or
-    $page == "edit_player_name_action" or
-    $page == "delete_game_action" or
-    $page == "sgf" or
-    $page == "process_tournament" or
-    $page == "update_rating" or
-    $page == "process_tournament_batch")
-  require($page.".php");
+define("PAGE_WITHOUT_HEADER", 1);
+define("NORMAL_PAGE", 2);
+
+foreach (array("login",
+               "logout",
+               "register_action",
+               "report_action",
+               "edit_player_name_action",
+               "delete_game_action",
+               "sgf",
+               "process_tournament",
+               "update_rating",
+               "process_tournament_batch") as $target)
+  $pages[$target] = PAGE_WITHOUT_HEADER;
+
+foreach (array("player",
+               "players",
+               "invite",
+               "invites",
+               "tournaments",
+               "tournament",
+               "register",
+               "register.php",
+               "report",
+               "about",
+               "get_all_egd_players",
+               "update_tournament_list") as $target)
+  $pages[$target] = NORMAL_PAGE;
+
+if ($pagePath == "")
+  $pageType = NORMAL_PAGE;
 else
+  $pageType = $pages[$pagePath];
+
+if (!$pageType)
+  $player = query("SELECT user.id as id from user WHERE user.username=".escape($pagePath))->fetch_assoc();
+
+if ($pageType == NORMAL_PAGE or $player)
 {
   require("src/header.php");
   if (!empty($_GET["message"]))
     echo "<div class=\"message-div\"><h3><b>Message:</b></h3></br>".$_GET["message"]."</div>";
-  if ($page == "")
-    require("home.php");
-  elseif ($page == "player" or
-          $page == "players" or
-          $page == "invite" or
-          $page == "invites" or
-          $page == "tournaments" or
-          $page == "tournament" or
-          $page == "register" or
-          $page == "register.php" or
-          $page == "report" or
-          $page == "about" or
-          $page == "get_all_egd_players" or
-          $page == "update_tournament_list")
-    require($page.".php");
-  else
-  {
-    $player = query("SELECT user.id as id from user WHERE user.username=".escape($page))->fetch_assoc();
-    if ($player)
-    {
-      $_GET["id"] = $player["id"];
-      require("player.php");
-    }
-    else
-      echo "Unknown page:".$page;
-  }
-  require("src/footer.php");
 }
+
+if ($pagePath == "")
+  require("home.php");
+else if ($pageType)
+  require($pagePath.".php");
+else if ($player)
+{
+  $_GET["id"] = $player["id"];
+  require("player.php");
+}
+else
+  echo "Unknown page:".$pagePath;
+
+if ($pageType == NORMAL_PAGE or $player)
+  require("src/footer.php");
 ?>
