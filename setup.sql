@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS `game` (
   `winner_new_egd_rating` double DEFAULT NULL,
   `loser_old_egd_rating` double DEFAULT NULL,
   `loser_new_egd_rating` double DEFAULT NULL,
-  `last_rating_update_id` int unsigned DEFAULT NULL,
+  `rating_update_version` int unsigned DEFAULT '0',
   `winner_is_black` tinyint(1) NOT NULL DEFAULT '1',
   `handicap` int NOT NULL DEFAULT '0',
   `komi` double NOT NULL DEFAULT '6.5',
@@ -337,6 +337,24 @@ ALTER TABLE `egd_tournament_result`
   ADD CONSTRAINT `egd_tournament_result_fk_1` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`),
   ADD CONSTRAINT `egd_tournament_result_fk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
 
+CREATE TABLE IF NOT EXISTS `variable` (
+  `name` varchar(64) NOT NULL,
+  `value` varchar(64) NOT NULL,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+
+INSERT INTO `variable` (`name`, `value`) VALUES
+('rating_update_in_progress', '0'),
+('rating_update_timestamp', '1975-01-01'),
+('rating_update_version', '0');
+
+CREATE TABLE IF NOT EXISTS `rating_update_value` (
+  `user_id` int unsigned NOT NULL,
+  `rating` double NOT NULL,
+  `timestamp` timestamp NOT NULL,
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+
 DELIMITER //
 CREATE TRIGGER `game_after_insert` AFTER INSERT ON `game`
  FOR EACH ROW
@@ -361,36 +379,48 @@ DELIMITER //
 CREATE TRIGGER `game_after_update` AFTER UPDATE ON `game`
  FOR EACH ROW
  BEGIN
-   CALL update_user_game_count(OLD.winner_user_id);
-   CALL update_user_game_count(OLD.loser_user_id);
-   CALL update_user_game_count(NEW.winner_user_id);
-   CALL update_user_game_count(NEW.loser_user_id);
+   IF OLD.winner_user_id != NEW.winner_user_id THEN
+     CALL update_user_game_count(OLD.winner_user_id);
+     CALL update_user_game_count(NEW.winner_user_id);
+   END IF;
+   IF OLD.loser_user_id != NEW.loser_user_id THEN
+     CALL update_user_game_count(OLD.loser_user_id);
+     CALL update_user_game_count(NEW.loser_user_id);
+   END IF;
  END; //
 DELIMITER ;
 
-CREATE TABLE IF NOT EXISTS `rating_update` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `timestamp` timestamp NOT NULL,
-  `finished` boolean DEFAULT false
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
+DROP IF EXISTS PROCEDURE add_or_update_user_rating_update_value;
 DELIMITER //
 CREATE PROCEDURE add_or_update_user_rating_update_value(my_user_id int unsigned, user_rating double, change_timestamp timestamp)
 BEGIN
   DECLARE existing_timestamp timestamp;
-  SELECT `timestamp` FROM rating_update_values WHERE user_id=my_user_id INTO existing_timestamp;
+  SELECT `timestamp` FROM rating_update_value WHERE user_id=my_user_id INTO existing_timestamp;
   IF existing_timestamp IS NULL THEN
-    INSERT INTO rating_update_values(user_id, rating, timestamp) VALUES(my_user_id, user_rating, change_timestamp);
+    INSERT INTO rating_update_value(user_id, rating, timestamp) VALUES(my_user_id, user_rating, change_timestamp);
   ELSE
     IF change_timestamp < existing_timestamp THEN
-      UPDATE rating_update_values SET rating = user_rating, timestamp = change_timestamp WHERE user_id = my_user_id;
+      UPDATE rating_update_value SET rating = user_rating, timestamp = change_timestamp WHERE user_id = my_user_id;
     END IF;
   END IF;
 END //
 DELIMITER ;
 
+DROP IF EXISTS PROCEDURE add_or_force_update_user_rating_update_value;
+DELIMITER //
+CREATE PROCEDURE add_or_force_update_user_rating_update_value(my_user_id int unsigned, user_rating double, change_timestamp timestamp)
+BEGIN
+  DECLARE existing_timestamp timestamp;
+  SELECT `timestamp` FROM rating_update_value WHERE user_id=my_user_id INTO existing_timestamp;
+  IF existing_timestamp IS NULL THEN
+    INSERT INTO rating_update_value(user_id, rating, timestamp) VALUES(my_user_id, user_rating, change_timestamp);
+  ELSE
+    UPDATE rating_update_value SET rating = user_rating, timestamp = change_timestamp WHERE user_id = my_user_id;
+  END IF;
+END //
+DELIMITER ;
 
+DROP IF EXISTS PROCEDURE start_rating_update;
 DELIMITER //
 CREATE PROCEDURE start_rating_update(user1_id int unsigned, user1_rating double, user2_id int unsigned, user2_rating double, start_timestamp timestamp)
 BEGIN
@@ -398,21 +428,24 @@ BEGIN
   DECLARE last_timestamp timestamp;
   DECLARE user1_rating_timestamp timestamp;
   DECLARE user2_rating_timestamp timestamp;
-  IF user1_rating IS NOT NULL THEN
-    SELECT
-      `id`, `timestamp`
-    FROM rating_update
-    WHERE finished = false
-    ORDER BY id DESC
-    INTO last_id, last_timestamp;
+  DECLARE rating_update_in_progress boolean;
+  DECLARE textual_timestamp_of_current_rating_update varchar(64);
+  DECLARE timestamp_of_current_rating_update timestamp;
 
-    IF last_id IS NOT NULL THEN
-      CALL add_or_update_user_rating_update_value(user1_id, user1_rating, start_timestamp);
-      CALL add_or_update_user_rating_update_value(user2_id, user2_rating, start_timestamp);
-      UPDATE rating_update SET timestamp = LEAST(last_timestamp, start_timestamp), id = last_id + 1 WHERE id = last_id;
+  IF user1_rating IS NOT NULL THEN
+    SELECT value = '1' as in_progress FROM variable WHERE name='rating_update_finished' INTO rating_update_in_progress;
+
+    UPDATE variable SET value = CAST(value AS unsigned) + 1 WHERE name='rating_update_version';
+    CALL add_or_update_user_rating_update_value(user1_id, user1_rating, start_timestamp);
+    CALL add_or_update_user_rating_update_value(user2_id, user2_rating, start_timestamp);
+
+    IF rating_update_in_progress = true THEN
+      SELECT value FROM variable WHERE name='rating_update_timestamp' INTO textual_timestamp_of_current_rating_update;
+      SET timestamp_of_current_rating_update = STR_TO_DATE(textual_timestamp_of_current_rating_update,'%Y-%m-%d %H:%i:%s');
+      UPDATE variable SET value = DATE_FORMAT(LEAST(timestamp_of_current_rating_update, start_timestamp), '%Y-%m-%d %H:%i:%s') WHERE name='rating_update_timestamp';
     ELSEIF last_id IS NULL THEN
-      INSERT INTO rating_update(timestamp) VALUES(start_timestamp);
-      INSERT INTO rating_update_values(user_id, rating, timestamp) VALUES(user1_id, user1_rating, start_timestamp), (user2_id, user2_rating, start_timestamp);
+      UPDATE variable SET value = DATE_FORMAT(start_timestamp, '%Y-%m-%d %H:%i:%s') WHERE name='rating_update_timestamp';
+      UPDATE variable SET value = '1' WHERE name='rating_update_in_progress';
     END IF;
   END IF;
 END //

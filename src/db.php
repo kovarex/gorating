@@ -21,24 +21,36 @@ function query($query, $show = false)
 {
   global $db;
   if ($show)
-    echo "Debug query: ".$query;
+    echo "Debug query: ".$query."<br/>\n";
   try
   {
     $result = $db->query($query);
     if (!empty($db->error))
     {
-      echo "<div>Sql error:".$db->error."</div>";
-      echo "<pre>Query:".$query."</pre>";
+      echo "<div>Sql error:".$db->error."</div>\n";
+      echo "<pre>Query:".$query."</pre>\n";
       die();
     }
     return $result;
   }
   catch (Exception $e)
   {
-      echo "<div>Sql error:".$e->getMessage()."</div>";
-      echo "<pre>Query:".$query."</pre>";
+      echo "<div>Sql error:".$e->getMessage()."</div>\n";
+      echo "<pre>Query:".$query."</pre>\n";
       die();
   }
+}
+
+function beginTransaction()
+{
+  global $db;
+  $db->begin_transaction();
+}
+
+function commitTransaction()
+{
+  global $db;
+  $db->commit();
 }
 
 function lastInsertID()

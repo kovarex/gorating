@@ -30,6 +30,8 @@ elseif ($page == "/sgf")
   require("sgf.php");
 elseif ($page == "/process_tournament")
   require("process_tournament.php");
+elseif ($page == "/update_rating")
+  require("update_rating.php");
 elseif ($page == "/process_tournament_batch")
   require("process_tournament_batch.php");
 else
@@ -63,6 +65,6 @@ else
     require("update_tournament_list.php");
   else
     echo "Unknown page:".$page;
+  require("src/footer.php");
 }
-require("src/footer.php");
 ?>
