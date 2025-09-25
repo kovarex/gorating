@@ -262,7 +262,7 @@ BEGIN
   FROM game
   JOIN game_type ON game.game_type_id=game_type.id
   WHERE
-    game.deleted = false,
+    game.deleted = false and
     game.winner_user_id = local_user_id and
     game_type.egd = false;
 
@@ -270,7 +270,7 @@ BEGIN
   FROM game
   JOIN game_type ON game.game_type_id=game_type.id
   WHERE
-    game.deleted = false,
+    game.deleted = false and
     game.loser_user_id = local_user_id and
     game_type.egd = false;
 
@@ -278,7 +278,7 @@ BEGIN
   FROM game
   JOIN game_type ON game.game_type_id=game_type.id
   WHERE
-    game.deleted = false,
+    game.deleted = false and
     game.winner_user_id = local_user_id and
     game_type.egd = true;
 
@@ -286,7 +286,7 @@ BEGIN
   FROM game
   JOIN game_type ON game.game_type_id=game_type.id
   WHERE
-    game.deleted = false,
+    game.deleted = false and
     game.loser_user_id = local_user_id and
     game_type.egd = true;
 
@@ -320,6 +320,7 @@ BEGIN
   END LOOP getDat;
   CLOSE curlo;
 END //
+DELIMITER ;
 
 DROP PROCEDURE IF EXISTS add_or_update_user_rating_update_value;
 DELIMITER //
