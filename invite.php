@@ -28,11 +28,11 @@ query("INSERT INTO invite(from_user_id, egd_pin, first_name, last_name, email, s
 $message = "You have been invited to register as ".$_POST["first_name"]." ".$_POST["last_name"]."\n";
 if (!empty($_POST["egd_pin"]))
   $message .= "The proposed associated egd profile:".egdAddress($_POST["egd_pin"])."\n";
-$message .= "If that is you and you want to participate, follow the link http://www.gorating.com/register?id=".lastInsertID()."&secret=".$secret." to register.";
+$message .= "If that is you and you want to participate, follow the link http://".$_SERVER['HTTP_HOST']."/register?id=".lastInsertID()."&secret=".$secret." to register.";
 $headers = 'Reply-To: webmaster@gorating.com\r\n'.
            'X-Mailer: PHP/' . phpversion();
 
 mail($_POST["email"], "Friendly go rating invitation", $message, $headers);
 
-redirectWithMessage("Invite created");         
+redirectWithMessage("Invite created");
 ?>
