@@ -3,7 +3,7 @@ require_once("constants.php");
 
 function getUrlContent($url, $post_data = NULL)
 {
-  fopen("cookies.txt", "w");
+  fopen("/tmp/cookies.txt", "w");
   $parts = parse_url($url);
   $host = $parts['host'];
   $ch = curl_init();
@@ -22,8 +22,8 @@ function getUrlContent($url, $post_data = NULL)
   curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 0);
   curl_setopt($ch, CURLOPT_COOKIESESSION, true);
 
-  curl_setopt($ch, CURLOPT_COOKIEFILE, 'cookies.txt');
-  curl_setopt($ch, CURLOPT_COOKIEJAR, 'cookies.txt');
+  curl_setopt($ch, CURLOPT_COOKIEFILE, '/tmp/cookies.txt');
+  curl_setopt($ch, CURLOPT_COOKIEJAR, '/tmp/cookies.txt');
   curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
   if ($post_data)
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
@@ -102,7 +102,7 @@ function getEgdInfo($pin)
       $result["country"] = getCountryCodeAndID($input->attributes->getNamedItem("value")->textContent);
   if (!empty(@$result["rating"]) && !empty(@$result["country"]))
     return $result;
-  die("Couldn't determine the rating from the EGD page. Link:".$url." rating:".$result["rating"]."</br>");
+  die("Couldn't determine the rating from the EGD page. Link:".$url."</br>");
 }
 
 function addEGDPlayerIfNotPresent($pin, $firstName, $lastName)
