@@ -1,0 +1,17 @@
+<?php
+$dbServer = 'servername.example';
+if ($_SERVER['HTTP_HOST'] == "gorating.com")
+{
+  $dbUser = 'db_user';
+  $dbName = 'db_name';
+  $dbPassword = "db_password";
+  $resourceAddress = "https://example.com/production";
+}
+else if ($_SERVER['HTTP_HOST'] == "test.gorating.com")
+{
+  $dbUser = 'test_db_user';
+  $dbName = 'test_db_name';
+  $dbPassword = "test_db_password";
+  $resourceAddress = "https://example/test";
+}
+?>
