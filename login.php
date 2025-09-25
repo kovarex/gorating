@@ -17,9 +17,6 @@ function checkLogin($username, $password)
   return true;
 }
 
-ini_set('session.gc_maxlifetime', 3600 * 24 * 7); // a week
-session_set_cookie_params(3600 * 24 * 7);
-session_start();
 $loginResult = checkLogin(@$_POST['username'], @$_POST['password']);
 
 if ($loginResult === true)

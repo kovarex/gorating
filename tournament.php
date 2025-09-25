@@ -95,7 +95,7 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
   echo "<tr>";
   $roundInfo = $placementInfo[$placement];
 
-  echo "<td>".$placement.". ".playerLink($$roundInfo["id"], $roundInfo["name"], $roundInfo["username"])."</td>";
+  echo "<td>".$placement.". ".playerLink($roundInfo["id"], $roundInfo["name"], @$roundInfo["username"])."</td>";
   for ($round = 1; $round <= $tournament["round_count"]; $round++)
   {
     echo "<td>";

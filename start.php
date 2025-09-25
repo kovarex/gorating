@@ -2,12 +2,13 @@
 $pagePath = substr(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), 1);
 $query = parse_url($_SERVER["REQUEST_URI"], PHP_URL_QUERY);
 
-foreach (explode('&', $query) as $chunk)
-{
-  $param = explode("=", $chunk);
-  if ($param)
-    $_GET[urldecode($param[0])] = urldecode($param[1]);
-}
+if ($query)
+  foreach (explode('&', $query) as $chunk)
+  {
+    $param = explode("=", $chunk);
+    if ($param)
+      $_GET[urldecode($param[0])] = urldecode($param[1]);
+  }
 
 require_once("src/auth.php");
 require_once("src/link_helper.php");
@@ -47,12 +48,12 @@ foreach (array("player",
 if ($pagePath == "")
   $pageType = NORMAL_PAGE;
 else
-  $pageType = $pages[$pagePath];
+  $pageType = @$pages[$pagePath];
 
 if (!$pageType)
   $player = query("SELECT user.id as id from user WHERE user.username=".escape($pagePath))->fetch_assoc();
 
-if ($pageType == NORMAL_PAGE or $player)
+if ($pageType == NORMAL_PAGE or isset($player))
 {
   require("src/header.php");
   if (!empty($_GET["message"]))
@@ -71,6 +72,6 @@ else if ($player)
 else
   echo "Unknown page:".$pagePath;
 
-if ($pageType == NORMAL_PAGE or $player)
+if ($pageType == NORMAL_PAGE or isset($player))
   require("src/footer.php");
 ?>
