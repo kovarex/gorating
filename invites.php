@@ -51,11 +51,11 @@ $table->addColumn("name",
                       echo $row["name"];
                   });
 
-if (canAccessAllInvites())
-  $table->addColumn("email",
-                    "Email",
-                    array(array("invite.email", "email")),
-                    function($row) { echo $row["email"]; });
+$table->addColumn("email",
+                  "Email",
+                  array(array("invite.email", "email")),
+                  function($row) { echo $row["email"]; });
+
 if (canAccessAllInvites())
   $table->addColumn("inviter_name",
                     "Inviter",
@@ -63,6 +63,12 @@ if (canAccessAllInvites())
                           array("inviter.id", "inviter_id"),
                           array("inviter.username", "inviter_username")),
                     function($row) { echo  playerLink($row, "inviter"); });
+
+$table->addColumn("invite",
+                  "Invite link",
+                  array(array("invite.id", "invite_id"),
+                        array("invite.secret", "invite_secret")),
+                  function($row) { echo  inviteAddress($row["invite_id"], $row["invite_secret"]); });
 
 $table->addColumn("timestamp",
                    "Timestamp",

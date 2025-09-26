@@ -108,8 +108,8 @@ $table->addColumn("opponent_name",
                         array("IF(winner.id = ".escape($_GET["id"]).", loser.username, winner.username)", "opponent_username"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.loser_user_id, game.winner_user_id)", "opponent_id"),
                         array("IF(winner.id = ".escape($_GET["id"]).", loser.egd_pin, winner.egd_pin)", "opponent_egd_pin"),
-                        array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_rating, game.loser_new_rating)", "opponent_rating"),
-                        array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_egd_rating, game.loser_new_egd_rating)", "opponent_egd_rating")),
+                        array("IF(winner.id = ".escape($_GET["id"]).", game.loser_new_rating, game.winner_new_rating)", "opponent_rating"),
+                        array("IF(winner.id = ".escape($_GET["id"]).", game.loser_new_egd_rating, game.winner_new_egd_rating)", "opponent_egd_rating")),
                   function($row)
                   {
                     $ratingToShow = $row["opponent_rating"];

@@ -100,4 +100,8 @@ function countrySelector($selected = NULL)
   return $result;
 }
 
+function inviteAddress($inviteID, $secret)
+{
+  return "http://".$_SERVER['HTTP_HOST']."/register?id=".$inviteID."&secret=".$secret;
+}
 ?>

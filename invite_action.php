@@ -18,7 +18,7 @@ query("INSERT INTO invite(from_user_id, first_name, last_name, email, secret, ra
 
 $message = "You have been invited to register as ".$_POST["first_name"]." ".$_POST["last_name"]." on gorating.com<br/>\n";
 $message .= "If you you already exist in EGD (you participated in any official tournament), ignore this email and request invitation that is connected to it.<br/>\n";
-$message .= "Otherwise follow <a href=\"http://".$_SERVER['HTTP_HOST']."/register?id=".lastInsertID()."&secret=".$secret."\">the link</a> to register.";
+$message .= "Otherwise follow <a href=\"".inviteAddress(lastInsertID(), $secret)."\">the link</a> to register.";
 
 $from = 'webmaster@gorating.com';
 $headers = '';
