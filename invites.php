@@ -7,7 +7,7 @@ echo "<div class=\"centered-div\">";
 echo "Only  invite playres NOT in EGD here!<br/>\n";
 echo "To invite EGD players, use the Invite link under their name.";
 echo "</div>";
-echo "<form method=\"post\" action=\"invite\">
+echo "<form method=\"post\" action=\"invite_action\">
         <table>
           <tr>
             <td><label for=\"first_name\">First name:</label></td>
