@@ -101,28 +101,28 @@ $table->addColumn("user_register_timestamp",
                       echo date("d. m. Y H:i", strtotime($row["user_register_timestamp"]));
                   });
 
-$table->addColumn("games",
+$table->addColumn("overall_game_count",
                   "Games",
-                  array(array("user.win_count + user.loss_count + user.egd_win_count + user.egd_loss_count", "games")),
-                  function ($row) { echo $row["games"]; },
+                  array(array("user.overall_game_count", "overall_game_count")),
+                  function ($row) { echo $row["overall_game_count"]; },
                   "style=\"text-align: right;\"");
 
-$table->addColumn("wins",
+$table->addColumn("overall_win_count",
                   "Wins",
-                  array(array("user.win_count + user.egd_win_count", "wins")),
-                  function ($row) { echo $row["wins"]; },
+                  array(array("user.overall_win_count", "overall_win_count")),
+                  function ($row) { echo $row["overall_win_count"]; },
                   "style=\"text-align: right;\"");
 
-$table->addColumn("losses",
+$table->addColumn("overall_loss_count",
                   "Losses",
-                  array(array("user.loss_count + user.egd_loss_count", "losses")),
-                  function ($row) { echo $row["losses"]; },
+                  array(array("user.overall_loss_count", "overall_loss_count")),
+                  function ($row) { echo $row["overall_loss_count"]; },
                   "style=\"text-align: right;\"");
 
-$table->addColumn("friendly_games",
+$table->addColumn("game_count",
                   "Friendly Games",
-                  array(array("user.win_count + user.loss_count", "friendly_games")),
-                  function ($row) { echo $row["friendly_games"]; },
+                  array(array("user.game_count", "game_count")),
+                  function ($row) { echo $row["game_count"]; },
                   "style=\"text-align: right;\"");
 
 $table->render();
