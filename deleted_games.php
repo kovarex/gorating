@@ -7,6 +7,14 @@ if (!canAccessDeletedGames())
 
 require("src/table_viewer.php");
 
+echo "<script>\n";
+echo "function tryToRestoreGame(id)\n";
+echo "{\n";
+echo "  if (confirm('Are you sure to restore the game?'))\n";
+echo "    window.location.replace('/restore_game_action?id=' + id + '&redirect=".urlencode($_SERVER["REQUEST_URI"])."');\n";
+echo "}\n";
+echo "</script>\n";
+
 $table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
                           user as winner,
                           user as loser,
