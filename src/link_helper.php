@@ -16,7 +16,7 @@ function egdLink($pin)
 function redirectWithMessageCustom($redirect, $message)
 {
   if (empty($redirect))
-    die("redirect address not provided.");
+    die("Redirect address not provided.");
   $parameterDelimiter = "?";
   if (str_contains($redirect, "?"))
     $parameterDelimiter = "&";
@@ -26,9 +26,9 @@ function redirectWithMessageCustom($redirect, $message)
 
 function redirectWithMessage($message)
 {
-  $redirect = $_POST["redirect"];
+  $redirect = @$_POST["redirect"];
   if (!$redirect)
-    $redirect = $_GET["redirect"];
+    $redirect = @$_GET["redirect"];
   redirectWithMessageCustom($redirect, $message);
 }
 
@@ -93,7 +93,7 @@ function countrySelector($selected = NULL)
 {
   $result = "<select name=\"country_code\">";
   $result .= "<option value=\"\">Any</option>";
-  $data = query("SELECT * from country");
+  $data = query("SELECT * from country ORDER BY name");
   while ($row = $data->fetch_assoc())
     $result .= "<option value=\"".$row["code"]."\"".($selected == $row["code"] ? " selected=\"selected\"" : "").">".$row["name"]."</option>";
   $result .= "</select>";

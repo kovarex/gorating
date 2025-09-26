@@ -12,7 +12,6 @@
 <br/>
 TODO:
 <ul>
-  <li>Country selector</li>
   <li>Some styles</li>
   <li>More functionality for higher admin roles (rating change + log of it in the list of games), removal of games or users, adding sgf files to others etc.</li>
 </ul>

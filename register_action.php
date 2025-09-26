@@ -3,39 +3,39 @@ require("src/register_helper.php");
 require("src/egd_api.php");
 $checkResult = checkRegistrationAvailability($_POST["invite_id"], $_POST["secret"]);
 if (is_string($checkResult))
-{
-  echo $checkResult;
-  return;
-}
+  redirectWithMessage($checkResult);
 
 $invite = query("SELECT * FROM invite WHERE id=".escape($_POST["invite_id"]))->fetch_assoc();
 assert(!empty($invite));
 
 if (empty($_POST["username"]))
-{
-  echo "Username can't be empty";
-  return;
-}
+  redirectWithMessage("Username can't be empty");
 
 if ($invite["user_id"])
 {
   $existingUser = query("SELECT * FROM user WHERE id=".escape($invite["user_id"]))->fetch_assoc();
   if (!$existingUser)
-  {
-    echo "The user you are supposed to register as doesn't exist, this shouldn't happen.";
-    return;
-  }
+    redirectWithMessage("The user you are supposed to register as doesn't exist, this shouldn't happen.");
 }
 elseif ($invite["rating"])
   $rating = $invite["rating"];
 else
   $rating = "100";
 
+$userByUsername = query("SELECT * FROM user where username=".escape($_POST["username"]))->fetch_assoc();
+if (!empty($userByUsername))
+  redirectWithMessage("The username \"".$_POST["username"]."\" is taken");
 
 $db->begin_transaction();
 
 if (empty($existingUser))
 {
+  if (@!$_POST["country_code"])
+    redirectWithMessage("Country not selected");
+  $countryByCode = query("SELECT * FROM country WHERE code=".escape($_POST["country_code"]))->fetch_assoc();
+  if (!$countryByCode)
+    redirectWithMessage("Country with code '".$_POST["country_code"]."' not found.");
+
   query("INSERT INTO
          user(username,
               first_name,
@@ -53,7 +53,7 @@ if (empty($existingUser))
                    escape($invite["email"]).",".
                    escape($rating).",".
                    escape(password_hash($_POST["password"], PASSWORD_DEFAULT)).",".
-                   "1,".
+                   escape($countryByCode["id"]).",".
                    ADMIN_LEVEL_USER.",".
                    $invite["from_user_id"].",
                    now())");
@@ -61,13 +61,6 @@ if (empty($existingUser))
 }
 else
 {
-  $userByUsername = query("SELECT * FROM user where username=".escape($_POST["username"]))->fetch_assoc();
-  if (!empty($userByUsername))
-  {
-    echo "The username \"".$_POST["username"]."\" is taken";
-    return;
-  }
-
   query("UPDATE user
          SET
            username=".escape($_POST["username"]).",
