@@ -99,8 +99,6 @@ $table->addColumn("user_register_timestamp",
                   {
                     if (!empty($row["user_register_timestamp"]))
                       echo date("d. m. Y H:i", strtotime($row["user_register_timestamp"]));
-                    else if (canInvite())
-                      echo "<a href=invites?pin=".$row["egd_pin"].">Invite</a>";
                   });
 
 $table->addColumn("games",
