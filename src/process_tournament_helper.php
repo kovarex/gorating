@@ -1,4 +1,5 @@
 <?php
+require_once("src/db.php");
 require_once("egd_api.php");
 
 function getTournamentsToIgnore()
@@ -107,7 +108,7 @@ function processTournament($key)
 
   query("DELETE FROM egd_tournament_to_process WHERE egd_key=".escape($key));
   $placement = 1;
-  $ratingUpdates = "";
+  $ratingUpdates = [];
 
   foreach ($divs as $div)
     if ($div->attributes->getNamedItem("class")->textContent == "thisdiv")
@@ -237,12 +238,13 @@ function processTournament($key)
         $pinsProcessed[$playerPin][$opponentPin] = lastInsertID();
       }
 
-      $ratingUpdateQuery = "UPDATE user SET egd_rating=".escape($currentGor);
-      $ratingUpdateQuery .= ", rating=".escape(empty($user["username"]) ? $currentGor : $user["rating"]);
-      $ratingUpdateQuery .= " WHERE user.id=".escape($user["id"]);
-      $ratingUpdates .= $ratingQuery.";";
+      $ratingUpdateQuery = "UPDATE user SET egd_rating=".($currentGor);
+      $ratingUpdateQuery .= ", rating=".(empty($user["username"]) ? $currentGor : $user["rating"]);
+      $ratingUpdateQuery .= " WHERE user.id=".$user["id"];
+      array_push($ratingUpdates, $ratingUpdateQuery);
     }
-  query($ratingUpdates);
+  foreach ($ratingUpdates as $ratingUpdate)
+    query($ratingUpdate);
   $db->commit();
   return true;
 }

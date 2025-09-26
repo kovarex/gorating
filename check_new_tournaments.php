@@ -39,6 +39,9 @@ foreach ($tables as $table)
   }
 }
 
+if (!isset($tournamentsToProcessInReversedOrder))
+  die("No new tournaments found.");
+
 for ($i = count($tournamentsToProcessInReversedOrder) - 1; $i >= 0; $i--)
   query("INSERT INTO egd_tournament_to_process(egd_key) VALUES(".escape($tournamentsToProcessInReversedOrder[$i]).")");
 if (count($tournamentsToProcessInReversedOrder))

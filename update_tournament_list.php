@@ -1,5 +1,6 @@
 <?php
-require("src/egd_api.php");
+require_once("src/egd_api.php");
+require_once("src/process_tournament_helper.php");
 
 $data = getUrlContent("https://www.europeangodatabase.eu/EGD/EGD_2_0/downloads/tlist.html");
 if (empty($data))
