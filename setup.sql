@@ -86,16 +86,18 @@ CREATE TABLE `user` (
 CREATE TABLE `invite` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `from_user_id` INT UNSIGNED NOT NULL,
-  `egd_pin` INT NULL DEFAULT NULL,
-  `first_name` VARCHAR(64) NOT NULL,
-  `last_name` VARCHAR(64) NOT NULL,
+  `user_id` INT unsigned NULL DEFAULT NULL,
+  `first_name` VARCHAR(64) NOT DEFAULT NULL,
+  `last_name` VARCHAR(64) NOT DEFAULT NULL,
   `email` VARCHAR(256) NOT NULL,
   `secret` INT NOT NULL,
   `rating` DOUBLE NULL DEFAULT NULL,
   `timestamp` TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP),
   PRIMARY KEY (`id`),
   INDEX `from_user_id` (`from_user_id`),
+  INDEX `user_id` (`user_id`),
   FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
+  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) COLLATE='utf8mb4_0900_ai_ci'ENGINE=INNODB;
 
 CREATE TABLE `egd_tournament` (

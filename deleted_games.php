@@ -34,7 +34,7 @@ $table->addColumn("winner_name",
                     $ratingToShow = $row["winner_rating"];
                     if (empty($ratingToShow))
                       $ratingToShow = $row["winner_egd_rating"];
-                    echo playerLink($row["winner_id"], $row["winner_name"], $row["winner_username"])." (".round($ratingToShow, 1).")";
+                    echo playerLink($row, "winner")." (".round($ratingToShow, 1).")";
                   });
 
 $table->addColumn("loser_name",
@@ -50,7 +50,7 @@ $table->addColumn("loser_name",
                     $ratingToShow = $row["loser_rating"];
                     if (empty($ratingToShow))
                       $ratingToShow = $row["loser_egd_rating"];
-                    echo playerLink($row["loser_id"], $row["loser_name"], $row["loser_username"])." (".round($ratingToShow, 1).")";
+                    echo playerLink($row, "loser")." (".round($ratingToShow, 1).")";
                   });
 
 $table->addColumn("game_type_name",

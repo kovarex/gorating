@@ -1,4 +1,5 @@
 <?php
+error_reporting(E_ALL);
 $pagePath = substr(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), 1);
 $query = parse_url($_SERVER["REQUEST_URI"], PHP_URL_QUERY);
 
@@ -27,12 +28,13 @@ foreach (array("login",
                "sgf",
                "process_tournament",
                "update_rating",
-               "process_tournament_batch") as $target)
+               "process_tournament_batch",
+               "invite_action",
+               "invite_existing_user_action") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
 foreach (array("player",
                "players",
-               "invite",
                "invites",
                "tournaments",
                "tournament",
@@ -42,7 +44,8 @@ foreach (array("player",
                "about",
                "get_all_egd_players",
                "update_tournament_list",
-               "deleted_games") as $target)
+               "deleted_games",
+               "invite_existing_user") as $target)
   $pages[$target] = NORMAL_PAGE;
 
 if ($pagePath == "")

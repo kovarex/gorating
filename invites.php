@@ -3,6 +3,10 @@ checkLoggedIn();
 if (!empty(@$_GET["pin"]))
   $player = query("SELECT first_name, last_name FROM user WHERE egd_pin=".escape($_GET["pin"]))->fetch_assoc();
 
+echo "<div class=\"centered-div\">";
+echo "Only  invite playres NOT in EGD here!<br/>\n";
+echo "To invite EGD players, use the Invite link under their name.";
+echo "</div>";
 echo "<form method=\"post\" action=\"invite\">
         <table>
           <tr>
@@ -14,11 +18,7 @@ echo "<form method=\"post\" action=\"invite\">
             <td><input type=\"text\" name=\"last_name\" value=\"".@$player["last_name"]."\"/></td>
           </tr>
           <tr>
-            <td><label for=\"egd_pin\">EGD pin:</label></td>
-            <td><input type=\"text\" name=\"egd_pin\" value=\"".@$_GET["pin"]."\"/></td>
-          </tr>
-          <tr>
-            <td><label for=\"rating\">Proposed rating (used when egd is not provided):</label></td>
+            <td><label for=\"rating\">Starting rating (be responsible):</label></td>
             <td><input type=\"text\" name=\"rating\"/></td>
           </tr>
           <tr>
@@ -29,37 +29,45 @@ echo "<form method=\"post\" action=\"invite\">
         <input type=\"hidden\" name=\"redirect\" value=\"invites\"/>
         <input type=\"submit\" value=\"invite\"/>
       </form>";
-$result = query("SELECT
-                    invite.first_name as first_name,
-                    invite.last_name as last_name,
-                    invite.email as email,
-                    invite.egd_pin as egd_pin,
-                    invite.from_user_id as from_user_id,
-                    CONCAT(user.first_name, ' ', user.last_name) as from_user_name,
-                    user.username as from_user_username
-                 FROM
-                   invite, user
-                 WHERE
-                   invite.from_user_id = user.id".(canAccessAllInvites() ? "" : " and invite.from_user_id=".userID()));
-if ($result->num_rows == 0)
-{
-  echo "No pending invites";
-  return;
-}
 
-echo "<table class='data-table'><tr><th>Name</th><th>EGD</th><th>email</th>";
+require_once("src/table_viewer.php");
+$table = new TableViewer("invite
+                            LEFT JOIN user ON invite.user_id=user.id
+                            JOIN user as inviter ON invite.from_user_id=inviter.id".(canAccessAllInvites() ? "" : "WHERE invite.from_user_id=".userID()),
+                         $_GET);
+
+$table->setPrimarySort(new SortDefinition("timestamp", false));
+
+$table->addColumn("name",
+                  "Name",
+                  array(array("IF(user.id, CONCAT(user.first_name, ' ', user.last_name), CONCAT(invite.first_name, ' ', invite.last_name))", "name"),
+                        array("user.id", "id"),
+                        array("user.username", "username")),
+                  function($row)
+                  {
+                    if (@$row["id"])
+                      echo playerLink($row);
+                    else
+                      echo $row["name"];
+                  });
+
 if (canAccessAllInvites())
-  echo "<th>Creator</th>";
-echo "</tr>";
-while($row = $result->fetch_assoc())
-{
-  echo "<tr>";
-  echo "<td>".$row["first_name"]." ".$row["last_name"]."</td>";
-  echo "<td>".egdLink($row["egd_pin"])."</td>";
-  echo "<td>".$row["email"]."</td>";
-  if (canAccessAllInvites())
-    echo "<td>".playerLink($row["from_user_id"], $row["from_user_name"], $row["from_user_username"])."</td>";
-  echo "</tr>";
-}
-echo "</table>";
+  $table->addColumn("email",
+                    "Email",
+                    array(array("invite.email", "email")),
+                    function($row) { echo $row["email"]; });
+if (canAccessAllInvites())
+  $table->addColumn("inviter_name",
+                    "Inviter",
+                    array(array("CONCAT(inviter.first_name, ' ', inviter.last_name)", "inviter_name"),
+                          array("inviter.id", "inviter_id"),
+                          array("inviter.username", "inviter_username")),
+                    function($row) { echo  playerLink($row, "inviter"); });
+
+$table->addColumn("timestamp",
+                   "Timestamp",
+                   array(array("invite.timestamp", "timestamp")),
+                   function($row) { echo date("d. m. Y H:i", strtotime($row["timestamp"])); });
+
+$table->render();
 ?>

@@ -82,8 +82,8 @@ class TableColumn
     echo "</a>";
     if ($thisIsSorted)
     {
-      global $imageAddress;
-      echo "<img class=\"sorting-image\" src=\"".$imageAddress."/arrow-".($currentSort->ascending ? "up" : "down").".png\"/>";
+      global $resourceAddress;
+      echo "<img class=\"sorting-image\" src=\"".$resourceAddress."/img/arrow-".($currentSort->ascending ? "up" : "down").".png\"/>";
     }
     echo "</span>";
     echo "</th>";

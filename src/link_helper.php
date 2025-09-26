@@ -32,15 +32,31 @@ function redirectWithMessage($message)
   redirectWithMessageCustom($redirect, $message);
 }
 
-function playerLink($playerID, $playerName, $username)
+function getPlayerPath($userID, $username)
 {
   global $page;
   if ($username and !@$page[$username])
-    $path = $username;
-  else
-    $path = "/player?id=".$playerID;
+    return $username;
+  return "player?id=".$userID;
+}
 
-  return "<a href=\"".$path."\">".$playerName."</a>";
+function playerLink($playerIDOrUserData, $playerNameOrValuePrefix = null, $username = null, $fullAddress = null)
+{
+  if (!$playerIDOrUserData)
+    return "";
+
+  if (is_array($playerIDOrUserData))
+  {
+    $prefix = $playerNameOrValuePrefix ? $playerNameOrValuePrefix."_" : "";
+    $id = $playerIDOrUserData[$prefix."id"];
+    if (!$id)
+      return "";
+    return playerLink($id,
+                      @$playerIDOrUserData[$prefix."name"] ?: $playerIDOrUserData[$prefix."first_name"]." ".$playerIDOrUserData[$prefix."last_name"],
+                      $playerIDOrUserData[$prefix."username"],
+                      $fullAddress);
+  }
+  return "<a href=\"".($fullAddress ?: "").getPlayerPath($playerIDOrUserData, $username)."\">".$playerNameOrValuePrefix."</a>";
 }
 
 function readableTournamentName($tournamentName)

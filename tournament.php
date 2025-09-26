@@ -95,7 +95,7 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
   echo "<tr>";
   $roundInfo = $placementInfo[$placement];
 
-  echo "<td>".$placement.". ".playerLink($roundInfo["id"], $roundInfo["name"], @$roundInfo["username"])."</td>";
+  echo "<td>".$placement.". ".playerLink($roundInfo)."</td>";
   for ($round = 1; $round <= $tournament["round_count"]; $round++)
   {
     echo "<td>";
@@ -105,7 +105,7 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
       echo "<span class=\"".($cellData["result"] ? "winner" : "loser")."\">";
        echo $cellData["result"] ? "WIN" : "LOSS";
       echo "</span>";
-      echo " ".playerLink($cellData["id"], $cellData["name"], $cellData["username"]);
+      echo " ".playerLink($cellData);
     }
     echo "</td>";
   }

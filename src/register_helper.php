@@ -6,7 +6,7 @@ function checkRegistrationAvailability($inviteID, $secret)
 
   $invite = query("SELECT * FROM invite WHERE id=".escape($inviteID))->fetch_assoc();
   if (empty($invite))
-    return "Specified invite doesn't exist.";
+    return "Specified invite with id=".$inviteID." doesn't exist.";
 
   if ($invite["secret"] != $secret)
     return "Secret incorrect";

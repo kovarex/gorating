@@ -11,31 +11,26 @@ if (is_string($checkResult))
 $invite = query("SELECT * FROM invite WHERE id=".escape($_POST["invite_id"]))->fetch_assoc();
 assert(!empty($invite));
 
-if ($invite["egd_pin"])
-{
-  $egdInfo = getEgdInfo($invite["egd_pin"]);
-  $rating = $egdInfo["rating"];
-}
-elseif ($invite["rating"])
-  $rating = $invite["rating"];
-else
-  $rating = "100";
-
 if (empty($_POST["username"]))
 {
   echo "Username can't be empty";
   return;
 }
 
-$userByUsername = query("SELECT * FROM user where username=".escape($_POST["username"]))->fetch_assoc();
-if (!empty($userByUsername))
+if ($invite["user_id"])
 {
-  echo "That username is taken";
-  return;
+  $existingUser = query("SELECT * FROM user WHERE id=".escape($invite["user_id"]))->fetch_assoc();
+  if (!$existingUser)
+  {
+    echo "The user you are supposed to register as doesn't exist, this shouldn't happen.";
+    return;
+  }
 }
+elseif ($invite["rating"])
+  $rating = $invite["rating"];
+else
+  $rating = "100";
 
-if (!empty($egdInfo))
-  $existingUser = query("SELECT * FROM user WHERE egd_pin=".escape($invite["egd_pin"]))->fetch_assoc();
 
 $db->begin_transaction();
 
@@ -46,7 +41,6 @@ if (empty($existingUser))
               first_name,
               last_name,
               email,
-              egd_pin,
               rating,
               password,
               country_id,
@@ -57,7 +51,6 @@ if (empty($existingUser))
                    escape($invite["first_name"]).",".
                    escape($invite["last_name"]).",".
                    escape($invite["email"]).",".
-                   escape($invite["egd_pin"]).",".
                    escape($rating).",".
                    escape(password_hash($_POST["password"], PASSWORD_DEFAULT)).",".
                    "1,".
@@ -68,6 +61,13 @@ if (empty($existingUser))
 }
 else
 {
+  $userByUsername = query("SELECT * FROM user where username=".escape($_POST["username"]))->fetch_assoc();
+  if (!empty($userByUsername))
+  {
+    echo "The username \"".$_POST["username"]."\" is taken";
+    return;
+  }
+
   query("UPDATE user
          SET
            username=".escape($_POST["username"]).",
@@ -77,10 +77,10 @@ else
            invited_by_user_id=".$invite["from_user_id"].",
            register_timestamp=now()
          WHERE
-           user.egd_pin=".escape($invite["egd_pin"]));
+           user.id=".escape($invite["user_id"]));
   $newUserID = $existingUser["id"];
 }
-query("DELETE FROM invite WHERE id=".$invite["id"]);
+query("DELETE FROM invite WHERE user_id=".$newUserID);
 $db->commit();
-redirectWithMessageCustom("/player?id=".$newUserID, "Registration successful.");
+redirectWithMessageCustom(getPlayerPath($newUserID, $_POST["username"]), "Registration successful.");
 ?>

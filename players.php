@@ -1,5 +1,5 @@
 <?php
-require("src/table_viewer.php");
+require_once("src/table_viewer.php");
 
 $search = @$_GET["search"];
 
@@ -67,7 +67,7 @@ $table->addColumn("name",
                   array(array("CONCAT(user.first_name, ' ', user.last_name)", "name"),
                         array("user.id", "id"),
                         array("user.username", "username")),
-                  function($row){ echo playerLink($row["id"], $row["name"], $row["username"]); });
+                  function($row){ echo playerLink($row); });
 $table->addColumn("egd_pin",
                   "EGD",
                   array(array("user.egd_pin", "egd_pin")),
@@ -86,7 +86,7 @@ if (canSeeInviters())
                     array(array("inviter.id", "inviter_id"),
                           array("CONCAT(inviter.first_name, ' ', inviter.last_name)", "inviter_name"),
                           array("inviter.username", "inviter_username")),
-                    function($row) { echo playerLink($row["inviter_id"], $row["inviter_name"], $row["inviter_username"]); });
+                    function($row) { echo playerLink($row, "inviter"); });
 if (canSeeEmails())
   $table->addColumn("user_email",
                     "Email",

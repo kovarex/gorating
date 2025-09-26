@@ -21,8 +21,15 @@ echo "<input type=\"submit\" value=\"Submit\"/>";
 echo "</form>";
 echo "</div>";
 
-if (userID() && userID() != $player["id"] and $player["username"])
-  echo "<div class=\"centered-div\"><a class=\"report-loss-link\" href=\"report?id=".$player["id"]."\">Report loss</a></div>";
+if (userID() && userID() != $player["id"])
+{
+  echo "<div class=\"centered-div\"><a class=\"report-loss-link\" href=\"";
+  if (@$player["username"])
+    echo "report?id=".$player["id"]."\">Report loss";
+  else
+    echo "invite_existing_user?user_id=".$player["id"]."\">Invite";
+  echo "</a></div>";
+}
 
 echo "<table class=\"centered-table\">";
 echo "<tr><td>Rating:</td><td>".round($player["rating"])."</td></tr>";
@@ -108,7 +115,7 @@ $table->addColumn("opponent_name",
                     $ratingToShow = $row["opponent_rating"];
                     if (empty($ratingToShow))
                       $ratingToShow = $row["opponent_egd_rating"];
-                    echo playerLink($row["opponent_id"], $row["opponent_name"], $row["opponent_username"])." (".round($ratingToShow).")";
+                    echo playerLink($row, "opponent")." (".round($ratingToShow).")";
                   });
 
 $table->addColumn("game_type_name",

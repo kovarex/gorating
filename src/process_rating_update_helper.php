@@ -31,7 +31,7 @@ function reportRatingFinishedResults()
   $result .= "<caption>Rating changes</caption>";
   $result .= "<tr><th>Name</th><th>Rating change</th></tr>";
   while ($row = $data->fetch_assoc())
-    $result .= "<tr><td>".playerLink($row["id"], $row["name"], $row["username"])."</td><td><span class=\"".($row["old_value"] < $row["new_value"] ? "winner" : "loser")."\">".round($row["old_value"], 1)."&rarr;".round($row["new_value"], 1)."</span></td></tr>";
+    $result .= "<tr><td>".playerLink($row)."</td><td><span class=\"".($row["old_value"] < $row["new_value"] ? "winner" : "loser")."\">".round($row["old_value"], 1)."&rarr;".round($row["new_value"], 1)."</span></td></tr>";
   $result .= "</table>";
   return $result;
 }
