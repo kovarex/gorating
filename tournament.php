@@ -78,6 +78,7 @@ while ($row = $data->fetch_assoc())
   $table[$horizontalPlacement][$round]["result"] = $horizontalPlayerIsWinner;
   $placementInfo[$horizontalPlacement]["id"] = $thisUserID;
   $placementInfo[$horizontalPlacement]["name"] = $thisName;
+  $placementInfo[$horizontalPlacement]["username"] = $thisUsername;
 
   $verticalPlacement = max($winnerPlacement, $loserPlacement);
   $table[$verticalPlacement][$round]["id"] = $thisUserID;
@@ -86,6 +87,7 @@ while ($row = $data->fetch_assoc())
   $table[$verticalPlacement][$round]["result"] = !$horizontalPlayerIsWinner;
   $placementInfo[$verticalPlacement]["id"] = $otherUserID;
   $placementInfo[$verticalPlacement]["name"] = $otherName;
+  $placementInfo[$verticalPlacement]["username"] = $otherUsername;
 }
 
 for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
