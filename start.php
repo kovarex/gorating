@@ -7,7 +7,7 @@ if ($query)
   foreach (explode('&', $query) as $chunk)
   {
     $param = explode("=", $chunk);
-    if ($param)
+    if ($param and @$param[0] and @$param[1])
       $_GET[urldecode($param[0])] = urldecode($param[1]);
   }
 
@@ -31,7 +31,8 @@ foreach (array("login",
                "update_rating",
                "process_tournament_batch",
                "invite_action",
-               "invite_existing_user_action") as $target)
+               "invite_existing_user_action",
+               "edit_game_action") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
 foreach (array("player",
@@ -40,13 +41,13 @@ foreach (array("player",
                "tournaments",
                "tournament",
                "register",
-               "register.php",
                "report",
                "about",
                "get_all_egd_players",
                "update_tournament_list",
                "deleted_games",
-               "invite_existing_user") as $target)
+               "invite_existing_user",
+               "edit_game") as $target)
   $pages[$target] = NORMAL_PAGE;
 
 if ($pagePath == "")

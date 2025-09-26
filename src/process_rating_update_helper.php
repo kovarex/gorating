@@ -133,12 +133,15 @@ function processRating($iterationCount)
     $winnerOldRating = getRatingToUse($row["winner_rating"], $row["winner_rating_timestamp"], $row["game_winner_rating"], $gameTimestamp);
     $loserOldRating = getRatingToUse($row["loser_rating"], $row["loser_rating_timestamp"], $row["game_loser_rating"], $gameTimestamp);
 
+    $winnerIsBlack = $row["game_winner_is_black"];
+
     $winnerExtraHandicap = ($winnerIsBlack ? 1 : -1) * $row["game_handicap"];
     $winnerExtraKomi = ($winnerIsBlack ? -1 : 1) * ($row["game_komi"] - 6.5);
 
     $winnerNewRating = calculateNewRating($winnerOldRating, $loserOldRating, 1.0, $gameType, $winnerExtraHandicap, $winnerExtraKomi);
-
     $loserNewRating = calculateNewRating($loserOldRating, $winnerOldRating, 0.0, $gameType, -$winnerExtraHandicap, -$winnerExtraKomi);
+    if (true)
+      echo "Loser(id=".$row["loser_user_id"]."):".$loserOldRating."->".$loserNewRating." extraHandicap:".(-$winnerExtraHandicap)." extraKomi:".(-$winnerExtraKomi)."<br/>\n";
     $winnerId = $row["winner_user_id"];
     $loserId = $row["loser_user_id"];
 

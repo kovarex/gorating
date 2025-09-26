@@ -249,6 +249,14 @@ CREATE TRIGGER `game_after_update` AFTER UPDATE ON `game`
      CALL update_user_game_count(OLD.loser_user_id);
      CALL update_user_game_count(NEW.loser_user_id);
    END IF;
+   IF OLD.loser_user_id != NEW.loser_user_id or
+      OLD.winner_user_id != NEW.winner_user_id or
+      OLD.handicap != NEW.handicap or
+      OLD.komi != NEW.komi or
+      OLD.winner_is_black != NEW.winner_is_black THEN
+      CALL start_rating_update(OLD.winner_user_id, OLD.winner_old_rating, OLD.loser_user_id, OLD.loser_old_rating, OLD.timestamp);
+   END IF;
+
    IF OLD.deleted != NEW.deleted THEN
      CALL update_user_game_count(OLD.winner_user_id);
      CALL start_rating_update(OLD.winner_user_id, OLD.winner_old_rating, OLD.loser_user_id, OLD.loser_old_rating, OLD.timestamp);

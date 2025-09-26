@@ -129,7 +129,7 @@ class TableViewer
   public function addColumn($name, $caption, $sql, $cellFiller, $cellParameters = NULL)
   {
     $this->columns[$name] = new TableColumn($name, $caption, $sql, $cellFiller, $cellParameters, $this->get);
-    if (@$_GET["sort"] == $name)
+    if (!empty($name) && @$_GET["sort"] == $name)
       $this->currentSort = $this->columns[$name]->getSort(@$_GET["d"]);
   }
 
