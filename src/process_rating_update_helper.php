@@ -51,19 +51,19 @@ function processRating($iterationCount)
 
     $gameToProcess = query("SELECT
                               game_id,
-                              ANY_VALUE(winner_user_id) as winner_user_id,
-                              ANY_VALUE(loser_user_id) as loser_user_id,
+                              winner_user_id as winner_user_id,
+                              loser_user_id as loser_user_id,
                               MAX(winner_rating) as winner_rating,
                               MAX(winner_rating_timestamp) as winner_rating_timestamp,
-                              ANY_VALUE(game_winner_rating) as game_winner_rating,
+                              game_winner_rating as game_winner_rating,
                               MAX(loser_rating) as loser_rating,
                               MAX(loser_rating_timestamp) as loser_rating_timestamp,
-                              ANY_VALUE(game_loser_rating) as game_loser_rating,
-                              ANY_VALUE(game_timestamp) as game_timestamp,
-                              ANY_VALUE(game_type_id) as game_type_id,
-                              ANY_VALUE(game_handicap) as game_handicap,
-                              ANY_VALUE(game_komi) as game_komi,
-                              ANY_VALUE(game_winner_is_black) as game_winner_is_black
+                              game_loser_rating as game_loser_rating,
+                              game_timestamp as game_timestamp,
+                              game_type_id as game_type_id,
+                              game_handicap as game_handicap,
+                              game_komi as game_komi,
+                              game_winner_is_black as game_winner_is_black
                             FROM
                             (SELECT
                               game.id as game_id,
