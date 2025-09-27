@@ -1,5 +1,5 @@
 <?php
-require_once("src/db.php");
+require_once("db.php");
 require_once("egd_api.php");
 
 function getTournamentsToIgnore()
