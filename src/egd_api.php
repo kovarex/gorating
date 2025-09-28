@@ -99,7 +99,7 @@ function getEgdInfo($pin)
 
   $inputs = $doc->getElementsByTagName('input');
   foreach ($inputs as $input)
-    if ($input->attributes->getNamedItem("name")->textContent == "gor")
+    if (@$input->attributes->getNamedItem("name")->textContent == "gor")
     {
       $gor = $input->attributes->getNamedItem("value")->textContent;
       $gorPieces = explode(" ", $gor);
@@ -114,7 +114,7 @@ function getEgdInfo($pin)
       }
       $result["rating"] = $rating;
     }
-    elseif ($input->attributes->getNamedItem("name")->textContent == "country")
+    elseif (@$input->attributes->getNamedItem("name")->textContent == "country")
       $result["country"] = getCountryCodeAndID($input->attributes->getNamedItem("value")->textContent);
   if (!empty(@$result["rating"]) && !empty(@$result["country"]))
     return $result;
