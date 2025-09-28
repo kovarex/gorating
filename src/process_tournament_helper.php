@@ -60,7 +60,7 @@ function processTournament($key)
 
   $spans = $doc->getElementsByTagName('span');
   foreach ($spans as $span)
-    if ($span->attributes->getNamedItem("class")->textContent == "plain5")
+    if (@$span->attributes->getNamedItem("class")->textContent == "plain5")
     {
       $tournamentName = $span->nodeValue;
       break;
@@ -247,4 +247,20 @@ function processTournament($key)
     query($ratingUpdate);
   $db->commit();
   return true;
+}
+
+function getPageOfLatestTournaments()
+{
+  $post_data = array('ricerca' => '1',
+                     'orderBy' => 'orderBy=Tournament_Date,Tournament_Code',
+                     'viewStart' => 'viewStart=0',
+                     'orderDir' => 'orderDir=DESC',
+                     'tournament_code' => '',
+                     'date_from' => '',
+                     'date_to' => '',
+                     'tournament_description' => '',
+                     'country_code' => '*',
+                     'city' => '*',
+                     'filter' => 'All');
+  return getUrlContentSafe("https://www.europeangodatabase.eu/EGD/Find_Tournament.php", $post_data);
 }

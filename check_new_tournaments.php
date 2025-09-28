@@ -2,21 +2,8 @@
 require_once("src/egd_api.php");
 require_once("src/process_tournament_helper.php");
 
-$post_data = array('ricerca' => '1',
-                   'orderBy' => 'orderBy=Tournament_Date,Tournament_Code',
-                   'viewStart' => 'viewStart=0',
-                   'orderDir' => 'orderDir=DESC',
-                   'tournament_code' => '',
-                   'date_from' => '',
-                   'date_to' => '',
-                   'tournament_description' => '',
-                   'country_code' => '*',
-                   'city' => '*',
-                   'filter' => 'All');
 
-$doc = getPageDom("https://www.europeangodatabase.eu/EGD/Find_Tournament.php", $post_data);
-
-
+$doc = getStringDom(getPageOfLatestTournaments());
 $tournamentsToIgnore = getTournamentsToIgnore();
 
 $tables = $doc->getElementsByTagName('table');

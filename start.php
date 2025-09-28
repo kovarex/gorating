@@ -33,7 +33,8 @@ foreach (array("login",
                "invite_action",
                "invite_existing_user_action",
                "edit_game_action",
-               "check_new_tournaments") as $target)
+               "check_new_tournaments",
+               "get_new_tournaments_contents") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
 foreach (array("player",

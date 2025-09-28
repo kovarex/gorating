@@ -32,17 +32,29 @@ function getUrlContent($url, $post_data = NULL)
   return $result;
 }
 
+function getUrlContentSafe($url, $post_data = NULL)
+{
+  for ($i = 1; $i < 10; $i++)
+  {
+    $data = getUrlContent($url, $post_data);
+    if (empty($data))
+      die("Couldn't load the page.".$url);
+    if ($data == "error code: 1015")
+    {
+      usleep(500000);
+      continue;
+    }
+    return $data;
+  }
+}
+
 function getPageDom($url, $post_data = NULL)
 {
-  tryAgain:
-  $data = getUrlContent($url, $post_data);
-  if (empty($data))
-    die("Couldn't load the page.".$url);
-  if ($data == "error code: 1015")
-  {
-    usleep(500000);
-    goto tryAgain;
-  }
+  return getStringData(getUrlContentSafe($url, $post_data));
+}
+
+function getStringDom($data)
+{
   $doc = new DOMDocument();
   if (!$doc->loadHTML('<?xml encoding="UTF-8">'.$data))
     die("Couldn't parse the HTML from".$url);
