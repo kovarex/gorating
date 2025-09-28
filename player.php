@@ -108,7 +108,7 @@ $table->addColumn("egd_rating_change",
 
 $table->addColumn("opponent_name",
                   "Opponent",
-                  array(array("IF(winner.id = ".escape($_GET["id"]).", CONCAT(loser.first_name, ' ', loser.last_name), CONCAT(winner.first_name, ' ', winner.last_name))", "opponent_name"),
+                  array(array("IF(winner.id = ".escape($_GET["id"]).", loser.name, winner.name)", "opponent_name"),
                         array("IF(winner.id = ".escape($_GET["id"]).", loser.username, winner.username)", "opponent_username"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.loser_user_id, game.winner_user_id)", "opponent_id"),
                         array("IF(winner.id = ".escape($_GET["id"]).", loser.egd_pin, winner.egd_pin)", "opponent_egd_pin"),

@@ -64,7 +64,7 @@ $table->addColumn("rating",
                   "style=\"text-align: right;\"");
 $table->addColumn("name",
                   "Name",
-                  array(array("CONCAT(user.first_name, ' ', user.last_name)", "name"),
+                  array(array("user.name", "name"),
                         array("user.id", "id"),
                         array("user.username", "username")),
                   function($row){ echo playerLink($row); });
@@ -84,7 +84,7 @@ if (canSeeInviters())
   $table->addColumn("inviter_name",
                     "Invited By",
                     array(array("inviter.id", "inviter_id"),
-                          array("CONCAT(inviter.first_name, ' ', inviter.last_name)", "inviter_name"),
+                          array("inviter.name", "inviter_name"),
                           array("inviter.username", "inviter_username")),
                     function($row) { echo playerLink($row, "inviter"); });
 if (canSeeEmails())

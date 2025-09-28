@@ -21,7 +21,7 @@ function reportRatingFinishedResults()
 {
   $data = query("SELECT
                    user.id as id,
-                   CONCAT(user.first_name, ' ', user.last_name) as name,
+                   user.name as name,
                    user.username as username,
                    user.rating as old_value,
                    rating_update_value.rating as new_value

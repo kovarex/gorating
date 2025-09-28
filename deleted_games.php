@@ -31,7 +31,7 @@ $table->setLastSort(new SortDefinition("game.egd_tournament_round", false));
 
 $table->addColumn("winner_name",
                   "Winner",
-                  array(array("CONCAT(winner.first_name, ' ', winner.last_name)", "winner_name"),
+                  array(array("winner.name", "winner_name"),
                         array("winner.username", "winner_username"),
                         array("game.winner_user_id", "winner_id"),
                         array("winner.egd_pin", "winner_egd_pin"),
@@ -47,7 +47,7 @@ $table->addColumn("winner_name",
 
 $table->addColumn("loser_name",
                   "Loser",
-                  array(array("CONCAT(loser.first_name, ' ', loser.last_name)", "loser_name"),
+                  array(array("loser.name", "loser_name"),
                         array("loser.username", "loser_username"),
                         array("game.loser_user_id", "loser_id"),
                         array("loser.egd_pin", "loser_egd_pin"),

@@ -40,7 +40,7 @@ $table->setPrimarySort(new SortDefinition("timestamp", false));
 
 $table->addColumn("name",
                   "Name",
-                  array(array("IF(user.id, CONCAT(user.first_name, ' ', user.last_name), CONCAT(invite.first_name, ' ', invite.last_name))", "name"),
+                  array(array("IF(user.id, user.name, invite.name)", "name"),
                         array("user.id", "id"),
                         array("user.username", "username")),
                   function($row)
@@ -59,7 +59,7 @@ $table->addColumn("email",
 if (canAccessAllInvites())
   $table->addColumn("inviter_name",
                     "Inviter",
-                    array(array("CONCAT(inviter.first_name, ' ', inviter.last_name)", "inviter_name"),
+                    array(array("inviter.name", "inviter_name"),
                           array("inviter.id", "inviter_id"),
                           array("inviter.username", "inviter_username")),
                     function($row) { echo  playerLink($row, "inviter"); });
