@@ -113,7 +113,7 @@ function processTournament($key)
   $ratingUpdates = [];
 
   foreach ($divs as $div)
-    if ($div->attributes->getNamedItem("class")->textContent == "thisdiv")
+    if (@$div->attributes->getNamedItem("class")->textContent == "thisdiv")
     {
       $currentGor = $div->getElementsByTagname("b")[1]->nodeValue;
       if (!is_numeric($currentGor))
