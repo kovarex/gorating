@@ -21,19 +21,13 @@ function processTournament($key)
     if (!empty($result))
       $key = $result["egd_key"];
     else
-    {
-      echo "Nothing to process.";
       return false;
-    }
   }
 
   $existingTournament = query("SELECT * FROM egd_tournament WHERE egd_key =".escape($key))->fetch_assoc();
 
   if (!empty($existingTournament))
-  {
-    echo "Tournament \"".$key."\" already exists.";
-    return false;
-  }
+    throw new Exception("Tournament \"".$key."\" already exists.");
 
   echo $key." ";
 
@@ -70,24 +64,23 @@ function processTournament($key)
 
   // tournament name is null sometimes
   if (empty($country))
-    die("Tournament country info couldn't be determined. key=".$key);
+    throw new Exception("Tournament country info couldn't be determined. key=".$key);
   if (empty($gameTypeID))
-    die("Game type info couldn't be determined. key=".$key);
+    throw new Exception("Game type info couldn't be determined. key=".$key);
   if (empty($date))
-    die("Tournament date couldn't be determined. key=".$key);
+    throw new Exception("Tournament date couldn't be determined. key=".$key);
   if ($city === NULL)
-    die("Tournament city couldn't be determined. key=".$key);
+    throw new Exception("Tournament city couldn't be determined. key=".$key);
   if (empty($playerCount))
-    die("Player count couldn't be determined. key=".$key);
+    throw new Exception("Player count couldn't be determined. key=".$key);
   if (empty($roundCount))
-    die("Round count couldn't be determined. key=".$key);
+    throw new Exception("Round count couldn't be determined. key=".$key);
 
   $timestamp = date("Y-m-d H:i:s", strtotime($date));
 
   $divs = $doc->getElementsByTagName("div");
 
-  global $db;
-  $db->begin_transaction();
+  beginTransaction();
 
   query("INSERT INTO
            egd_tournament(egd_key,
@@ -117,13 +110,13 @@ function processTournament($key)
     {
       $currentGor = $div->getElementsByTagname("b")[1]->nodeValue;
       if (!is_numeric($currentGor))
-        die("The value of gor before tournament: \"".$currentGor." is not a number.");
+        throw new Exception("The value of gor before tournament: \"".$currentGor." is not a number.");
 
       $playerLink = $div->getElementsByTagname("a")[0]->nodeValue;
       $pieces = explode(" ", $playerLink);
       $playerPin = $pieces[0];
       if (!is_numeric($playerPin))
-        die("Pin ".$playerPin." isn't numeric");
+        throw new Exception("Pin ".$playerPin." isn't numeric");
       $firstName = $pieces[2];
       $lastName = $pieces[3];
       for ($i = 4; $i < count($pieces); $i++)
@@ -143,16 +136,16 @@ function processTournament($key)
           continue;
         $round = $cells[0]->nodeValue;
         if (!is_numeric($round))
-          die("Round should be numeric, but is \"".$round."\"");
+          throw new Exception("Round should be numeric, but is \"".$round."\"");
         $gorChange = $cells[1]->nodeValue;
         if (!is_numeric($gorChange))
-          die("gor change isn't numeric: \"".$gorChange."\"");
+          throw new Exception("gor change isn't numeric: \"".$gorChange."\"");
 
         $color = $cells[3]->nodeValue;
         if ($color == "")
           $color = "b"; // some old tournaments don't have color specified
         if ($color != "w" and $color != "b")
-          die("Color value unexpected:\"".$color."\"");
+          throw new Exception("Color value unexpected:\"".$color."\"");
         $handicapText = $cells[4]->nodeValue;
         $handicap = explode(" ", $handicapText)[0];
         $komi = ($handicap == 0 ? 6.5 : 0.5);
@@ -160,11 +153,11 @@ function processTournament($key)
         if ($resultText == "Jigo")
           continue; // I just ignore ties
         if ($resultText != "Win" and $resultText != "Loss")
-          die("Result text has unexpected value:\"".$resultText."\"");
+          throw new Exception("Result text has unexpected value:\"".$resultText."\"");
         $userWon = ($resultText == "Win");
         $opponentPin = $cells[6]->nodeValue;
         if (!is_numeric($opponentPin))
-          die("Opponent pin ".$opponentPin." isn't numeric.");
+          throw new Exception("Opponent pin ".$opponentPin." isn't numeric.");
         $opponentName = $cells[7]->nodeValue;
         // for some reason we see first_name first in this case (as opposed to the plaeyrs table)
         $opponentNameSplit = explode(" ", $opponentName);
@@ -178,10 +171,10 @@ function processTournament($key)
         $opponentUserID = addEGDPlayerIfNotPresent($opponentPin, $opponentFirstName, $opponentLastName);
         $opponentGor = $cells[9]->nodeValue;
         if (!is_numeric($opponentGor))
-          die("Opponent gor not numeric.");
+          throw new Exception("Opponent gor not numeric.");
         $opponentGorChange = $cells[10]->nodeValue;
         if (!is_numeric($opponentGorChange))
-          die("Opponent gro Change is not numeric.");
+          throw new Exception("Opponent gro Change is not numeric.");
 
         $winnerUserID = $userWon ? $userID : $opponentUserID;
         $loserUserID = $userWon ? $opponentUserID : $userID;
@@ -247,7 +240,7 @@ function processTournament($key)
     }
   foreach ($ratingUpdates as $ratingUpdate)
     query($ratingUpdate);
-  $db->commit();
+  commitTransaction();
   return true;
 }
 

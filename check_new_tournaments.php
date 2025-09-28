@@ -4,7 +4,6 @@ require_once("src/process_tournament_helper.php");
 
 function checkNewTournaments()
 {
-  $result = "";
   $doc = getStringDom(getPageOfLatestTournaments());
   $tournamentsToIgnore = getTournamentsToIgnore();
 
@@ -35,24 +34,28 @@ function checkNewTournaments()
   }
 
   if (!isset($tournamentsToProcessInReversedOrder))
-    return "Didn't find a single entry that would look like a tournament.";
+    throw new Exception("Didn't find a single entry that would look like a tournament.");
 
   if (count($tournamentsToProcessInReversedOrder) == 0)
-    $result .= $tournamentsIgnored." tournaments found but none was new.";
+    return "";
 
   for ($i = count($tournamentsToProcessInReversedOrder) - 1; $i >= 0; $i--)
     query("INSERT INTO egd_tournament_to_process(egd_key) VALUES(".escape($tournamentsToProcessInReversedOrder[$i]).")");
-  if (count($tournamentsToProcessInReversedOrder))
-    $result .="Added ".count($tournamentsToProcessInReversedOrder)." to be processed.<br/>\n";
-  return $result;
+  return "Added ".count($tournamentsToProcessInReversedOrder)." to be processed.<br/>\n";
 }
 
-echo "New tournaments check:".checkNewTournaments()."<br/>\n";
-echo "Existing tournaments processing:<br/>\n";
-for ($i = 0; $i < 30; $i++)
+try
 {
-  if (!processTournament(NULL))
-    break;
-  sleep(1);
+  echo checkNewTournaments();
+  for ($i = 0; $i < 30; $i++)
+  {
+    if (!processTournament(NULL))
+      break;
+    sleep(1);
+  }
+}
+catch (Exception $e)
+{
+  echo "Error: ".$e;
 }
 ?>
