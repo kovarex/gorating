@@ -34,6 +34,10 @@ function getUrlContent($url, $post_data = NULL)
 
 function getUrlContentSafe($url, $post_data = NULL)
 {
+  global $scrappingSecret;
+  if ($_SERVER['HTTP_HOST'] != "go.kovarex.com")
+    return getUrlContent("https://go.kovarex.com/scrap?secret=".$scrappingSecret."&url=".urlencode($url), $post_data);
+
   for ($i = 1; $i < 10; $i++)
   {
     $data = getUrlContent($url, $post_data);
@@ -48,17 +52,17 @@ function getUrlContentSafe($url, $post_data = NULL)
   }
 }
 
-function getPageDom($url, $post_data = NULL)
-{
-  return getStringData(getUrlContentSafe($url, $post_data));
-}
-
 function getStringDom($data)
 {
   $doc = new DOMDocument();
   if (!$doc->loadHTML('<?xml encoding="UTF-8">'.$data, LIBXML_NOWARNING | LIBXML_NOERROR))
     die("Couldn't parse the HTML from".$url);
   return $doc;
+}
+
+function getPageDom($url, $post_data = NULL)
+{
+  return getStringDom(getUrlContentSafe($url, $post_data));
 }
 
 function getCountryCodeAndID($country)
