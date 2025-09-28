@@ -8,8 +8,11 @@ echo "<form>";
 echo "<table class=\"centered-table\">";
 echo "<tr><td><label for=\"search\">Search (name, pin)</label></td><td><input type=\"text\" name=\"search\"".($search ? "value=\"".$search."\"" : "")."/></td></tr>";
 echo "<tr><td><label for=\"country_code\">Country:</label></td><td>".countrySelector(@$_GET["country_code"])."</td></tr>";
+$showRegisteredOnly = !@$_GET["from_search"] or !@$_GET["is_registered"];
+echo "<tr><td></td><td><input type=\"checkbox\" name=\"is_registered\" id=\"is_registered\"".($showRegisteredOnly ? " checked=\"checked\"" : "")."/><label for=\"is_registered\">Only registered:</label></td></tr>";
 echo "<tr><td colspan=2><input type=\"submit\" value=\"Submit\"/></td></tr>";
 echo "</table>";
+echo "<input type=\"hidden\" name=\"from_search\" value=\"true\"/>";
 echo "</form>";
 echo "</div>";
 
@@ -47,12 +50,14 @@ if (!empty($textQuery))
 if (!empty($_GET["country_code"]))
   $searchQuery .= (empty($searchQuery) ? " and " : " WHERE ")."country.code=".escape($_GET["country_code"]);
 
+if ($showRegisteredOnly)
+  $searchQuery .= (empty($searchQuery) ? " and " : " WHERE ")."user.register_timestamp IS NOT NULL";
+
 $table = new TableViewer("user
                             LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id
                             JOIN admin_level ON admin_level.id = user.admin_level_id
                             JOIN country ON country.id = user.country_id".$searchQuery,
                          $_GET);
-$table->setFixedSort(new SortDefinition("user_register_timestamp is null", true));
 if (empty($search))
   $table->setPrimarySort(new SortDefinition("rating", false));
 else
