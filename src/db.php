@@ -24,7 +24,13 @@ function query($query, $show = false)
     echo "Debug query: ".$query."<br/>\n";
   try
   {
+    $time_start = microtime(true);
     $result = $db->query($query);
+    $time_end = microtime(true);
+    $execution_time = ($time_end - $time_start);
+    if (@$_SESSION["statistics"])
+      echo "Query:".$query."<br/>\nTook ".round($execution_time, 4)." seconds<br/>\n";
+
     if (!empty($db->error))
     {
       echo "<div>Sql error:".$db->error."</div>\n";

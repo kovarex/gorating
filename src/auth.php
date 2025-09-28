@@ -66,6 +66,11 @@ function canEditGames()
   return userCanDo(ADMIN_LEVEL_USER);
 }
 
+function canShowStatistics()
+{
+  return userCanDo(ADMIN_LEVEL_OWNER);
+}
+
 function checkLoggedIn()
 {
   if (!userID())

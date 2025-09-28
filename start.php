@@ -1,4 +1,5 @@
 <?php
+$pageStart = microtime(true);
 error_reporting(E_ALL);
 $pagePath = substr(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), 1);
 $query = parse_url($_SERVER["REQUEST_URI"], PHP_URL_QUERY);
@@ -36,8 +37,9 @@ foreach (array("login_action",
                "check_new_tournaments",
                "get_new_tournaments_contents",
                "scrap",
-			   "reset_password_action",
-			   "reset_password_confirm_action") as $target)
+               "reset_password_action",
+               "reset_password_confirm_action",
+               "toggle_statistics") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
 foreach (array("login",
@@ -54,8 +56,8 @@ foreach (array("login",
                "deleted_games",
                "invite_existing_user",
                "edit_game",
-			   "reset_password",
-			   "reset_password_confirm") as $target)
+         "reset_password",
+         "reset_password_confirm") as $target)
   $pages[$target] = NORMAL_PAGE;
 
 if ($pagePath == "")

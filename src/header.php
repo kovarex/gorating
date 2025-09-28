@@ -2,12 +2,18 @@
 require("header_internal.php");
 
 if (!empty($_SESSION["user"]))
+{
   echo "<div style=\"position: absolute;right: 0px;\">
           Currently logged in as ".$_SESSION["user"]["username"]."
           <form method=\"post\" action=\"logout\" style=\"display:inline;\">
             <input type=\"submit\" value=\"Logoff\"/>
-          </form>
-        </div>";
+          </form>";
+  if (canShowStatistics())
+    echo "<form method=\"post\" action=\"toggle_statistics\" style=\"display:inline;\">
+            <input type=\"submit\" value=\"Toggle statistics\"/>
+          </form>";
+  echo "</div>";
+}
 else
   echo "<div style=\"position: absolute;right: 0px;\">
           Currently not logged in
