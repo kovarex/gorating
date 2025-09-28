@@ -40,7 +40,7 @@ $table->setPrimarySort(new SortDefinition("timestamp", false));
 
 $table->addColumn("name",
                   "Name",
-                  array(array("IF(user.id, user.name, invite.name)", "name"),
+                  array(array("IF(user.id, user.name, CONCAT(invite.first_name, ' ', invite.last_name))", "name"),
                         array("user.id", "id"),
                         array("user.username", "username")),
                   function($row)
