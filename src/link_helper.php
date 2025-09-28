@@ -15,7 +15,7 @@ function egdLink($pin)
 
 function redirectWithMessageCustom($redirect, $message)
 {
-  if (empty($redirect))
+  if (!isset($redirect))
     die("Redirect address not provided.");
   $parameterDelimiter = "?";
   if (str_contains($redirect, "?"))

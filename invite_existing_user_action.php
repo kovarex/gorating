@@ -27,7 +27,7 @@ query("INSERT INTO invite(from_user_id, user_id, email, secret) VALUES
          $secret.")");
 
 
-$message = "You have been invited to register as ".playerLink($user, NULL, NULL, "http://".$_SERVER['HTTP_HOST']."/")."<br/>\n";
+$message = "You have been invited to register as ".playerLink($user, NULL, NULL, "https://".$_SERVER['HTTP_HOST']."/")."<br/>\n";
 $message .= "Follow this <a href=\"".inviteAddress(lastInsertID(), $secret)."\">link</a> to register.";
 
 $from = 'webmaster@gorating.com';

@@ -35,7 +35,9 @@ foreach (array("login",
                "edit_game_action",
                "check_new_tournaments",
                "get_new_tournaments_contents",
-               "scrap") as $target)
+               "scrap",
+			   "reset_password_action",
+			   "reset_password_confirm_action") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
 foreach (array("player",
@@ -50,7 +52,9 @@ foreach (array("player",
                "update_tournament_list",
                "deleted_games",
                "invite_existing_user",
-               "edit_game") as $target)
+               "edit_game",
+			   "reset_password",
+			   "reset_password_confirm") as $target)
   $pages[$target] = NORMAL_PAGE;
 
 if ($pagePath == "")
@@ -69,16 +73,19 @@ if ($pageType == NORMAL_PAGE or isset($player))
 }
 
 if ($pagePath == "")
-  require("home.php");
+  $result = require("home.php");
 else if ($pageType)
-  require($pagePath.".php");
+  $result = require($pagePath.".php");
 else if ($player)
 {
   $_GET["id"] = $player["id"];
-  require("player.php");
+  $result = require("player.php");
 }
 else
   echo "Unknown page:".$pagePath;
+
+if (!empty($result) and is_string($result))
+  echo "<div class=\"message-div\"><h3><b>Message:</b></h3></br>".$result."</div>";
 
 if ($pageType == NORMAL_PAGE or isset($player))
   require("src/footer.php");

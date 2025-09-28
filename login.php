@@ -54,6 +54,7 @@ else
     </table>
     <input type="submit" value="Login"/>
   </form>
+  <a href="reset_password">Reset password</a>
 <?php
 }
 ?>
