@@ -42,7 +42,9 @@ function processTournament($key)
   $inputs = $doc->getElementsByTagName('input');
   foreach ($inputs as $input)
   {
-    $inputName = $input->attributes->getNamedItem("name")->textContent;
+    $inputName = @$input->attributes->getNamedItem("name")->textContent;
+    if (!$inputName)
+      continue;
     $value = $input->attributes->getNamedItem("value")->textContent;
     if ($inputName == "nation")
       $country = getCountryCodeAndID($value);
