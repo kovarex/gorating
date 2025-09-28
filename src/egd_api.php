@@ -56,7 +56,7 @@ function getPageDom($url, $post_data = NULL)
 function getStringDom($data)
 {
   $doc = new DOMDocument();
-  if (!$doc->loadHTML('<?xml encoding="UTF-8">'.$data))
+  if (!$doc->loadHTML('<?xml encoding="UTF-8">'.$data, LIBXML_NOWARNING | LIBXML_NOERROR))
     die("Couldn't parse the HTML from".$url);
   return $doc;
 }
