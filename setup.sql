@@ -74,7 +74,7 @@ CREATE TABLE `user` (
   `overall_game_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + loss_count + egd_win_count + egd_loss_count) STORED,
   `overall_win_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + egd_win_count) STORED,
   `overall_loss_count` INT UNSIGNED GENERATED ALWAYS AS (loss_count + egd_loss_count) STORED,
-  `game_game_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + loss_count) STORED,
+  `game_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + loss_count) STORED,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `username` (`username`),
   UNIQUE INDEX `email` (`email`),
