@@ -19,7 +19,7 @@ require_once("src/db.php");
 define("PAGE_WITHOUT_HEADER", 1);
 define("NORMAL_PAGE", 2);
 
-foreach (array("login",
+foreach (array("login_action",
                "logout",
                "register_action",
                "report_action",
@@ -40,7 +40,8 @@ foreach (array("login",
 			   "reset_password_confirm_action") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
-foreach (array("player",
+foreach (array("login",
+               "player",
                "players",
                "invites",
                "tournaments",

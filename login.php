@@ -1,35 +1,5 @@
 <?php
-
-function checkLogin($username, $password)
-{
-  if (empty($username))
-    return false;
-
-  $user = query("SELECT * from user where user.username=".escape($username))->fetch_assoc();
-
-  if (empty($user))
-    return "User not found!";
-
-  if (!password_verify($password, $user["password"]))
-    return "Wrong password!";
-
-  $_SESSION["user"] = $user;
-  return true;
-}
-
-$loginResult = checkLogin(@$_POST['username'], @$_POST['password']);
-
-if ($loginResult === true)
-{
-  header("Location: player?id=".$_SESSION["user"]["id"]);
-  die();
-}
-
 require("src/header_internal.php");
-
-if (is_string($loginResult))
-  echo $loginResult;
-
 if (!empty($_SESSION["user"]))
 {
   echo "Currently logged in as ".$_SESSION["user"]["username"];
@@ -41,7 +11,7 @@ if (!empty($_SESSION["user"]))
 else
 {
  ?>
- <form method="post">
+ <form method="post" action="/login_action">
     <table>
       <tr>
         <td><label for="username">Username:</label></td>
