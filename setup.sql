@@ -69,6 +69,8 @@ CREATE TABLE `user` (
   `loss_count` INT UNSIGNED NOT NULL DEFAULT '0',
   `egd_win_count` INT UNSIGNED NOT NULL DEFAULT '0',
   `egd_loss_count` INT UNSIGNED NOT NULL DEFAULT '0',
+  `password_recovery_secret` INT UNSIGNED NULL DEFAULT NULL,
+  `password_recovery_timestamp` TIMESTAMP NULL DEFAULT NULL,
   `overall_game_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + loss_count + egd_win_count + egd_loss_count) STORED,
   `overall_win_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + egd_win_count) STORED,
   `overall_loss_count` INT UNSIGNED GENERATED ALWAYS AS (loss_count + egd_loss_count) STORED,
