@@ -53,11 +53,22 @@ if (!empty($_GET["country_code"]))
 if ($showRegisteredOnly)
   $searchQuery .= (empty($searchQuery) ? " WHERE " : " and ")."user.register_timestamp IS NOT NULL";
 
-$table = new TableViewer("user
-                            LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id
-                            JOIN admin_level ON admin_level.id = user.admin_level_id
-                            JOIN country ON country.id = user.country_id".$searchQuery,
+$table = new TableViewer(function($forCount)
+                         {
+                           global $_GET;
+                           global $searchQuery;
+                           $result = "user";
+                           if (!$forCount)
+                           {
+                            $result .= " LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id";
+                            $result .= " JOIN admin_level ON admin_level.id = user.admin_level_id";
+                           }
+                           if (!$forCount or @$_GET["country_code"])
+                            $result .= " JOIN country ON country.id = user.country_id".$searchQuery;
+                          return $result;
+                         },
                          $_GET);
+
 if (empty($search))
   $table->setPrimarySort(new SortDefinition("rating", false));
 else

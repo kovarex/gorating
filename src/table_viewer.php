@@ -120,10 +120,18 @@ class TableColumn
 
 class TableViewer
 {
-   public function __construct($queryCore, $get)
+   public function __construct($queryCoreData, $get)
   {
-    $this->queryCore = $queryCore;
+    $this->queryCoreData = $queryCoreData;
     $this->get = $get;
+  }
+
+  public function queryCore($forCount)
+  {
+    $member = $this->queryCoreData;
+    if (is_callable($member))
+      return $member($forCount);
+    return $member;
   }
 
   public function addColumn($name, $caption, $sql, $cellFiller, $cellParameters = NULL)
@@ -169,7 +177,7 @@ class TableViewer
       $column->fillFrom($sqlFromFiller);
     $result .= $sqlFromFiller->result;
     $result .= " FROM \n";
-    $result .= $this->queryCore;
+    $result .= $this->queryCore(false /* not for count */);
     $result .= $this->buildSort();
     $result .= " LIMIT ".TABLE_PAGE_SIZE;
     $start = $this->getStart();
@@ -190,7 +198,7 @@ class TableViewer
   {
     echo "<table class=\"data-table\">";
     $data = query($this->buildQuery());
-    $total = query("SELECT COUNT(*) as total FROM ".$this->queryCore)->fetch_assoc()["total"];
+    $total = query("SELECT COUNT(*) as total FROM ".$this->queryCore(true/* for count*/))->fetch_assoc()["total"];
     if ($data->num_rows < $total)
     {
       echo "<caption>";
@@ -235,7 +243,7 @@ class TableViewer
     $this->lastSort = $lastSort;
   }
 
-  public $queryCore;
+  public $queryCoreData;
   private $columns;
   private $get;
   private $fixedSort;
