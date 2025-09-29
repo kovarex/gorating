@@ -92,9 +92,10 @@ $table->addColumn("country_code",
                   "Country",
                   array(array("country.code", "country_code")),
                   function($row) { echo $row["country_code"]; });
-$table->addColumn("admin_level_name",
+$table->addColumn("admin_level_id",
                   "Role",
-                  array(array("admin_level.name", "admin_level_name")),
+                  array(array("admin_level.id", "admin_level_id"),
+                        array("admin_level.name", "admin_level_name")),
                   function($row) { echo $row["admin_level_name"]; });
 if (canSeeInviters())
   $table->addColumn("inviter_name",
