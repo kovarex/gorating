@@ -56,8 +56,8 @@ foreach (array("login",
                "deleted_games",
                "invite_existing_user",
                "edit_game",
-         "reset_password",
-         "reset_password_confirm") as $target)
+               "reset_password",
+               "reset_password_confirm") as $target)
   $pages[$target] = NORMAL_PAGE;
 
 if ($pagePath == "")
