@@ -1,0 +1,12 @@
+OPTIMIZE TABLE `admin_level`;
+OPTIMIZE TABLE `country`;
+OPTIMIZE TABLE `egd_tournament`;
+OPTIMIZE TABLE `egd_tournament_result`;
+OPTIMIZE TABLE `egd_tournament_to_process`;
+OPTIMIZE TABLE `game`;
+OPTIMIZE TABLE `game_type`;
+OPTIMIZE TABLE `invite`;
+OPTIMIZE TABLE `rating_update_value`;
+OPTIMIZE TABLE `user`;
+OPTIMIZE TABLE `user_game_count_to_update`;
+OPTIMIZE TABLE `variable`;
