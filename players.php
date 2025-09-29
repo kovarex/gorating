@@ -45,13 +45,13 @@ if (!empty($search))
 }
 
 if (!empty($textQuery))
-  $searchQuery .= (empty($searchQuery) ? " and " : " WHERE ")."(".$textQuery.")";
+  $searchQuery .= (empty($searchQuery) ? " WHERE " : " and ")."(".$textQuery.")";
 
 if (!empty($_GET["country_code"]))
-  $searchQuery .= (empty($searchQuery) ? " and " : " WHERE ")."country.code=".escape($_GET["country_code"]);
+  $searchQuery .= (empty($searchQuery) ? " WHERE " : " and ")."country.code=".escape($_GET["country_code"]);
 
 if ($showRegisteredOnly)
-  $searchQuery .= (empty($searchQuery) ? " and " : " WHERE ")."user.register_timestamp IS NOT NULL";
+  $searchQuery .= (empty($searchQuery) ? " WHERE " : " and ")."user.register_timestamp IS NOT NULL";
 
 $table = new TableViewer("user
                             LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id
