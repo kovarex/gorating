@@ -134,9 +134,9 @@ class TableViewer
     return $member;
   }
 
-  public function addColumn($name, $caption, $sql, $cellFiller, $cellParameters = NULL)
+  public function addColumn($name, $caption, $sql, $cellFiller, $cellParameters = NULL, $defaultSortAscend = SORT_ASCEND)
   {
-    $this->columns[$name] = new TableColumn($name, $caption, $sql, $cellFiller, $cellParameters, $this->get);
+    $this->columns[$name] = new TableColumn($name, $caption, $sql, $cellFiller, $cellParameters, $this->get, $defaultSortAscend);
     if (!empty($name) && @$_GET["sort"] == $name)
       $this->currentSort = $this->columns[$name]->getSort(@$_GET["d"]);
   }

@@ -75,7 +75,8 @@ $table->addColumn("rating",
                   "Rating",
                   array(array("user.rating", "rating")),
                   function($row) { echo round($row["rating"]); },
-                  "style=\"text-align: right;\"");
+                  "style=\"text-align: right;\"",
+                  SORT_DESCEND);
 $table->addColumn("name",
                   "Name",
                   array(array("user.name", "name"),
@@ -120,25 +121,29 @@ $table->addColumn("overall_game_count",
                   "Games",
                   array(array("user.overall_game_count", "overall_game_count")),
                   function ($row) { echo $row["overall_game_count"]; },
-                  "style=\"text-align: right;\"");
+                  "style=\"text-align: right;\"",
+                  SORT_DESCEND);
 
 $table->addColumn("overall_win_count",
                   "Wins",
                   array(array("user.overall_win_count", "overall_win_count")),
                   function ($row) { echo $row["overall_win_count"]; },
-                  "style=\"text-align: right;\"");
+                  "style=\"text-align: right;\"",
+                  SORT_DESCEND);
 
 $table->addColumn("overall_loss_count",
                   "Losses",
                   array(array("user.overall_loss_count", "overall_loss_count")),
                   function ($row) { echo $row["overall_loss_count"]; },
-                  "style=\"text-align: right;\"");
+                  "style=\"text-align: right;\"",
+                  SORT_DESCEND);
 
 $table->addColumn("game_count",
                   "Friendly Games",
                   array(array("user.game_count", "game_count")),
                   function ($row) { echo $row["game_count"]; },
-                  "style=\"text-align: right;\"");
+                  "style=\"text-align: right;\"",
+                  SORT_DESCEND);
 
 $table->render();
 ?>
