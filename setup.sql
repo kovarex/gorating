@@ -6,7 +6,7 @@ CREATE TABLE `country` (
   UNIQUE INDEX `name` (`name`),
   UNIQUE INDEX `code` (`code`)
   INDEX `id_code` (`id`, `code`)
-) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
+) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
 INSERT INTO country (name, code) VALUES
 ('Czechia', 'CZ'),('Germany', 'DE'),('Poland', 'PL'),('Slovakia', 'SK'),('Belgium', 'BE'),('Bulgaria', 'BG'),
@@ -31,7 +31,7 @@ CREATE TABLE `game_type` (
   `name` VARCHAR(64) NOT NULL,
   `egd` BOOLEAN NOT NULL,
   PRIMARY KEY (`id`)
-) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
+) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
 INSERT INTO game_type (id, name, egd) VALUES
 (1, 'EGD - class A', true),(2, 'EGD - class B', true),(3, 'EGD - class C', true),(4, 'EGD - class D', TRUE),(5, 'Serious', false),(6, 'Rapid', false),(7, 'Blitz', false);
@@ -42,7 +42,7 @@ CREATE TABLE `admin_level` (
   `description` VARCHAR(128) NOT NULL,
   PRIMARY KEY (`id`),
   INDEX `id_name` (`id`, `name`)
-) COLLATE='utf8mb4_0900_ai_ci' ENGINE=INNODB;
+) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
 INSERT INTO `admin_level` (id, `name`, `description`) VALUES
 (1, 'Owner', 'Can do anything'),
@@ -96,6 +96,7 @@ CREATE TABLE `user` (
   INDEX `name` (`name`),
   FULLTEXT INDEX `first_name` (`first_name`),
   FULLTEXT INDEX `last_name` (`last_name`),
+  FULLTEXT INDEX `name_fulltext` (`name`),
   FOREIGN KEY (`country_id`) REFERENCES `country` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
   FOREIGN KEY (`admin_level_id`) REFERENCES `admin_level` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
   FOREIGN KEY (`invited_by_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
@@ -116,7 +117,7 @@ CREATE TABLE `invite` (
   INDEX `user_id` (`user_id`),
   FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
   FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
-) COLLATE='utf8mb4_0900_ai_ci'ENGINE=INNODB;
+) COLLATE='utf8mb4_unicode_ci'ENGINE=INNODB;
 
 CREATE TABLE `egd_tournament` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -200,7 +201,7 @@ CREATE TABLE `game` (
   CONSTRAINT `game_ibfk_2` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
   CONSTRAINT `game_ibfk_3` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
   CONSTRAINT `game_ibfk_4` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
-) COLLATE='utf8mb4_0900_ai_ci' ENGINE=INNODB;
+) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
 CREATE TABLE `variable` (
   `name` VARCHAR(64) NOT NULL,
@@ -219,7 +220,7 @@ CREATE TABLE `rating_update_value` (
   `timestamp` timestamp NOT NULL,
   PRIMARY KEY (`user_id`),
   FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
-) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
+) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
 DROP TRIGGER IF EXISTS game_after_insert;
 DELIMITER //

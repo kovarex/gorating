@@ -37,10 +37,7 @@ if (!empty($search))
     if (is_numeric($part) and strlen($part) == 8)
       $textQuery = addWithOr($textQuery, "user.egd_pin=".escape($search));
     else
-    {
-      $textQuery = addWithOr($textQuery, "MATCH(user.first_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
-      $textQuery = addWithOr($textQuery, "MATCH(user.last_name) AGAINST(".escape("*".$part."*")." IN BOOLEAN MODE)");
-    }
+      $textQuery = addWithOr($textQuery, "MATCH(user.name) AGAINST(".escape($part."*")." IN BOOLEAN MODE)");
   }
 }
 
@@ -64,7 +61,8 @@ $table = new TableViewer(function($forCount)
                             $result .= " JOIN admin_level ON admin_level.id = user.admin_level_id";
                            }
                            if (!$forCount or @$_GET["country_code"])
-                            $result .= " JOIN country ON country.id = user.country_id".$searchQuery;
+                            $result .= " JOIN country ON country.id = user.country_id";
+                          $result .= $searchQuery;
                           return $result;
                          },
                          $_GET);
