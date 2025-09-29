@@ -5,6 +5,7 @@ CREATE TABLE `country` (
   PRIMARY KEY (`id`),
   UNIQUE INDEX `name` (`name`),
   UNIQUE INDEX `code` (`code`)
+  INDEX `id_code` (`id`, `code`)
 ) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
 
 INSERT INTO country (name, code) VALUES
@@ -39,7 +40,8 @@ CREATE TABLE `admin_level` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(64) NOT NULL,
   `description` VARCHAR(128) NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  INDEX `id_name` (`id`, `name`)
 ) COLLATE='utf8mb4_0900_ai_ci' ENGINE=INNODB;
 
 INSERT INTO `admin_level` (id, `name`, `description`) VALUES
