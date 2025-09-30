@@ -40,7 +40,8 @@ foreach (array("login_action",
                "scrap",
                "reset_password_action",
                "reset_password_confirm_action",
-               "toggle_statistics") as $target)
+               "toggle_statistics",
+               "collect_manual_rating_changes") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
 foreach (array("login",

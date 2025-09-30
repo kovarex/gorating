@@ -26,9 +26,6 @@ function processTournament($key)
 
   $existingTournament = query("SELECT * FROM egd_tournament WHERE egd_key =".escape($key))->fetch_assoc();
 
-  if (!empty($existingTournament))
-    throw new Exception("Tournament \"".$key."\" already exists.");
-
   echo $key." ";
 
   $doc = getPageDom("https://www.europeangodatabase.eu/EGD/Tournament_ShowGoR.php?key=".$key);
@@ -82,26 +79,32 @@ function processTournament($key)
 
   beginTransaction();
 
-  query("INSERT INTO
-           egd_tournament(egd_key,
-                          timestamp,
-                          country_id,
-                          game_type_id,
-                          city,
-                          name,
-                          player_count,
-                          round_count)
-           VALUES(".escape($key).",".
-                    escape($timestamp).",".
-                    escape($country["id"]).",".
-                    escape($gameTypeID).",".
-                    escape($city).",".
-                    escape($tournamentName).",".
-                    escape($playerCount).",".
-                    escape($roundCount).")");
-  $tournamentID = lastInsertID();
+  if (!$existingTournament)
+  {
+    query("INSERT INTO
+             egd_tournament(egd_key,
+                            timestamp,
+                            country_id,
+                            game_type_id,
+                            city,
+                            name,
+                            player_count,
+                            round_count)
+             VALUES(".escape($key).",".
+                      escape($timestamp).",".
+                      escape($country["id"]).",".
+                      escape($gameTypeID).",".
+                      escape($city).",".
+                      escape($tournamentName).",".
+                      escape($playerCount).",".
+                      escape($roundCount).")");
+    $tournamentID = lastInsertID();
+  }
+  else
+    $tournamentID = $existingTournament["id"];
 
   query("DELETE FROM egd_tournament_to_process WHERE egd_key=".escape($key));
+
   $placement = 1;
   $ratingUpdates = [];
 
@@ -123,9 +126,10 @@ function processTournament($key)
         $lastName .= " ".$pieces[$i];
       $userID = addEGDPlayerIfNotPresent($playerPin, $firstName, $lastName);
       $user = query("SELECT * from user WHERE user.id=".escape($userID))->fetch_assoc();
-      query("INSERT INTO
-               egd_tournament_result(egd_tournament_id, user_id, placement)
-               VALUES(".escape($tournamentID).",".escape($userID).",".escape($placement).")");
+      if (!$existingTournament)
+        query("INSERT INTO
+                 egd_tournament_result(egd_tournament_id, user_id, placement)
+                 VALUES(".escape($tournamentID).",".escape($userID).",".escape($placement).")");
       $placement = $placement + 1;
 
       $rows = $div->getElementsByTagName("table")[1]->getElementsByTagName("tr");
@@ -150,14 +154,22 @@ function processTournament($key)
         $handicap = explode(" ", $handicapText)[0];
         $komi = ($handicap == 0 ? 6.5 : 0.5);
         $resultText = $cells[5]->nodeValue;
-        if ($resultText == "Jigo")
-          continue; // I just ignore ties
-        if ($resultText != "Win" and $resultText != "Loss")
+
+        $jigo = ($resultText == "Jigo");
+        if ($resultText != "Win" and $resultText != "Loss" and $resultText != "Jigo")
           throw new Exception("Result text has unexpected value:\"".$resultText."\"");
-        $userWon = ($resultText == "Win");
+
         $opponentPin = $cells[6]->nodeValue;
         if (!is_numeric($opponentPin))
           throw new Exception("Opponent pin ".$opponentPin." isn't numeric.");
+
+        // I need to save one into winner and one into loser even when it is a jigo, it just needs to be consistent
+        // so the way I do it is to save the winner as the first one encountered (higher in the placement)
+        if ($jigo)
+          $userWon = empty($pinsProcessed[$opponentPin][$playerPin][$round]);
+        else
+          $userWon = ($resultText == "Win");
+
         $opponentName = $cells[7]->nodeValue;
         // for some reason we see first_name first in this case (as opposed to the plaeyrs table)
         $opponentNameSplit = explode(" ", $opponentName);
@@ -174,7 +186,7 @@ function processTournament($key)
           throw new Exception("Opponent gor not numeric.");
         $opponentGorChange = $cells[10]->nodeValue;
         if (!is_numeric($opponentGorChange))
-          throw new Exception("Opponent gro Change is not numeric.");
+          throw new Exception("Opponent gor Change is not numeric.");
 
         $winnerUserID = $userWon ? $userID : $opponentUserID;
         $loserUserID = $userWon ? $opponentUserID : $userID;
@@ -183,63 +195,125 @@ function processTournament($key)
         $loserOldGor = $userWon ? $opponentGor : $currentGor;
         $loserNewGor = $userWon ? ($opponentGor + $opponentGorChange) : ($currentGor + $gorChange);
         $winnerIsBlack = ($userWon == ($color == "b"));
+        $prefix = $userWon ? "winner_" : "loser_";
 
-        if (!empty($pinsProcessed[$opponentPin][$playerPin]))
+        if (!empty($pinsProcessed[$opponentPin][$playerPin][$round]))
         {
-          $prefix = $userWon ? "winner_" : "loser_";
-          $id = $pinsProcessed[$opponentPin][$playerPin];
-          query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.",".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id);
+          $id = $pinsProcessed[$opponentPin][$playerPin][$round];
+          if (!$existingTournament)
+            query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.",".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id);
+          else
+          {
+            $game = query("SELECT ".$prefix."old_egd_rating as old,".$prefix."new_egd_rating as new FROM game WHERE id=".$id)->fetch_assoc();
+            $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.01;
+            $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.01;
+            if (!$oldIsCorrect)
+              echo "Old rating expected ".round($currentGor, 3)." but is ".round($game["old"], 3)." in round ".$round." for ".$firstName." ".$lastName."<br/>\n";
+            if (!$newIsCorrect)
+              echo "New rating expected ".round($currentGor + $gorChange, 3)." but is ".round($game["new"], 3)." in round ".$round." for ".$firstName." ".$lastName."<br/>\n";
+            if (!$oldIsCorrect || !$newIsCorrect)
+              query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id, true);
+          }
         }
         else
-          query("INSERT INTO
-                   game(winner_user_id,
-                        loser_user_id,
-                        game_type_id,
-                        timestamp,
-                        winner_old_egd_rating,
-                        winner_new_egd_rating,
-                        loser_old_egd_rating,
-                        loser_new_egd_rating,
-                        winner_is_black,
-                        handicap,
-                        komi,
-                        egd_tournament_id,
-                        egd_tournament_round)
-                   VALUES(".$winnerUserID.",".
-                            $loserUserID.",".
-                            $gameTypeID.",".
-                            escape($timestamp).",".
-                            escape($winnerOldGor).",".
-                            escape($winnerNewGor).",".
-                            escape($loserOldGor).",".
-                            escape($loserNewGor).",".
-                            ($winnerIsBlack ? "true" : "false").",".
-                            escape($handicap).",".
-                            escape($komi).",".
-                            escape($tournamentID).",".
-                            escape($round).")");
-        if (!empty($user["username"]))
+        {
+          if ($existingTournament)
+            $game = query("SELECT
+                             id,".
+                             $prefix."old_egd_rating as old,".
+                             $prefix."new_egd_rating as new,
+                             jigo=".($jigo ? "true" : "false")."
+                           FROM
+                             game
+                           WHERE
+                             egd_tournament_id=".escape($tournamentID)." and
+                             egd_tournament_round=".escape($round)." and
+                             winner_user_id=".escape($winnerUserID))->fetch_assoc();
+          if (!$existingTournament or !$game)
+          {
+            query("INSERT INTO
+                     game(winner_user_id,
+                          loser_user_id,
+                          game_type_id,
+                          timestamp,
+                          winner_old_egd_rating,
+                          winner_new_egd_rating,
+                          loser_old_egd_rating,
+                          loser_new_egd_rating,
+                          winner_is_black,
+                          handicap,
+                          komi,
+                          egd_tournament_id,
+                          egd_tournament_round,
+                          jigo)
+                     VALUES(".$winnerUserID.",".
+                              $loserUserID.",".
+                              $gameTypeID.",".
+                              escape($timestamp).",".
+                              escape($winnerOldGor).",".
+                              escape($winnerNewGor).",".
+                              escape($loserOldGor).",".
+                              escape($loserNewGor).",".
+                              ($winnerIsBlack ? "true" : "false").",".
+                              escape($handicap).",".
+                              escape($komi).",".
+                              escape($tournamentID).",".
+                              escape($round).",".
+                              ($jigo ? "true" : "false").")");
+            $gameID = lastInsertID();
+          }
+          else
+          {
+            $game = query("SELECT
+                             id,".
+                             $prefix."old_egd_rating as old,".
+                             $prefix."new_egd_rating as new,
+                             jigo=".($jigo ? "true" : "false")."
+                           FROM
+                             game
+                           WHERE
+                             egd_tournament_id=".escape($tournamentID)." and
+                             egd_tournament_round=".escape($round)." and
+                             winner_user_id=".escape($winnerUserID))->fetch_assoc();
+            if (!$game)
+              throw new Exception("Processing existing tournament, but game is missing.");
+            $gameID = $game["id"];
+            $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.01;
+            $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.01;
+            if (!$oldIsCorrect)
+              echo "Old rating expected ".round($currentGor, 2)." but is ".round($game["old"], 2)." in round ".$round." for ".$firstName." ".$lastName."<br/>\n";
+            if (!$newIsCorrect)
+              echo "New rating expected ".round($currentGor + $gorChange, 2)." but is ".round($game["new"], 2)." in round ".$round." for ".$firstName." ".$lastName."<br/>\n";
+            if (!$oldIsCorrect || !$newIsCorrect)
+              query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$gameID, true);
+          }
+        }
+        if (!$existingTournament and !empty($user["username"]))
         {
           $opponent = query("SELECT * FROM user where id=".escape($opponentID));
           $user["rating"] = calculateNewRating($user["rating"],
                                                $opponent["rating"],
-                                               $userWon ? 1 : -1,
+                                               $jigo ? 0.5 : ($userWon ? 1 : 0),
                                                $gameTypeID,
                                                ($color == "b" ? $extraHandicap : -$extraHandicap),
                                                ($color == "b" ? -1 : 1) * ($komi - 6.5),
                                                $extraKomi);
         }
         $currentGor = $currentGor + $gorChange;
-        $pinsProcessed[$playerPin][$opponentPin] = lastInsertID();
+        $pinsProcessed[$playerPin][$opponentPin][$round] = $gameID;
       }
 
-      $ratingUpdateQuery = "UPDATE user SET egd_rating=".($currentGor);
-      $ratingUpdateQuery .= ", rating=".(empty($user["username"]) ? $currentGor : $user["rating"]);
-      $ratingUpdateQuery .= " WHERE user.id=".$user["id"];
-      array_push($ratingUpdates, $ratingUpdateQuery);
+      if (!$existingTournament)
+      {
+        $ratingUpdateQuery = "UPDATE user SET egd_rating=".($currentGor);
+        $ratingUpdateQuery .= ", rating=".(empty($user["username"]) ? $currentGor : $user["rating"]);
+        $ratingUpdateQuery .= " WHERE user.id=".$user["id"];
+        array_push($ratingUpdates, $ratingUpdateQuery);
+      }
     }
-  foreach ($ratingUpdates as $ratingUpdate)
-    query($ratingUpdate);
+  if (!$existingTournament)
+    foreach ($ratingUpdates as $ratingUpdate)
+      query($ratingUpdate);
   commitTransaction();
   return true;
 }

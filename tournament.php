@@ -27,7 +27,8 @@ $data = query("SELECT
                  loser.username as loser_username,
                  game.egd_tournament_round as round,
                  winner_result.placement as winner_placement,
-                 loser_result.placement as loser_placement
+                 loser_result.placement as loser_placement,
+                 game.jigo as jigo
                FROM
                  game as game,
                  user as loser,
@@ -75,7 +76,7 @@ while ($row = $data->fetch_assoc())
   $table[$horizontalPlacement][$round]["id"] = $otherUserID;
   $table[$horizontalPlacement][$round]["name"] = $otherName;
   $table[$horizontalPlacement][$round]["username"] = $otherUsername;
-  $table[$horizontalPlacement][$round]["result"] = $horizontalPlayerIsWinner;
+  $table[$horizontalPlacement][$round]["result"] = ($row["jigo"] ? "jigo" : $horizontalPlayerIsWinner);
   $placementInfo[$horizontalPlacement]["id"] = $thisUserID;
   $placementInfo[$horizontalPlacement]["name"] = $thisName;
   $placementInfo[$horizontalPlacement]["username"] = $thisUsername;
@@ -84,7 +85,7 @@ while ($row = $data->fetch_assoc())
   $table[$verticalPlacement][$round]["id"] = $thisUserID;
   $table[$verticalPlacement][$round]["name"] = $thisName;
   $table[$verticalPlacement][$round]["username"] = $thisUsername;
-  $table[$verticalPlacement][$round]["result"] = !$horizontalPlayerIsWinner;
+  $table[$verticalPlacement][$round]["result"] = ($row["jigo"] ? "jigo" : !$horizontalPlayerIsWinner);
   $placementInfo[$verticalPlacement]["id"] = $otherUserID;
   $placementInfo[$verticalPlacement]["name"] = $otherName;
   $placementInfo[$verticalPlacement]["username"] = $otherUsername;
@@ -104,9 +105,14 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
     $cellData = @$table[$placement][$round];
     if ($cellData != NULL)
     {
-      echo "<span class=\"".($cellData["result"] ? "winner" : "loser")."\">";
-       echo $cellData["result"] ? "WIN" : "LOSS";
-      echo "</span>";
+      if ($cellData["result"] === "jigo")
+        echo "JIGO";
+      else
+      {
+        echo "<span class=\"".($cellData["result"] ? "winner" : "loser")."\">";
+        echo $cellData["result"] ? "WIN" : "LOSS";
+        echo "</span>";
+      }
       echo " ".playerLink($cellData);
     }
     echo "</td>";

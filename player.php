@@ -66,7 +66,7 @@ if (canEditGames())
 
 $table->addColumn("result",
                   "Result",
-                  array(array("IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS')", "result")),
+                  array(array("IF(game.jigo, 'JIGO', IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS'))", "result")),
                   function($row) { echo $row["result"]; },
                   "style=\"text-align:center;\"");
 
@@ -83,8 +83,8 @@ $table->addColumn("rating_change",
                   {
                     if (!$row["old_rating"])
                       return;
-                    $winner = ($row["result"] == "WIN");
-                    $myResultName = $winner ? "winner" : "loser";
+                    $good = $row["old_rating"] < $row["new_rating"];
+                    $myResultName = $good ? "winner" : "loser";
                     echo   "<span class=\"".$myResultName."\">".round($row["old_rating"])."&rarr;".round($row["new_rating"])."</span>";
                   },
                   "style=\"text-align:center;\"");
@@ -102,8 +102,8 @@ $table->addColumn("egd_rating_change",
                   {
                     if (!$row["old_egd_rating"])
                       return;
-                    $winner = ($row["result"] == "WIN");
-                    $myResultName = $winner ? "winner" : "loser";
+                    $good = $row["old_egd_rating"] < $row["new_egd_rating"];
+                    $myResultName = $good ? "winner" : "loser";
                     echo   "<span class=\"".$myResultName."\">".round($row["old_egd_rating"])."&rarr;".round($row["new_egd_rating"])."</span>";
                   },
                   "style=\"text-align:center;\"");
