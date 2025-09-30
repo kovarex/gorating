@@ -12,6 +12,8 @@
 <br/>
 TODO:
 <ul>
-  <li>Some styles</li>
-  <li>More functionality for higher admin roles (rating change + log of it in the list of games), removal of games or users, adding sgf files to others etc.</li>
+  <li>Some styles.</li>
+  <li>Ability to delete/fix games not just for admins</li>
+  <li>Adding sgf files to others.</li>
+  <li>Rating promotions/demotions (like in egd) but more explicit.</li>
 </ul>
