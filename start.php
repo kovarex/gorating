@@ -1,8 +1,9 @@
 <?php
 $pageStart = microtime(true);
 error_reporting(E_ALL);
-$pagePath = substr(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), 1);
-$query = parse_url($_SERVER["REQUEST_URI"], PHP_URL_QUERY);
+$uri = urldecode($_SERVER["REQUEST_URI"]);
+$pagePath = substr(parse_url($uri, PHP_URL_PATH), 1);
+$query = parse_url($uri, PHP_URL_QUERY);
 
 if ($query)
   foreach (explode('&', $query) as $chunk)
