@@ -189,6 +189,7 @@ CREATE TABLE `game` (
   `komi` DOUBLE NOT NULL DEFAULT '6.5',
   `egd_tournament_id` INT UNSIGNED NULL DEFAULT NULL,
   `egd_tournament_round` INT UNSIGNED NULL DEFAULT NULL,
+  `jigo` BOOLEAN NOT NULL DEFAULT FALSE,
   `deleted` boolean DEFAULT false NOT NULL,
   PRIMARY KEY (`id`),
   INDEX `winner_user_id` (`winner_user_id`),
