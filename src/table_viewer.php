@@ -196,7 +196,8 @@ class TableViewer
 
   public function render()
   {
-    echo "<table class=\"data-table\">";
+    echo "<br/>\n";
+    echo "<table class=\"data-table\">\n";
     $data = query($this->buildQuery());
     $total = query("SELECT COUNT(*) as total FROM ".$this->queryCore(true/* for count*/))->fetch_assoc()["total"];
     if ($data->num_rows < $total)

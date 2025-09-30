@@ -29,11 +29,14 @@ echo "<form method=\"post\" action=\"invite_action\">
         <input type=\"hidden\" name=\"redirect\" value=\"invites\"/>
         <input type=\"submit\" value=\"invite\"/>
       </form>";
+echo "<br/><br/>\n";
 
 require_once("src/table_viewer.php");
+if (!canAccessAllInvites())
+  echo "Your account can see only invites you created.<br/>\n";
 $table = new TableViewer("invite
                             LEFT JOIN user ON invite.user_id=user.id
-                            JOIN user as inviter ON invite.from_user_id=inviter.id".(canAccessAllInvites() ? "" : "WHERE invite.from_user_id=".userID()),
+                            JOIN user as inviter ON invite.from_user_id=inviter.id".(canAccessAllInvites() ? "" : " WHERE invite.from_user_id=".userID()),
                          $_GET);
 
 $table->setPrimarySort(new SortDefinition("timestamp", false));
