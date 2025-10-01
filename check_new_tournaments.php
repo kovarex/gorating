@@ -47,11 +47,11 @@ function checkNewTournaments()
 try
 {
   echo checkNewTournaments();
-  for ($i = 0; $i < 30; $i++)
+  for ($i = 0; $i < 100; $i++)
   {
     if (!processTournament(NULL))
       break;
-    sleep(1);
+    usleep(500 * 1000);
   }
 }
 catch (Exception $e)

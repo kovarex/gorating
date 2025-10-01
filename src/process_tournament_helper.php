@@ -26,8 +26,6 @@ function processTournament($key)
 
   $existingTournament = query("SELECT * FROM egd_tournament WHERE egd_key =".escape($key))->fetch_assoc();
 
-  echo $key." ";
-
   $doc = getPageDom("https://www.europeangodatabase.eu/EGD/Tournament_ShowGoR.php?key=".$key);
 
   $inputs = $doc->getElementsByTagName('input');
@@ -207,12 +205,8 @@ function processTournament($key)
             $game = query("SELECT ".$prefix."old_egd_rating as old,".$prefix."new_egd_rating as new FROM game WHERE id=".$id)->fetch_assoc();
             $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.01;
             $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.01;
-            if (!$oldIsCorrect)
-              echo "Old rating expected ".round($currentGor, 3)." but is ".round($game["old"], 3)." in round ".$round." for ".$firstName." ".$lastName."<br/>\n";
-            if (!$newIsCorrect)
-              echo "New rating expected ".round($currentGor + $gorChange, 3)." but is ".round($game["new"], 3)." in round ".$round." for ".$firstName." ".$lastName."<br/>\n";
             if (!$oldIsCorrect || !$newIsCorrect)
-              query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id, true);
+              query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id);
           }
         }
         else
@@ -280,12 +274,8 @@ function processTournament($key)
             $gameID = $game["id"];
             $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.01;
             $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.01;
-            if (!$oldIsCorrect)
-              echo "Old rating expected ".round($currentGor, 2)." but is ".round($game["old"], 2)." in round ".$round." for ".$firstName." ".$lastName."<br/>\n";
-            if (!$newIsCorrect)
-              echo "New rating expected ".round($currentGor + $gorChange, 2)." but is ".round($game["new"], 2)." in round ".$round." for ".$firstName." ".$lastName."<br/>\n";
             if (!$oldIsCorrect || !$newIsCorrect)
-              query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$gameID, true);
+              query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$gameID);
           }
         }
         if (!$existingTournament and !empty($user["username"]))

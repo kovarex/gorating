@@ -5,10 +5,10 @@ require_once("src/process_tournament_helper.php");
 $count = query("SELECT COUNT(*) as count FROM egd_tournament_to_process")->fetch_assoc()["count"];
 if ($count > 0)
   echo "Remaining tournaments to process:".$count."<br/>\n";
-for ($i = 0; $i < 30; $i++)
+for ($i = 0; $i < 100; $i++)
 {
   if (!processTournament(NULL))
     break;
-  sleep(1);
+  usleep( 500 * 1000 );
 }
 ?>
