@@ -101,7 +101,8 @@ if (canSeeInviters())
                     "Invited By",
                     array(array("inviter.id", "inviter_id"),
                           array("inviter.name", "inviter_name"),
-                          array("inviter.username", "inviter_username")),
+                          array("inviter.username", "inviter_username"),
+                          array("inviter.rating", "inviter_rating")),
                     function($row) { echo playerLink($row, "inviter"); });
 if (canSeeEmails())
   $table->addColumn("user_email",

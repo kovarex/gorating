@@ -4,12 +4,10 @@ if (!canEditGames())
 
 $row = query("SELECT
                 winner.id as winner_id,
-                winner.first_name as winner_first_name,
-                winner.last_name as winner_last_name,
+                winner.name as winner_name,
                 winner.username as winner_username,
                 loser.id as loser_id,
-                loser.first_name as loser_first_name,
-                loser.last_name as loser_last_name,
+                loser.name as loser_name,
                 loser.username as loser_username,
                 game.winner_is_black as winner_is_black,
                 game.handicap as handicap,

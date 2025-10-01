@@ -64,11 +64,15 @@ function readableRank($rank)
   return strval($rank - 30)."D";
 }
 
-function playerNameWithRank($nameOrArray, $rating = null)
+function playerNameWithRank($nameOrArray, $ratingOrValuePrefix = null)
 {
   if (!is_array($nameOrArray))
-    return $nameOrArray." ".readableRank(rankFromRating($rating));
-  return $nameOrArray["name"]." ".readableRank(rankFromRating($nameOrArray["rating"]));
+    return $nameOrArray." ".readableRank(rankFromRating($ratingOrValuePrefix));
+
+  $rating = $nameOrArray[($ratingOrValuePrefix ?: "")."rating"];
+  if (!$rating)
+    $rating = $nameOrArray[($ratingOrValuePrefix ?: "")."egd_rating"];
+  return $nameOrArray[($ratingOrValuePrefix ?: "")."name"]." ".readableRank(rankFromRating($rating));
 }
 
 ?>

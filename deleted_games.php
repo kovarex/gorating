@@ -37,13 +37,7 @@ $table->addColumn("winner_name",
                         array("winner.egd_pin", "winner_egd_pin"),
                         array("game.winner_new_rating", "winner_rating"),
                         array("game.winner_new_egd_rating", "winner_egd_rating")),
-                  function($row)
-                  {
-                    $ratingToShow = $row["winner_rating"];
-                    if (empty($ratingToShow))
-                      $ratingToShow = $row["winner_egd_rating"];
-                    echo playerLink($row, "winner")." (".round($ratingToShow, 1).")";
-                  });
+                  function($row) { echo playerLink($row, "winner"); });
 
 $table->addColumn("loser_name",
                   "Loser",
@@ -53,13 +47,7 @@ $table->addColumn("loser_name",
                         array("loser.egd_pin", "loser_egd_pin"),
                         array("game.loser_new_rating", "loser_rating"),
                         array("game.loser_new_egd_rating", "loser_egd_rating")),
-                  function($row)
-                  {
-                    $ratingToShow = $row["loser_rating"];
-                    if (empty($ratingToShow))
-                      $ratingToShow = $row["loser_egd_rating"];
-                    echo playerLink($row, "loser")." (".round($ratingToShow, 1).")";
-                  });
+                  function($row) { echo playerLink($row, "loser"); });
 
 $table->addColumn("game_type_name",
                   "Game type",

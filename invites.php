@@ -45,7 +45,8 @@ $table->addColumn("name",
                   "Name",
                   array(array("IF(user.id, user.name, CONCAT(invite.first_name, ' ', invite.last_name))", "name"),
                         array("user.id", "id"),
-                        array("user.username", "username")),
+                        array("user.username", "username"),
+                        array("user.rating", "rating")),
                   function($row)
                   {
                     if (@$row["id"])
@@ -64,7 +65,8 @@ if (canAccessAllInvites())
                     "Inviter",
                     array(array("inviter.name", "inviter_name"),
                           array("inviter.id", "inviter_id"),
-                          array("inviter.username", "inviter_username")),
+                          array("inviter.username", "inviter_username"),
+                          array("inviter.rating", "inviter_rating")),
                     function($row) { echo  playerLink($row, "inviter"); });
 
 $table->addColumn("invite",

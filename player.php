@@ -116,13 +116,7 @@ $table->addColumn("opponent_name",
                         array("IF(winner.id = ".escape($_GET["id"]).", loser.egd_pin, winner.egd_pin)", "opponent_egd_pin"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.loser_new_rating, game.winner_new_rating)", "opponent_rating"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.loser_new_egd_rating, game.winner_new_egd_rating)", "opponent_egd_rating")),
-                  function($row)
-                  {
-                    $ratingToShow = $row["opponent_rating"];
-                    if (empty($ratingToShow))
-                      $ratingToShow = $row["opponent_egd_rating"];
-                    echo playerLink($row, "opponent")." (".round($ratingToShow).")";
-                  });
+                  function($row) { echo playerLink($row, "opponent"); });
 
 $table->addColumn("game_type_name",
                   "Game type",

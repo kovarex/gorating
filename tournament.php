@@ -18,13 +18,15 @@ echo "EGD:".egdTournamentLink($tournament["egd_key"])."<br/>";
 
 $data = query("SELECT
                  game.winner_user_id as winner_user_id,
-                 winner.first_name as winner_first_name,
-                 winner.last_name as winner_last_name,
+                 winner.name as winner_name,
                  winner.username as winner_username,
+                 game.winner_old_rating as winner_rating,
+                 game.winner_old_egd_rating as winner_egd_rating,
                  game.loser_user_id as loser_user_id,
-                 loser.first_name as loser_first_name,
-                 loser.last_name as loser_last_name,
+                 loser.name as loser_name,
                  loser.username as loser_username,
+                 game.loser_old_rating as loser_rating,
+                 game.loser_old_egd_rating as loser_egd_rating,
                  game.egd_tournament_round as round,
                  winner_result.placement as winner_placement,
                  loser_result.placement as loser_placement,
@@ -64,31 +66,39 @@ while ($row = $data->fetch_assoc())
 
   $thisPrefix = $horizontalPlayerIsWinner ? "winner_" : "loser_";
   $thisUserID = $row[$thisPrefix."user_id"];
-  $thisName = $row[$thisPrefix."first_name"]." ".$row[$thisPrefix."last_name"];
+  $thisName = $row[$thisPrefix."name"];
   $thisUsername = $row[$thisPrefix."username"];
 
   $otherPrefix = $horizontalPlayerIsWinner ? "loser_" : "winner_";
   $otherUserID = $row[$otherPrefix."user_id"];
-  $otherName = $row[$otherPrefix."first_name"]." ".$row[$otherPrefix."last_name"];
+  $otherName = $row[$otherPrefix."name"];
   $otherUsername = $row[$otherPrefix."username"];
 
   $horizontalPlacement = min($winnerPlacement, $loserPlacement);
   $table[$horizontalPlacement][$round]["id"] = $otherUserID;
   $table[$horizontalPlacement][$round]["name"] = $otherName;
   $table[$horizontalPlacement][$round]["username"] = $otherUsername;
+  $table[$horizontalPlacement][$round]["rating"] = $row[$otherPrefix."rating"];
+  $table[$horizontalPlacement][$round]["egd_rating"] = $row[$otherPrefix."egd_rating"];
   $table[$horizontalPlacement][$round]["result"] = ($row["jigo"] ? "jigo" : $horizontalPlayerIsWinner);
   $placementInfo[$horizontalPlacement]["id"] = $thisUserID;
   $placementInfo[$horizontalPlacement]["name"] = $thisName;
   $placementInfo[$horizontalPlacement]["username"] = $thisUsername;
+  $placementInfo[$horizontalPlacement]["rating"] = $row[$thisPrefix."rating"];
+  $placementInfo[$horizontalPlacement]["egd_rating"] = $row[$thisPrefix."egd_rating"];
 
   $verticalPlacement = max($winnerPlacement, $loserPlacement);
   $table[$verticalPlacement][$round]["id"] = $thisUserID;
   $table[$verticalPlacement][$round]["name"] = $thisName;
   $table[$verticalPlacement][$round]["username"] = $thisUsername;
+  $table[$verticalPlacement][$round]["rating"] = $row[$thisPrefix."rating"];
+  $table[$verticalPlacement][$round]["egd_rating"] = $row[$thisPrefix."egd_rating"];
   $table[$verticalPlacement][$round]["result"] = ($row["jigo"] ? "jigo" : !$horizontalPlayerIsWinner);
   $placementInfo[$verticalPlacement]["id"] = $otherUserID;
   $placementInfo[$verticalPlacement]["name"] = $otherName;
   $placementInfo[$verticalPlacement]["username"] = $otherUsername;
+  $placementInfo[$verticalPlacement]["rating"] = $row[$otherPrefix."rating"];
+  $placementInfo[$verticalPlacement]["egd_rating"] = $row[$otherPrefix."egd_rating"];
 }
 
 for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)

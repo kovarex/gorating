@@ -52,7 +52,7 @@ function playerLink($playerIDOrUserData, $playerNameOrValuePrefix = null, $usern
     if (!$id)
       return "";
     return playerLink($id,
-                      @$playerIDOrUserData[$prefix."name"] ?: $playerIDOrUserData[$prefix."first_name"]." ".$playerIDOrUserData[$prefix."last_name"],
+                      playerNameWithRank($playerIDOrUserData, $prefix),
                       $playerIDOrUserData[$prefix."username"],
                       $fullAddress);
   }
