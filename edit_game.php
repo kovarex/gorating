@@ -6,9 +6,13 @@ $row = query("SELECT
                 winner.id as winner_id,
                 winner.name as winner_name,
                 winner.username as winner_username,
+                game.winner_old_rating as winner_rating,
+                game.winner_old_egd_rating as winner_egd_rating,
                 loser.id as loser_id,
                 loser.name as loser_name,
                 loser.username as loser_username,
+                game.loser_old_rating as loser_rating,
+                game.loser_old_egd_rating as loser_egd_rating,
                 game.winner_is_black as winner_is_black,
                 game.handicap as handicap,
                 game.komi as komi
