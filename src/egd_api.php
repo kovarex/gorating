@@ -1,7 +1,7 @@
 <?php
 require_once("constants.php");
 
-function getUrlContent($url, $post_data = NULL)
+function getUrlContent($url, $postData = NULL)
 {
   fopen("/tmp/cookies.txt", "w");
   $parts = parse_url($url);
@@ -25,31 +25,16 @@ function getUrlContent($url, $post_data = NULL)
   curl_setopt($ch, CURLOPT_COOKIEFILE, '/tmp/cookies.txt');
   curl_setopt($ch, CURLOPT_COOKIEJAR, '/tmp/cookies.txt');
   curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-  if ($post_data)
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
+  if ($postData)
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
   $result = curl_exec($ch);
   curl_close($ch);
   return $result;
 }
 
-function getUrlContentSafe($url, $post_data = NULL)
+function getUrlContentSafe($url, $postData = NULL)
 {
-  global $scrappingSecret;
-  if ($_SERVER['HTTP_HOST'] != "go.kovarex.com")
-    return getUrlContent("https://go.kovarex.com/scrap?secret=".$scrappingSecret."&url=".urlencode($url), $post_data);
-
-  for ($i = 1; $i < 10; $i++)
-  {
-    $data = getUrlContent($url, $post_data);
-    if (empty($data))
-      die("Couldn't load the page.".$url);
-    if ($data == "error code: 1015")
-    {
-      usleep(500000);
-      continue;
-    }
-    return $data;
-  }
+  return scrape($url, $postData);
 }
 
 function getStringDom($data)
@@ -60,9 +45,9 @@ function getStringDom($data)
   return $doc;
 }
 
-function getPageDom($url, $post_data = NULL)
+function getPageDom($url, $postData = NULL)
 {
-  return getStringDom(getUrlContentSafe($url, $post_data));
+  return getStringDom(getUrlContentSafe($url, $postData));
 }
 
 function getCountryCodeAndID($country)
