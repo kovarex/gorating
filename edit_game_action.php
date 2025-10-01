@@ -34,7 +34,8 @@ query("UPDATE
         "loser_user_id=".escape($loserID).",".
         "winner_is_black=".($winnerIsBlack ? "true" : "false").",".
         "handicap=".escape($_POST["handicap"]).",".
-        "komi=".escape($_POST["komi"]).
+        "komi=".escape($_POST["komi"]).",".
+        "location=".escape($_POST["location"]).
        " WHERE game.id=".$_POST["id"]);
 
 $message = "Game with id=".$_POST["id"]." updated:<br/>\n";
