@@ -5,7 +5,7 @@ if (empty($player))
   die("Unknown player with id=".$_GET["id"]);
 
 echo "<div class=\"centered-div\">";
-echo "<h1 style=\"display: inline;\">".$player["first_name"]." ".$player["last_name"]."</h1>";
+echo "<h1 style=\"display: inline;\">".playerNameWithRank($player)."</h1>";
 if (canEditPlayerName())
   echo "<button type=\"button\" onclick=\"showEditDialog(event);\">Edit</button>";
 echo "</div>";

@@ -43,4 +43,32 @@ function createJsFunctionToCalculateRating()
   return $result;
 }
 
+function rankFromRating($rating)
+{
+  // I need some internal number for rank representation, better than the textual "18k" etc, so it is just going to be integer like this
+  // 30k   = rating [-950, -850) = rank  1
+  // "20k" = rating [  50,  150) = rank 11
+  // "10k" = rating [1050, 1150) = rank 21
+  // 1 k   = rating [1950, 2050) = rank 30
+  // 1 d   = rating [2050, 2150) = rank 31
+  // 7 d   = rating [2650, 2750) = rank 37
+  // 8 d   = rating [2750, 2850) = rank 38
+  // I would start by 30 from 8d upper, but lets keep it simple for now
+    return floor(max(($rating + 1050) / 100, 1));
+}
+
+function readableRank($rank)
+{
+  if ($rank <= 30)
+    return strval(31 - $rank)."k";
+  return strval($rank - 30)."D";
+}
+
+function playerNameWithRank($nameOrArray, $rating = null)
+{
+  if (!is_array($nameOrArray))
+    return $nameOrArray." ".readableRank(rankFromRating($rating));
+  return $nameOrArray["name"]." ".readableRank(rankFromRating($nameOrArray["rating"]));
+}
+
 ?>

@@ -17,6 +17,7 @@ require_once("src/auth.php");
 require_once("src/link_helper.php");
 require_once("src/constants.php");
 require_once("src/db.php");
+require_once("src/rating_helper.php");
 
 define("PAGE_WITHOUT_HEADER", 1);
 define("NORMAL_PAGE", 2);
