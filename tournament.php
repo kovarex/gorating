@@ -14,7 +14,7 @@ if (empty($tournament))
 }
 
 echo "<h1>".$tournament["name"]."</h1>";
-echo "EGD:<a href=\"https://www.europeangodatabase.eu/EGD/Tournament_Card.php?&key=".$tournament["egd_key"]."\">".$tournament["egd_key"]."</a><br/>";
+echo "EGD:".egdTournamentLink($tournament["egd_key"])."<br/>";
 
 $data = query("SELECT
                  game.winner_user_id as winner_user_id,

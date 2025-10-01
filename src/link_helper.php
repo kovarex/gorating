@@ -71,6 +71,11 @@ function tournamentLink($tournamentID, $tournamentName)
   return "<a href=\"/tournament?id=".$tournamentID."\">".readableTournamentName($tournamentName)."</a>";
 }
 
+function egdTournamentLink($key)
+{
+  return "<a href=\"https://www.europeangodatabase.eu/EGD/Tournament_Card.php?&key=".$key."\">".$key."</a>";
+}
+
 function generateAddress($url, $get)
 {
   if (empty($get))
