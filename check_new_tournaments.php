@@ -47,7 +47,7 @@ function checkNewTournaments()
 try
 {
   echo checkNewTournaments();
-  for ($i = 0; $i < 50; $i++)
+  for ($i = 0; $i < TOURNAMENT_COUNT_TO_PRCESS_PER_BATCH; $i++)
   {
     if (!processTournament(NULL))
       break;
