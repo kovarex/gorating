@@ -16,5 +16,4 @@ TODO:
   <li>Ability to delete/fix games not just for admins</li>
   <li>Adding sgf files to others.</li>
   <li>Rating promotions/demotions (like in egd) but more explicit.</li>
-  <li>Accept Jigo.</li>
 </ul>
