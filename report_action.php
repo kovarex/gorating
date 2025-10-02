@@ -1,5 +1,5 @@
 <?php
-require("src/rating_helper.php");
+require_once("src/rating_helper.php");
 
 if (empty(userID()))
 {
