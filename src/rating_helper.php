@@ -57,6 +57,11 @@ function rankFromRating($rating)
     return floor(max(($rating + 1050) / 100, 1));
 }
 
+function middleRatingFromRank($rank)
+{
+  return ($rank - 10) * 100;
+}
+
 function readableRank($rank)
 {
   if ($rank <= 30)
@@ -75,4 +80,30 @@ function playerNameWithRank($nameOrArray, $ratingOrValuePrefix = null)
   return $nameOrArray[($ratingOrValuePrefix ?: "")."name"]." ".readableRank(rankFromRating($rating));
 }
 
+function getRatingJumpReason($expectedRating,
+                             $reportedRating,
+                             $firstRoundOfTheTournament,
+                             $lastTournamentRatingStart,
+                             $lastTournamentRatingEnd)
+{
+  if (fmod($reportedRating, 100) != 0)
+    if (abs($expectedRating - $reportedRating) < 1)
+      return "Rounding error probably";
+    else
+      return "Doesn't match";
+
+  if (!$firstRoundOfTheTournament)
+    return "Rank increase in the middle of tournament is weird.";
+
+  if (empty($lastTournamentRatingStart))
+    return "Very wierd, how can we jump in first round when there was no previous tournamnet?";
+
+  $lastTournamentStartingRank = rankFromRating($lastTournamentRatingStart);
+  $lastTournamentEndingRank = rankFromRating($lastTournamentRatingEnd);
+  $lastTournamentEndingRankRoundedToThenExtHighestMiddle = middleRatingFromRank(rankFromRating((floor($lastTournamentRatingEnd / 100) + 1) * 100));
+  if (($lastTournamentEndingRank - $lastTournamentStartingRank) >= 2 and
+       $lastTournamentEndingRankRoundedToThenExtHighestMiddle == $reportedRating)
+    return "Automatic adjustments after jumping to ranks";
+  return "Manual promotion of ".(rankFromRating($reportedRating) - $lastTournamentEndingRank)." ranks.";
+}
 ?>
