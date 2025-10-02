@@ -283,7 +283,7 @@ function processTournament($key)
           }
           if (!$existingTournament and !empty($user["username"]))
           {
-            $opponent = query("SELECT * FROM user where id=".escape($opponentID))->fetch_assoc();
+            $opponent = query("SELECT * FROM user where id=".escape($opponentUserID))->fetch_assoc();
             $user["rating"] = calculateNewRating($user["rating"],
                                                  $opponent["rating"],
                                                  $jigo ? 0.5 : ($userWon ? 1 : 0),
