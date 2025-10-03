@@ -32,6 +32,11 @@ function redirectWithMessage($message)
   redirectWithMessageCustom($redirect, $message);
 }
 
+function redirect($target)
+{
+  header("Location: ".$target);
+}
+
 function getPlayerPath($userID, $username)
 {
   global $page;

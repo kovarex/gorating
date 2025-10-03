@@ -206,8 +206,8 @@ function processTournament($key)
             else
             {
               $game = query("SELECT ".$prefix."old_egd_rating as old,".$prefix."new_egd_rating as new FROM game WHERE id=".$id)->fetch_assoc();
-              $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.01;
-              $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.01;
+              $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.0001;
+              $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.0001;
               if (!$oldIsCorrect || !$newIsCorrect)
                 query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id);
             }
@@ -271,12 +271,16 @@ function processTournament($key)
                              WHERE
                                egd_tournament_id=".escape($tournamentID)." and
                                egd_tournament_round=".escape($round)." and
-                               winner_user_id=".escape($winnerUserID))->fetch_assoc();
-              if (!$game)
+                               winner_user_id=".escape($winnerUserID));
+              if ($game->num_rows == 0)
                 throw new Exception("Processing existing tournament, but game is missing.");
+              if ($game->num_rows > 1)
+                throw new Exception("Processing existing tournament, but there are more games with the parameters.");
+              $game = $game->fetch_assoc();
+
               $gameID = $game["id"];
-              $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.01;
-              $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.01;
+              $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.0001;
+              $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.0001;
               if (!$oldIsCorrect || !$newIsCorrect)
                 query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$gameID);
             }

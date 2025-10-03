@@ -106,4 +106,16 @@ function getRatingJumpReason($expectedRating,
     return "Automatic adjustments after jumping to ranks";
   return "Manual promotion of ".(rankFromRating($reportedRating) - $lastTournamentEndingRank)." ranks.";
 }
+
+function showRating($rating)
+{
+  $significantDigits = isset($_SESSION["user"]["setting_significant_digits_in_rating"]) ? $_SESSION["user"]["setting_significant_digits_in_rating"] : 0;
+  return sprintf("%.".$significantDigits."f", $rating);
+}
+
+function showRatingChange($oldRating, $newRating)
+{
+  $myResultName = $oldRating < $newRating ? "winner" : "loser";
+  return "<span class=\"".$myResultName."\">".showRating($oldRating)."&rarr;".showRating($newRating)."</span>";
+}
 ?>

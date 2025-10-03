@@ -42,7 +42,8 @@ foreach (array("login_action",
                "reset_password_action",
                "reset_password_confirm_action",
                "toggle_statistics",
-               "collect_manual_rating_changes") as $target)
+               "collect_manual_rating_changes",
+               "settings_action") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
 foreach (array("login",
@@ -60,7 +61,8 @@ foreach (array("login",
                "invite_existing_user",
                "edit_game",
                "reset_password",
-               "reset_password_confirm") as $target)
+               "reset_password_confirm",
+               "settings") as $target)
   $pages[$target] = NORMAL_PAGE;
 
 if ($pagePath == "")

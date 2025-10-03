@@ -9,9 +9,12 @@ if (!empty($_SESSION["user"]))
             <input type=\"submit\" value=\"Logoff\"/>
           </form>";
   if (canShowStatistics())
-    echo "<form method=\"post\" action=\"toggle_statistics\" style=\"display:inline;\">
+    echo "<form method=\"post\" action=\"/toggle_statistics\" style=\"display:inline;\">
             <input type=\"submit\" value=\"Toggle statistics\"/>
           </form>";
+  echo "<form method=\"post\" action=\"/settings\" style=\"display:inline;\">
+          <input type=\"submit\" value=\"Settings\"/>
+        </form>";
   echo "</div>";
 }
 else
