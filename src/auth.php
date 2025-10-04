@@ -48,22 +48,40 @@ function canInvite()
 
 function canEditPlayerName()
 {
-  return userCanDo(ADMIN_LEVEL_USER);
+  return userCanDo(ADMIN_LEVEL_MOD);
 }
 
 function canDeleteAnyGame()
 {
-  return userCanDo(ADMIN_LEVEL_USER);
+  return userCanDo(ADMIN_LEVEL_ADMIN);
 }
 
 function canAccessDeletedGames()
 {
-  return userCanDo(ADMIN_LEVEL_USER);
+  return userCanDo(ADMIN_LEVEL_ADMIN);
 }
 
-function canEditGames()
+function canEditAnyGame()
 {
-  return userCanDo(ADMIN_LEVEL_USER);
+  return userCanDo(ADMIN_LEVEL_ADMIN);
+}
+
+function canEditWinner()
+{
+  return userCanDo(ADMIN_LEVEL_MOD);
+}
+
+function canEditMyGameSince($timestamp)
+{
+  if (canEditAnyGame())
+    return true;
+  if (!userID())
+    return true;
+
+  $timeFirst = strtotime($timestamp);
+  $timeSecond = strtotime(date("Y-m-d H:i:s"));
+  $differenceInSeconds = $timeSecond - $timeFirst;
+  return $differenceInSeconds < SECONDS_TO_ALLOW_EDIT_MY_GAMES;
 }
 
 function canShowStatistics()

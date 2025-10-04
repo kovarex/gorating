@@ -1,6 +1,4 @@
 <?php
-if (!canEditGames())
-  die("No permission to edit games.");
 
 $row = query("SELECT
                 winner.id as winner_id,
@@ -36,13 +34,15 @@ echo "<form method=\"post\" action=\"/edit_game_action\" enctype=\"multipart/for
 echo "<table>";
 echo "<tr>";
   echo "<td>".playerLink($row, "winner")."</td>";
-  echo "<td><select id=\"original_winner\" name=\"original_winner\" oninput=\"fixWinner(this);\"><option value=\"winner\" selected=\"select\">Winner</option><option value=\"loser\">Loser</option></select></td>";
+  if (canEditWinner())
+    echo "<td><select id=\"original_winner\" name=\"original_winner\" oninput=\"fixWinner(this);\"><option value=\"winner\" selected=\"select\">Winner</option><option value=\"loser\">Loser</option></select></td>";
   echo "<td><select id=\"original_winner_color\" name=\"original_winner_color\" oninput=\"fixColors(this);\"><option value=\"black\"".showSelected($row["winner_is_black"]).">Black</option><option value=\"white\"".showSelected(!$row["winner_is_black"]).">White</option></select></td>";
 echo "</tr>";
 
 echo "<tr>";
   echo "<td>".playerLink($row, "loser")."</td>";
-  echo "<td><select id=\"original_loser\" name=\"original_loser\" oninput=\"fixWinner(this);\"><option value=\"winner\">Winner</option><option value=\"loser\" selected=\"select\">Loser</option></select></td>";
+  if (canEditWinner())
+    echo "<td><select id=\"original_loser\" name=\"original_loser\" oninput=\"fixWinner(this);\"><option value=\"winner\">Winner</option><option value=\"loser\" selected=\"select\">Loser</option></select></td>";
   echo "<td><select id=\"original_loser_color\" name=\"original_loser_color\" oninput=\"fixColors(this);\"><option value=\"black\"".showSelected(!$row["winner_is_black"]).">Black</option><option value=\"white\"".showSelected($row["winner_is_black"]).">White</option></select></td>";
 echo "</tr>";
 

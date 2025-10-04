@@ -61,8 +61,17 @@ $table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_i
 $table->setPrimarySort(new SortDefinition("game.timestamp", false));
 $table->setLastSort(new SortDefinition("game.egd_tournament_round", false));
 
-if (canEditGames())
-  $table->addColumn("", "", array(), function($row) { global $player; echo "<a href=\"/edit_game?id=".$row["game_id"]."&redirect=".getPlayerPath($player["id"], @$player["username"])."\">Edit</a>"; });
+if (userID())
+  $table->addColumn("",
+                    "",
+                    array(),
+                    function($row)
+                    {
+                      global $player;
+                      if (($row["opponent_id"] == userID() or $_GET["id"] == userID()) and
+                          canEditMyGameSince($row["game_timestamp"]))
+                        echo "<a href=\"/edit_game?id=".$row["game_id"]."&redirect=".getPlayerPath($player["id"], @$player["username"])."\">Edit</a>";
+                    });
 
 $table->addColumn("result",
                   "Result",

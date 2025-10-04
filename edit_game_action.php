@@ -1,17 +1,22 @@
 <?php
 require_once("src/process_rating_update_helper.php");
-if (!canEditGames())
-  die("No permission to edit games.");
-
 $game = query("SELECT * FROM game WHERE id=".escape($_POST["id"]))->fetch_assoc();
 if (!$game)
   die("Game to update doesn't exist.");
+
+if (!canEditAnyGame())
+{
+  if ($game["winner_user_id"] != userID() and $game["loser_user_id"] != userID())
+    die("Can't edit this game.");
+  if (!canEditMyGameSince($game["timestamp"]))
+    die("You can't edit older than a day, ask a mod to edit it for you.");
+}
 
 $originalWinnerID = $game["winner_user_id"];
 $originalLoserID = $game["loser_user_id"];
 $originalWinnerIsBlack = $game["winner_is_black"];
 
-if ($_POST["original_winner"] != "winner")
+if (isset($_POST["original_winner"]) and $_POST["original_winner"] != "winner")
 {
   $winnerID = $originalLoserID;
   $loserID = $originalWinnerID;
@@ -25,6 +30,9 @@ else
   $winnerIsBlack = $originalWinnerIsBlack;
   $winnerSwitched = false;
 }
+
+if ($winnerSwitched and !canEditWinner())
+  redirectWithMessage("Can't edit winner.");
 
 if (($_POST["original_winner_color"] == "black") != $originalWinnerIsBlack)
   $winnerIsBlack = !$winnerIsBlack;
