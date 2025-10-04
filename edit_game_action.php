@@ -42,13 +42,17 @@ query("UPDATE
         (isset($sgf) ? (", sgf=".escape($sgf)) : "").
        " WHERE game.id=".$_POST["id"], true);
 
-$message = "Game with id=".$_POST["id"]." updated:<br/>\n";
+$message = "Game id=".$_POST["id"].":<br/>\n";
 if ($originalWinnerID != $winnerID)
   $message .= "Winner was changed.<br/>\n";
 if (($originalWinnerIsBlack != $winnerIsBlack) != ($originalWinnerID != $winnerID))
   $message .= "Black color player was changed.<br/>\n";
+if ($game["handicap"] != $_POST["handicap"])
+  $message .= "Handicap was changed from ".$game["handicap"]." to ".$_POST["handicap"]."<br/>\n";
+if ($game["komi"] != $_POST["komi"])
+  $message .= "Komi was changed from ".$game["komi"]." to ".$_POST["komi"]."<br/>\n";
 if (isset($sgf))
-  $message .= "SGF was ".(empty($game["sgf"]) ? "added" : "updated").".";
+  $message .= "SGF was ".(empty($game["sgf"]) ? "added" : "updated").".<br/>\n";
 $message .= processRating(50);
 redirectWithMessage($message);
 ?>

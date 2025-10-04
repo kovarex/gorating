@@ -24,14 +24,14 @@ function reportRatingFinishedResults()
                    user.name as name,
                    user.username as username,
                    user.rating as old_value,
-                   rating_update_value.rating as new_value
+                   rating_update_value.rating as rating
                  FROM
                    rating_update_value JOIN user ON rating_update_value.user_id=user.id");
   $result = "<table class=\"data-table\">";
   $result .= "<caption>Rating changes</caption>";
   $result .= "<tr><th>Name</th><th>Rating change</th></tr>";
   while ($row = $data->fetch_assoc())
-    $result .= "<tr><td>".playerLink($row)."</td><td><span class=\"".($row["old_value"] < $row["new_value"] ? "winner" : "loser")."\">".round($row["old_value"], 1)."&rarr;".round($row["new_value"], 1)."</span></td></tr>";
+    $result .= "<tr><td>".playerLink($row)."</td><td>".showRatingChange($row["old_value"], $row["rating"])."</td></tr>";
   $result .= "</table>";
   return $result;
 }
@@ -41,7 +41,7 @@ function processRating($iterationCount)
   beginTransaction();
   $ratingUpdateInProgress = query("SELECT value from variable WHERE name='rating_update_in_progress'")->fetch_assoc()['value'] == '1';
   if (!$ratingUpdateInProgress)
-    return "Nothing to update";
+    return "No rating changes to process.";
 
   $result = "";
   for ($i = 0; $i < $iterationCount; $i++)
