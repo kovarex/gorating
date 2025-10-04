@@ -1,8 +1,8 @@
 <?php
 $pageStart = microtime(true);
 error_reporting(E_ALL);
-$uri = urldecode($_SERVER["REQUEST_URI"]);
-$pagePath = substr(parse_url($uri, PHP_URL_PATH), 1);
+$uri = $_SERVER["REQUEST_URI"];
+$pagePath = urldecode(substr(parse_url($uri, PHP_URL_PATH), 1));
 $query = parse_url($uri, PHP_URL_QUERY);
 
 if ($query)
