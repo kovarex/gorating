@@ -16,7 +16,8 @@ $row = query("SELECT
                 game.winner_is_black as winner_is_black,
                 game.handicap as handicap,
                 game.komi as komi,
-                game.location as location
+                game.location as location,
+                length(game.sgf) > 0 has_sgf
               FROM
                 game JOIN user as winner ON game.winner_user_id = winner.id
                      JOIN user as loser ON game.loser_user_id = loser.id
@@ -31,7 +32,7 @@ function showSelected($value)
     return "";
   return " selected=\"selected\"";
 }
-echo "<form method=\"post\" action=\"/edit_game_action\">";
+echo "<form method=\"post\" action=\"/edit_game_action\" enctype=\"multipart/form-data\">";
 echo "<table>";
 echo "<tr>";
   echo "<td>".playerLink($row, "winner")."</td>";
@@ -48,6 +49,7 @@ echo "</tr>";
 echo "<tr><td><label for=\"handicap\">Handicap:</label></td><td colspan=2><input type=\"text\" name=\"handicap\" value=\"".$row["handicap"]."\"/></td></tr>";
 echo "<tr><td><label for=\"komi\">Komi:</label></td><td colspan=2><input type=\"text\" id=\"komi\" name=\"komi\" value=\"".$row["komi"]."\"/></td></tr>";
 echo "<tr><td><label for=\"komi\">Location:</label></td><td colspan=2><input type=\"text\" id=\"location\" name=\"location\" value=\"".$row["location"]."\"/></td></tr>";
+echo "<tr><td><label for=\"komi\">SGF(currently ".($row["has_sgf"] ? "" : "not ")."present:</label></td><td colspan=2><input type=\"file\" name=\"sgf\" accept=\".sgf\"/></td></tr>";
 echo "</table>";
 echo "<input type=\"hidden\" name=\"id\" value=\"".$_GET["id"]."\"/>";
 echo "<input type=\"hidden\" name=\"redirect\" value=\"".$_GET["redirect"]."\"/>";

@@ -27,6 +27,9 @@ else
 if (($_POST["original_winner_color"] == "black") != $originalWinnerIsBlack)
   $winnerIsBlack = !$winnerIsBlack;
 
+if (!empty($_FILES["sgf"] and !empty($_FILES["sgf"]["tmp_name"])))
+  $sgf = file_get_contents($_FILES['sgf']['tmp_name']);
+
 query("UPDATE
          game
        SET
@@ -36,13 +39,16 @@ query("UPDATE
         "handicap=".escape($_POST["handicap"]).",".
         "komi=".escape($_POST["komi"]).",".
         "location=".escape($_POST["location"]).
-       " WHERE game.id=".$_POST["id"]);
+        (isset($sgf) ? (", sgf=".escape($sgf)) : "").
+       " WHERE game.id=".$_POST["id"], true);
 
 $message = "Game with id=".$_POST["id"]." updated:<br/>\n";
 if ($originalWinnerID != $winnerID)
-  $message = "Winner was changed.<br/>\n";
+  $message .= "Winner was changed.<br/>\n";
 if (($originalWinnerIsBlack != $winnerIsBlack) != ($originalWinnerID != $winnerID))
-  $message = "Black color player was changed.<br/>\n";
+  $message .= "Black color player was changed.<br/>\n";
+if (isset($sgf))
+  $message .= "SGF was ".(empty($game["sgf"]) ? "added" : "updated").".";
 $message .= processRating(50);
 redirectWithMessage($message);
 ?>
