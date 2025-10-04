@@ -87,24 +87,26 @@ function getRatingJumpReason($expectedRating,
                              $lastTournamentRatingEnd)
 {
   if (fmod($reportedRating, 100) != 0)
-    if (abs($expectedRating - $reportedRating) < 1)
-      return "Rounding error probably";
-    else
-      return "Doesn't match";
+      return RATING_CHANGE_TYPE_ERROR;
 
   if (!$firstRoundOfTheTournament)
-    return "Rank increase in the middle of tournament is weird.";
+    return RATING_CHANGE_TYPE_ERROR;
 
   if (empty($lastTournamentRatingStart))
-    return "Very wierd, how can we jump in first round when there was no previous tournamnet?";
+    return RATING_CHANGE_TYPE_ERROR;
 
-  $lastTournamentStartingRank = rankFromRating($lastTournamentRatingStart);
-  $lastTournamentEndingRank = rankFromRating($lastTournamentRatingEnd);
-  $lastTournamentEndingRankRoundedToThenExtHighestMiddle = middleRatingFromRank(rankFromRating((floor($lastTournamentRatingEnd / 100) + 1) * 100));
-  if (($lastTournamentEndingRank - $lastTournamentStartingRank) >= 2 and
-       $lastTournamentEndingRankRoundedToThenExtHighestMiddle == $reportedRating)
-    return "Automatic adjustments after jumping to ranks";
-  return "Manual promotion of ".(rankFromRating($reportedRating) - $lastTournamentEndingRank)." ranks.";
+  if ($reportedRating == (floor($lastTournamentRatingEnd / 100) + 1) * 100)
+  {
+    $lastTournamentStartingRank = rankFromRating($lastTournamentRatingStart);
+    $lastTournamentEndingRank = rankFromRating($lastTournamentRatingEnd);
+    if (($lastTournamentEndingRank - $lastTournamentStartingRank) >= 2)
+      return RATING_CHANGE_TYPE_AUTOMATIC_EGD_RATING_RANK_RESET_NEW;
+    $lastTournamentStartingRankOldStyle = rankFromRating($lastTournamentRatingStart + 50);
+    $lastTournamentEndingRankOldStyle = rankFromRating($lastTournamentRatingEnd + 50);
+    if ($lastTournamentEndingRankOldStyle - $lastTournamentStartingRankOldStyle >= 2)
+      return RATING_CHANGE_TYPE_AUTOMATIC_EGD_RATING_RANK_RESET_OLD;
+  }
+  return RATING_CHANGE_TYPE_MANUAL_EGD_RANK_PROMOTION;
 }
 
 function showRating($rating)
