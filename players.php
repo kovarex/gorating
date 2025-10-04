@@ -74,7 +74,7 @@ else
 $table->addColumn("rating",
                   "Rating",
                   array(array("user.rating", "rating")),
-                  function($row) { echo round($row["rating"]); },
+                  function($row) { echo showRating($row["rating"]); },
                   "style=\"text-align: right;\"",
                   SORT_DESCEND);
 $table->addColumn("name",
