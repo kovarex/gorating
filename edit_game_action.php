@@ -16,12 +16,14 @@ if ($_POST["original_winner"] != "winner")
   $winnerID = $originalLoserID;
   $loserID = $originalWinnerID;
   $winnerIsBlack = !$originalWinnerIsBlack;
+  $winnerSwitched = true;
 }
 else
 {
   $winnerID = $originalWinnerID;
   $loserID = $originalLoserID;
   $winnerIsBlack = $originalWinnerIsBlack;
+  $winnerSwitched = false;
 }
 
 if (($_POST["original_winner_color"] == "black") != $originalWinnerIsBlack)
@@ -39,6 +41,14 @@ query("UPDATE
         "handicap=".escape($_POST["handicap"]).",".
         "komi=".escape($_POST["komi"]).",".
         "location=".escape($_POST["location"]).
+        ($winnerSwitched ? (", winner_old_egd_rating=".escape($game["loser_old_egd_rating"]).
+                            ", winner_old_rating=".escape($game["loser_old_rating"]).
+                            ", winner_new_egd_rating=".escape($game["loser_old_egd_rating"]).
+                            ", winner_new_rating=".escape($game["loser_old_rating"]).
+                            ", loser_old_egd_rating=".escape($game["winner_old_egd_rating"]).
+                            ", loser_old_rating=".escape($game["winner_old_rating"]).
+                            ", loser_new_egd_rating=".escape($game["winner_new_egd_rating"]).
+                            ", loser_new_rating=".escape($game["winner_new_rating"])) : "").
         (isset($sgf) ? (", sgf=".escape($sgf)) : "").
        " WHERE game.id=".$_POST["id"], true);
 
