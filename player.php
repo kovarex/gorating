@@ -32,8 +32,8 @@ if (userID() && userID() != $player["id"])
 }
 
 echo "<table class=\"centered-table\">";
-echo "<tr><td>Rating:</td><td>".round($player["rating"])."</td></tr>";
-echo "<tr><td>EGD Rating:</td><td>".$player["egd_rating"]."</td></tr>";
+echo "<tr><td>Rating:</td><td>".showRating($player["rating"])."</td></tr>";
+echo "<tr><td>EGD Rating:</td><td>".showRating($player["egd_rating"])."</td></tr>";
 if (!empty($player["egd_pin"]))
   echo "<tr><td>EGD PIN:</td><td>".egdLink($player["egd_pin"])."</td></tr>";
 echo "</table>";
