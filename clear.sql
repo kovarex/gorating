@@ -6,6 +6,8 @@ DROP TABLE IF EXISTS `egd_tournament_to_process`;
 DROP TABLE IF EXISTS `egd_tournament_result`;
 DROP TABLE IF EXISTS `egd_tournament`;
 DROP TABLE IF EXISTS `invite`;
+DROP TABLE IF EXISTS `rating_change`;
+DROP TABLE IF EXISTS `rating_change_type`;
 DROP TABLE IF EXISTS `user`;
 DROP TABLE IF EXISTS `admin_level`;
 DROP TABLE IF EXISTS `game_type`;

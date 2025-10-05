@@ -6,6 +6,8 @@ OPTIMIZE TABLE `egd_tournament_to_process`;
 OPTIMIZE TABLE `game`;
 OPTIMIZE TABLE `game_type`;
 OPTIMIZE TABLE `invite`;
+OPTIMIZE TABLE `rating_change`;
+OPTIMIZE TABLE `rating_change_type`;
 OPTIMIZE TABLE `rating_update_value`;
 OPTIMIZE TABLE `user`;
 OPTIMIZE TABLE `user_game_count_to_update`;

@@ -79,6 +79,7 @@ CREATE TABLE `user` (
   `overall_loss_count` INT UNSIGNED GENERATED ALWAYS AS (loss_count + egd_loss_count) STORED,
   `game_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + loss_count) STORED,
   `setting_significant_digits_in_rating` INT UNSIGNED NULL DEFAULT NULL,
+  `rating_change_checked` boolean NOT NULL DEFAULT false,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `username` (`username`),
   UNIQUE INDEX `email` (`email`),
@@ -223,6 +224,40 @@ CREATE TABLE `rating_update_value` (
   PRIMARY KEY (`user_id`),
   FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
+
+CREATE TABLE `rating_change_type`
+(
+  `id` int(10) UNSIGNED NOT NULL,
+  `name` varchar(128) NOT NULL,
+  PRIMARY KEY (`id`)
+) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
+
+INSERT INTO `rating_change_type` (`id`, `name`) VALUES
+(1, 'Automatic EGD rating reset based on rank increase by 2 (old type)'),
+(2, 'Automatic EGD rating reset based on rank increase by 2 (new type)'),
+(3, 'Automatic EGD rating reset based on unknown reason.'),
+(4, 'Manual egd rank promotion'),
+(5, 'Manual rating promotion.'),
+(6, 'Error');
+
+CREATE TABLE `rating_change`
+(
+  `id` int(10) UNSIGNED NOT NULL,
+  `old_egd_rating` double NULL DEFAULT NULL,
+  `new_egd_rating` double NULL DEFAULT NULL,
+  `old_rating` double NULL DEFAULT NULL,
+  `new_rating` double NULL DEFAULT NULL,
+  `user_id` int unsigned NOT NULL,
+  `executed_by_user_id` int unsigned NULL DEFAULT NULL,
+  `comment` VARCHAR(256) NULL DEFAULT NULL,
+  `rating_change_type_id` int unsigned NOT NULL,
+  `timestamp` timestamp NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `timestamp` (`timestamp`),
+  FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (`executed_by_user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE SET NULL,
+  FOREIGN KEY (`rating_change_type_id`) REFERENCES `rating_change_type` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
+) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
 DROP TRIGGER IF EXISTS game_after_insert;
 DELIMITER //
