@@ -86,8 +86,11 @@ function getRatingJumpReason($expectedRating,
                              $lastTournamentRatingStart,
                              $lastTournamentRatingEnd)
 {
+  if ($reportedRating > 2700 and $reportedRating == floor(($reportedRating - 2700) / 30) * 30 + 2700)
+    return RATING_CHANGE_TYPE_MANUAL_EGD_RANK_PROMOTION; // pro ranks
+
   if (fmod($reportedRating, 100) != 0)
-      return RATING_CHANGE_TYPE_ERROR;
+    return RATING_CHANGE_TYPE_ERROR;
 
   if (!$firstRoundOfTheTournament)
     return RATING_CHANGE_TYPE_ERROR;
@@ -106,6 +109,7 @@ function getRatingJumpReason($expectedRating,
     if ($lastTournamentEndingRankOldStyle - $lastTournamentStartingRankOldStyle >= 2)
       return RATING_CHANGE_TYPE_AUTOMATIC_EGD_RATING_RANK_RESET_OLD;
   }
+
   return RATING_CHANGE_TYPE_MANUAL_EGD_RANK_PROMOTION;
 }
 
