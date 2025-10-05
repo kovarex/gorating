@@ -228,9 +228,12 @@ class TableViewer
 
   private function renderRow($row)
   {
-    $specialRow = $this->specialRow;
-    if ($specialRow($row))
-      return;
+    if (isset($this->specialRow))
+    {
+      $specialRow = $this->specialRow;
+      if ($specialRow($row))
+        return;
+    }
 
     echo "<tr>";
     foreach ($this->columns as $column)
