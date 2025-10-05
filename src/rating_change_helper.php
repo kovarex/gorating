@@ -75,12 +75,13 @@ function checkUserRatingChanges($userID)
                  ", rank: ".readableRank(rankFromRating($lastTournamentRatingStart))."->".readableRank(rankFromRating($lastTournamentRatingEnd)).")";
           echo "<br/>\n";
 
-          $jumpType = getRatingJumpReason($egdRating,
-                                                $egdOld,
-                                                $firstRoundOfTheTournament,
-                                                $lastTournamentRatingStart,
-                                                $lastTournamentRatingEnd);
-          if ($jumpType == RATING_CHANGE_TYPE_ERROR)
+          if (isset($lastTournamentRatingStart))
+            $jumpType = getRatingJumpReason($egdRating,
+                                            $egdOld,
+                                            $firstRoundOfTheTournament,
+                                            $lastTournamentRatingStart,
+                                            $lastTournamentRatingEnd);
+          if (!isset($jumpType) or $jumpType == RATING_CHANGE_TYPE_ERROR)
           {
             echo "Since this looks like an error, recomputing ";
             if (isset($previousTournamentKey))

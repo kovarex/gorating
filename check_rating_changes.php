@@ -6,7 +6,7 @@ echo "Remaining ".$data->num_rows." users to check.<br/>\n";
 
 function tryToCheckRepeatedly($id)
 {
-  for ($j = 0; $j < 10; $j++)
+  for ($j = 0; $j < 3; $j++)
     if (checkUserRatingChanges($id))
       return true;
   return false;
