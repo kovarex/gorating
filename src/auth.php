@@ -77,7 +77,7 @@ function canEditGame($winnerUserID, $loserUserID, $timestamp)
     return true;
   if (!userID())
     return false;
-  if (userID() != $winnerUserID and userID() != $loserUserID())
+  if (userID() != $winnerUserID and userID() != $loserUserID)
     return false;
 
   $timeFirst = strtotime($timestamp);
