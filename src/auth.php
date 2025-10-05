@@ -71,12 +71,14 @@ function canEditWinner()
   return userCanDo(ADMIN_LEVEL_MOD);
 }
 
-function canEditMyGameSince($timestamp)
+function canEditGame($winnerUserID, $loserUserID, $timestamp)
 {
   if (canEditAnyGame())
     return true;
   if (!userID())
-    return true;
+    return false;
+  if (userID() != $winnerUserID and userID() != $loserUserID())
+    return false;
 
   $timeFirst = strtotime($timestamp);
   $timeSecond = strtotime(date("Y-m-d H:i:s"));

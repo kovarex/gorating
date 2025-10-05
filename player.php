@@ -89,15 +89,14 @@ $table->setSpecialRow(function($row)
 $table->setPrimarySort(new SortDefinition("timestamp", false));
 $table->setLastSort(new SortDefinition("egd_tournament_round", false));
 
-if (userID())
+if (canEditAnyGame() or userID() == $_GET["id"] or userID() == $_GET["id"])
   $table->addColumn("",
                     "",
                     array(),
                     function($row)
                     {
                       global $player;
-                      if (($row["opponent_id"] == userID() or $_GET["id"] == userID()) and
-                          canEditMyGameSince($row["timestamp"]))
+                      if (canEditGame($row["opponent_id"], $_GET["id"], $row["timestamp"]))
                         echo "<a href=\"/edit_game?id=".$row["game_id"]."&redirect=".getPlayerPath($player["id"], @$player["username"])."\">Edit</a>";
                     });
 
