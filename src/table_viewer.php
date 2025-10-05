@@ -65,6 +65,23 @@ class TableColumn
       $sqlFromFiller->add($part[0], $part[1]);
   }
 
+  public function fillFromSecondary(&$sqlFromFiller)
+  {
+    if (isset($this->secondarySql))
+    {
+      foreach ($this->secondarySql as $part)
+        $sqlFromFiller->add($part[0], $part[1]);
+    }
+    else
+      foreach ($this->sql as $part)
+        $sqlFromFiller->add("NULL", $part[1]);
+  }
+
+  public function addSecondary($secondarySql)
+  {
+    $this->secondarySql = $secondarySql;
+  }
+
   public function renderHeader($currentSort)
   {
     echo "<th>";
@@ -113,6 +130,7 @@ class TableColumn
   public $name;
   public $caption;
   public $sql;
+  public $secondarySql;
   public $cellFiller;
   public $cellParameters;
   public $defaultSortAscend;
@@ -134,11 +152,20 @@ class TableViewer
     return $member;
   }
 
+  public function secondaryQueryCore($forCount)
+  {
+    $member = $this->secondaryQueryCoreData;
+    if (is_callable($member))
+      return $member($forCount);
+    return $member;
+  }
+
   public function addColumn($name, $caption, $sql, $cellFiller, $cellParameters = NULL, $defaultSortAscend = SORT_ASCEND)
   {
     $this->columns[$name] = new TableColumn($name, $caption, $sql, $cellFiller, $cellParameters, $this->get, $defaultSortAscend);
     if (!empty($name) && @$_GET["sort"] == $name)
       $this->currentSort = $this->columns[$name]->getSort(@$_GET["d"]);
+    return $this->columns[$name];
   }
 
   public function renderHeader()
@@ -178,6 +205,19 @@ class TableViewer
     $result .= $sqlFromFiller->result;
     $result .= " FROM \n";
     $result .= $this->queryCore(false /* not for count */);
+
+    if (isset($this->secondaryQueryCoreData))
+    {
+      $result .= " UNION ALL \n";
+      $result .= "SELECT\n";
+      $sqlSecondaryFromFiller = new SqlFromFiller();
+      foreach ($this->columns as $column)
+        $column->fillFromSecondary($sqlSecondaryFromFiller);
+      $result .= $sqlSecondaryFromFiller->result;
+      $result .= " FROM \n";
+      $result .= $this->secondaryQueryCore(false /* not for count */);
+    }
+
     $result .= $this->buildSort();
     $result .= " LIMIT ".TABLE_PAGE_SIZE;
     $start = $this->getStart();
@@ -188,6 +228,10 @@ class TableViewer
 
   private function renderRow($row)
   {
+    $specialRow = $this->specialRow;
+    if ($specialRow($row))
+      return;
+
     echo "<tr>";
     foreach ($this->columns as $column)
       $column->renderCell($row);
@@ -244,12 +288,24 @@ class TableViewer
     $this->lastSort = $lastSort;
   }
 
+  public function setSpecialRow($specialRow)
+  {
+    $this->specialRow = $specialRow;
+  }
+
+  public function addSecondaryUnionAll($secondaryQueryCoreData)
+  {
+    $this->secondaryQueryCoreData = $secondaryQueryCoreData;
+  }
+
   public $queryCoreData;
+  public $secondaryQueryCoreData;
   private $columns;
   private $get;
   private $fixedSort;
   private $currentSort;
   private $lastSort;
+  private $specialRow;
 };
 
 ?>

@@ -150,7 +150,7 @@ CREATE TABLE `egd_tournament_result` (
   UNIQUE INDEX `egd_tournament_id_3` (`egd_tournament_id`, `user_id`),
   INDEX `egd_tournament_id` (`egd_tournament_id`, `user_id`, `placement`),
   INDEX `user_id` (`user_id`),
-  FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
@@ -200,10 +200,10 @@ CREATE TABLE `game` (
   INDEX `game_type_id` (`game_type_id`),
   INDEX `egd_tournament_id` (`egd_tournament_id`),
   INDEX `egd_tournament_round` (`egd_tournament_round`),
-  CONSTRAINT `game_ibfk_1` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  CONSTRAINT `game_ibfk_2` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  CONSTRAINT `game_ibfk_3` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  CONSTRAINT `game_ibfk_4` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
+  CONSTRAINT `winner_user_id` FOREIGN KEY (`winner_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT `loser_user_id` FOREIGN KEY (`loser_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT `game_type_id` FOREIGN KEY (`game_type_id`) REFERENCES `game_type` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT `egd_tournament_id` FOREIGN KEY (`egd_tournament_id`) REFERENCES `egd_tournament` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
 CREATE TABLE `variable` (

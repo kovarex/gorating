@@ -46,10 +46,10 @@ echo "    window.location.replace('/delete_game_action?id=' + id + '&redirect=".
 echo "}\n";
 echo "</script>\n";
 
-$table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
-                          user as winner,
-                          user as loser,
-                          game_type
+$table = new TableViewer("  game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,
+                            user as winner,
+                            user as loser,
+                            game_type
                           WHERE
                             game.deleted = false and
                             game.winner_user_id = winner.id and
@@ -57,9 +57,37 @@ $table = new TableViewer("game LEFT JOIN egd_tournament ON game.egd_tournament_i
                             game.game_type_id = game_type.id and
                             (winner_user_id=".escape($_GET["id"])." or loser_user_id=".escape($_GET["id"]).")",
                           $_GET);
+$table->addSecondaryUnionAll("    rating_change\n".
+                             "      JOIN rating_change_type ON rating_change.rating_change_type_id=rating_change_type.id\n".
+                             "      LEFT JOIN user as executed_by ON rating_change.executed_by_user_id=executed_by.id\n".
+                             "  WHERE\n".
+                             "    rating_change.user_id=".escape($_GET["id"])."\n");
+$table->setSpecialRow(function($row)
+                      {
+                        if (empty($row["rating_change_type_id"]))
+                          return false;
+                        echo "<tr>";
+                        echo "<td colspan=".(userID() ? "2" : "1")."></td>";
+                        echo "<td style=\"align:center;\">".($row["old_rating"] ? showRatingChange($row["old_rating"], $row["new_rating"]) : "")."</td>";
+                        echo "<td style=\"align:center;\">".($row["old_egd_rating"] ? showRatingChange($row["old_egd_rating"], $row["new_egd_rating"]) : "")."</td>";
+                        switch ($row["rating_change_type_id"])
+                        {
+                          case RATING_CHANGE_TYPE_AUTOMATIC_EGD_RATING_RANK_RESET_OLD: $typeName = "Automatic"; break;
+                          case RATING_CHANGE_TYPE_AUTOMATIC_EGD_RATING_RANK_RESET_NEW: $typeName = "Automatic"; break;
+                          case RATING_CHANGE_TYPE_AUTOMATIC_EGD_RATING_RANK_RESET_UNKNOWN: $typeName = "Unknown"; break;
+                          case RATING_CHANGE_TYPE_MANUAL_EGD_RANK_PROMOTION: $typeName = "Manual"; break;
+                          case RATING_CHANGE_TYPE_MANUAL_RANK_PROMOTION: $typeName = "Manual"; break;
+                          case RATING_CHANGE_TYPE_ERROR: $typeName = "Errornous"; break;
+                        }
+                        echo "<td colspan=4>".$typeName." rating change issued by ".(empty($row["opponent_id"]) ? "EGD" : playerLink($row, "opponent"))."</td>";
+                        echo "<td>".date("d. m. Y H:i", strtotime($row["timestamp"]))."</td>";
+                        echo "<td colspan=".(canDeleteAnyGame() ? "6" : "5").">".$row["comment"]."</td>";
+                        echo "</tr>";
+                        return true;
+                      });
 
-$table->setPrimarySort(new SortDefinition("game.timestamp", false));
-$table->setLastSort(new SortDefinition("game.egd_tournament_round", false));
+$table->setPrimarySort(new SortDefinition("timestamp", false));
+$table->setLastSort(new SortDefinition("egd_tournament_round", false));
 
 if (userID())
   $table->addColumn("",
@@ -69,15 +97,18 @@ if (userID())
                     {
                       global $player;
                       if (($row["opponent_id"] == userID() or $_GET["id"] == userID()) and
-                          canEditMyGameSince($row["game_timestamp"]))
+                          canEditMyGameSince($row["timestamp"]))
                         echo "<a href=\"/edit_game?id=".$row["game_id"]."&redirect=".getPlayerPath($player["id"], @$player["username"])."\">Edit</a>";
                     });
 
 $table->addColumn("result",
                   "Result",
-                  array(array("IF(game.jigo, 'JIGO', IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS'))", "result")),
+                  array(array("IF(game.jigo, 'JIGO', IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS'))", "result"),
+                        array("NULL", "rating_change_type_id")),
                   function($row) { echo $row["result"]; },
-                  "style=\"text-align:center;\"");
+                  "style=\"text-align:center;\"")
+      ->addSecondary(array(array("NULL", "result"),
+                           array("rating_change_type_id", "rating_change_type_id")));
 
 $table->addColumn("rating_change",
                   "Rating change",
@@ -89,7 +120,10 @@ $table->addColumn("rating_change",
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_old_rating, game.loser_old_rating)", "old_rating"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_rating, game.loser_new_rating)", "new_rating")),
                   function($row) { if ($row["old_rating"]) echo showRatingChange($row["old_rating"], $row["new_rating"]); },
-                  "style=\"text-align:center;\"");
+                  "style=\"text-align:center;\"")
+      ->addSecondary(array(array("rating_change.new_rating - rating_change.old_rating", "rating_change"),
+                           array("rating_change.old_rating", "old_rating"),
+                           array("rating_change.new_rating", "new_rating")));
 
 $table->addColumn("egd_rating_change",
                   "EGD Rating change",
@@ -101,17 +135,24 @@ $table->addColumn("egd_rating_change",
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_old_egd_rating, game.loser_old_egd_rating)", "old_egd_rating"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_egd_rating, game.loser_new_egd_rating)", "new_egd_rating")),
                   function($row) { if ($row["old_egd_rating"]) echo showRatingChange($row["old_egd_rating"], $row["new_egd_rating"]); },
-                  "style=\"text-align:center;\"");
+                  "style=\"text-align:center;\"")
+       ->addSecondary(array(array("rating_change.new_egd_rating - rating_change.old_egd_rating", "egd_rating_change"),
+                            array("rating_change.old_egd_rating", "old_egd_rating"),
+                            array("rating_change.new_egd_rating", "new_egd_rating")));
 
 $table->addColumn("opponent_name",
                   "Opponent",
                   array(array("IF(winner.id = ".escape($_GET["id"]).", loser.name, winner.name)", "opponent_name"),
                         array("IF(winner.id = ".escape($_GET["id"]).", loser.username, winner.username)", "opponent_username"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.loser_user_id, game.winner_user_id)", "opponent_id"),
-                        array("IF(winner.id = ".escape($_GET["id"]).", loser.egd_pin, winner.egd_pin)", "opponent_egd_pin"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.loser_new_rating, game.winner_new_rating)", "opponent_rating"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.loser_new_egd_rating, game.winner_new_egd_rating)", "opponent_egd_rating")),
-                  function($row) { echo playerLink($row, "opponent"); });
+                  function($row) { echo playerLink($row, "opponent"); })
+       ->addSecondary(array(array("executed_by.name", "opponent_name"),
+                            array("executed_by.username", "opponent_username"),
+                            array("executed_by.id", "opponent_id"),
+                            array("executed_by.rating", "opponent_rating"),
+                            array("executed_by.egd_rating", "opponent_egd_rating")));
 
 $table->addColumn("game_type_name",
                   "Game type",
@@ -149,21 +190,27 @@ $table->addColumn("handicap",
 
 $table->addColumn("game_timestamp",
                   "Time",
-                  array(array("game.timestamp", "game_timestamp")),
-                  function($row) { echo date("d. m. Y H:i", strtotime($row["game_timestamp"])); });
+                  array(array("game.timestamp", "timestamp")),
+                  function($row) { echo date("d. m. Y H:i", strtotime($row["timestamp"])); })
+      ->addSecondary(array(array("rating_change.timestamp", "timestamp")));
 
 $table->addColumn("egd_tournament_name",
                   "Tournament",
                   array(array("egd_tournament.name", "egd_tournament_name"),
                         array("egd_tournament.egd_key", "egd_tournament_key"),
-                        array("egd_tournament.id", "egd_tournament_id")),
+                        array("egd_tournament.id", "egd_tournament_id"),
+                        array("game.egd_tournament_round", "egd_tournament_round")),
                   function($row)
                   {
                     if (empty($row["egd_tournament_id"]))
                       return;
                     $shortenedTournamentName = substr(readableTournamentName($row["egd_tournament_name"]), 0, 30);
                     echo tournamentLink($row["egd_tournament_id"], $shortenedTournamentName);
-                  });
+                  })
+       ->addSecondary(array(array("NULL", "egd_tournament_name"),
+                            array("NULL", "egd_tournamekt_key"),
+                            array("NULL", "egd_tournament_id"),
+                            array("9999", "egd_tournament_round")));
 
 $table->addColumn("game_location",
                   "Location",
@@ -173,7 +220,8 @@ $table->addColumn("game_location",
 $table->addColumn("comment",
                   "Comment",
                   array(array("IF(winner.id = ".escape($_GET["id"]).", game.winner_comment, game.loser_comment)", "comment")),
-                  function($row){ echo $row["comment"]; });
+                  function($row){ echo $row["comment"]; })
+      ->addSecondary(array(array("rating_change.comment", "comment")));
 
 $table->addColumn("opponent_comment",
                   "Opponent comment",
@@ -190,7 +238,8 @@ if (canDeleteAnyGame())
   $table->addColumn("delete",
                     "Delete",
                     array(),
-                    function($row) { echo "<button onclick=\"tryToDeleteGame(".$row["game_id"].")\">X</button>"; });
+                    function($row) { echo "<button onclick=\"tryToDeleteGame(".$row["game_id"].")\">X</button>"; },
+                    "style=\"align:center;\"");
 
 
 $table->render();
