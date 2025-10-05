@@ -73,9 +73,9 @@ function playerNameWithRank($nameOrArray, $ratingOrValuePrefix = null)
 {
   if (!is_array($nameOrArray))
     return $nameOrArray." ".readableRank(rankFromRating($ratingOrValuePrefix));
-
-  $rating = $nameOrArray[($ratingOrValuePrefix ?: "")."rating"];
-  if (!$rating)
+  if (array_key_exists(($ratingOrValuePrefix ?: "")."rating", $nameOrArray))
+    $rating = $nameOrArray[($ratingOrValuePrefix ?: "")."rating"];
+  if (!isset($rating))
     $rating = $nameOrArray[($ratingOrValuePrefix ?: "")."egd_rating"];
   return $nameOrArray[($ratingOrValuePrefix ?: "")."name"]." ".readableRank(rankFromRating($rating));
 }
