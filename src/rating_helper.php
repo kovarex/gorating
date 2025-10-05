@@ -92,7 +92,7 @@ function getRatingJumpReason($expectedRating,
   if (!$firstRoundOfTheTournament)
     return RATING_CHANGE_TYPE_ERROR;
 
-  if (empty($lastTournamentRatingStart))
+  if (!isset($lastTournamentRatingStart))
     return RATING_CHANGE_TYPE_ERROR;
 
   if ($reportedRating == (floor($lastTournamentRatingEnd / 100) + 1) * 100)

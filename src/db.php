@@ -59,6 +59,12 @@ function commitTransaction()
   $db->commit();
 }
 
+function rollbackTransaction()
+{
+  global $db;
+  $db->rollback();
+}
+
 function lastInsertID()
 {
   global $db;

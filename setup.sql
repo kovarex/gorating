@@ -227,7 +227,7 @@ CREATE TABLE `rating_update_value` (
 
 CREATE TABLE `rating_change_type`
 (
-  `id` int(10) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
   PRIMARY KEY (`id`)
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
@@ -242,7 +242,7 @@ INSERT INTO `rating_change_type` (`id`, `name`) VALUES
 
 CREATE TABLE `rating_change`
 (
-  `id` int(10) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `old_egd_rating` double NULL DEFAULT NULL,
   `new_egd_rating` double NULL DEFAULT NULL,
   `old_rating` double NULL DEFAULT NULL,

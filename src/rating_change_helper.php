@@ -1,5 +1,6 @@
 <?php
 require_once("link_helper.php");
+require_once("process_tournament_helper.php");
 function checkUserRatingChanges($userID)
 {
   beginTransaction();
@@ -68,11 +69,31 @@ function checkUserRatingChanges($userID)
         if (!$thisIsJump)
         {
           echo "Rating jumped from ".$egdRating." to ".$egdOld." in tournament ".egdTournamentLink($tournamentKey)." round ".$row["egd_tournament_round"];
-          if ($previousTournamentKey and $row["egd_tournament_round"] == 1)
+          if (isset($previousTournamentKey) and $row["egd_tournament_round"] == 1)
             echo " (previous tournament ".egdTournamentLink($previousTournamentKey).
                  ", rating: ".$lastTournamentRatingStart."->".$lastTournamentRatingEnd.
                  ", rank: ".readableRank(rankFromRating($lastTournamentRatingStart))."->".readableRank(rankFromRating($lastTournamentRatingEnd)).")";
           echo "<br/>\n";
+
+          $jumpType = getRatingJumpReason($egdRating,
+                                                $egdOld,
+                                                $firstRoundOfTheTournament,
+                                                $lastTournamentRatingStart,
+                                                $lastTournamentRatingEnd);
+          if ($jumpType == RATING_CHANGE_TYPE_ERROR)
+          {
+            echo "Since this looks like an error, recomputing ";
+            if (isset($previousTournamentKey))
+            {
+              processTournament($previousTournamentKey);
+              echo $previousTournamentKey." ";
+            }
+            processTournament($tournamentKey);
+            echo $tournamentKey."<br/>\n";
+            rollbackTransaction();
+            return false;
+          }
+
           query("INSERT INTO
                    rating_change(old_egd_rating,
                                  new_egd_rating,
@@ -97,7 +118,8 @@ function checkUserRatingChanges($userID)
     $egdRating = $egdNew;
     $firstRoundOfTheTournament = false;
   }
-  query("UPDATE user SET rating_changes_checked=true WHERE id=".escape($userID));
+  query("UPDATE user SET rating_change_checked=true WHERE id=".escape($userID));
   commitTransaction();
+  return true;
 }
 ?>
