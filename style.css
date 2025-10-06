@@ -1,6 +1,10 @@
 .data-table td{border:solid 1px;padding: 3px;}
+.data-table th{padding: 3px;}
 .data-table {border-collapse:collapse;}
 .centered-table {margin-left: auto; margin-right: auto;}
+.centered-data-table td{border:solid 1px;padding: 3px;}
+.centered-data-table th{padding: 3px;}
+.centered-data-table {border-collapse:collapse;margin-left: auto; margin-right: auto;}
 .data-form {border: solid 1px;display:inline-block;}
 .search-form {display: inline;}
 .winner {color:green;}

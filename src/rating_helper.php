@@ -124,4 +124,16 @@ function showRatingChange($oldRating, $newRating)
   $myResultName = $oldRating < $newRating ? "winner" : "loser";
   return "<span class=\"".$myResultName."\">".showRating($oldRating)."&rarr;".showRating($newRating)."</span>";
 }
+
+function showHandicap($handicap, $komi)
+{
+  if ($handicap == 0 and ($komi == 6.5 or $komi == 7.5))
+    return "Even";
+
+  if ($handicap == 0)
+    return "komi ".$komi;
+
+  return $handicap."h".($komi == 0.5 ? " " : (" komi ".$komi));
+}
+
 ?>

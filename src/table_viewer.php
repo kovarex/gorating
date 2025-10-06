@@ -82,26 +82,32 @@ class TableColumn
     $this->secondarySql = $secondarySql;
   }
 
-  public function renderHeader($currentSort)
+  public function renderHeader($currentSort, $limit)
   {
     echo "<th>";
-    $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-    $getCopy = $this->get;
-    $thisIsSorted = $currentSort->column == $this->name;
-    $getCopy["sort"] = $this->name;
-    if ($thisIsSorted)
-      $getCopy["d"] = $currentSort->ascending ? "down" : "up";
-    else
-      $getCopy["d"] = $this->defaultSortAscend ? "up" : "down";
-
-    echo "<span style=\"vertical-align: middle;\"><a href=\"".generateAddress($url, $getCopy)."\">";
-    echo $this->caption;
-    echo "</a>";
-    if ($thisIsSorted)
+    echo "<span style=\"vertical-align: middle;\">";
+    if (!isset($limit))
     {
-      global $resourceAddress;
-      echo "<img class=\"sorting-image\" src=\"".$resourceAddress."/img/arrow-".($currentSort->ascending ? "up" : "down").".png\"/>";
+      $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+      $getCopy = $this->get;
+      $thisIsSorted = $currentSort->column == $this->name;
+      $getCopy["sort"] = $this->name;
+      if ($thisIsSorted)
+        $getCopy["d"] = $currentSort->ascending ? "down" : "up";
+      else
+        $getCopy["d"] = $this->defaultSortAscend ? "up" : "down";
+
+      echo "<a href=\"".generateAddress($url, $getCopy)."\">";
+      echo $this->caption;
+      echo "</a>";
+      if ($thisIsSorted)
+      {
+        global $resourceAddress;
+        echo "<img class=\"sorting-image\" src=\"".$resourceAddress."/img/arrow-".($currentSort->ascending ? "up" : "down").".png\"/>";
+      }
     }
+    else
+      echo $this->caption;
     echo "</span>";
     echo "</th>";
   }
@@ -172,7 +178,7 @@ class TableViewer
   {
     echo "<tr>";
     foreach ($this->columns as $column)
-      $column->renderHeader($this->currentSort);
+      $column->renderHeader($this->currentSort, $this->limit);
     echo "</tr>";
   }
 
@@ -219,7 +225,7 @@ class TableViewer
     }
 
     $result .= $this->buildSort();
-    $result .= " LIMIT ".TABLE_PAGE_SIZE;
+    $result .= " LIMIT ".(isset($this->limit) ? $this->limit : TABLE_PAGE_SIZE);
     $start = $this->getStart();
     if ($start > 1)
       $result .= " OFFSET ".($start - 1);
@@ -244,32 +250,39 @@ class TableViewer
   public function render()
   {
     echo "<br/>\n";
-    echo "<table class=\"data-table\">\n";
+    echo "<table class=\"".(isset($this->tableClass) ? $this->tableClass : "data-table")."\">\n";
     $data = query($this->buildQuery());
-    $total = query("SELECT COUNT(*) as total FROM ".$this->queryCore(true/* for count*/))->fetch_assoc()["total"];
-    if ($data->num_rows < $total)
+
+    if (!isset($this->limit))
     {
-      echo "<caption>";
-      $start = $this->getStart();
-      if ($start > 1)
+      $total = query("SELECT COUNT(*) as total FROM ".$this->queryCore(true/* for count*/))->fetch_assoc()["total"];
+      if ($data->num_rows < $total)
       {
-        $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-        $getCopy = $this->get;
-        $getCopy["start"] = max($start - TABLE_PAGE_SIZE, 1);
-        echo "<a href=\"".generateAddress($url, $getCopy)."\">Previous</a> ";
-      }
+        echo "<caption>";
+        $start = $this->getStart();
+        if ($start > 1)
+        {
+          $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+          $getCopy = $this->get;
+          $getCopy["start"] = max($start - TABLE_PAGE_SIZE, 1);
+          echo "<a href=\"".generateAddress($url, $getCopy)."\">Previous</a> ";
+        }
 
-      echo  $start."-".min($start + $data->num_rows, $total)." of ".$total;
+        echo  $start."-".min($start + $data->num_rows, $total)." of ".$total;
 
-      if ($start + $data->num_rows < $total)
-      {
-        $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-        $getCopy = $this->get;
-        $getCopy["start"] = $start + TABLE_PAGE_SIZE;
-        echo " <a href=\"".generateAddress($url, $getCopy)."\">Next</a> ";
+        if ($start + $data->num_rows < $total)
+        {
+          $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+          $getCopy = $this->get;
+          $getCopy["start"] = $start + TABLE_PAGE_SIZE;
+          echo " <a href=\"".generateAddress($url, $getCopy)."\">Next</a> ";
+        }
+        echo "</caption>";
       }
-      echo "</caption>";
     }
+    else if (isset($this->caption))
+      echo "<caption>".$this->caption."</caption>";
+
     $this->renderHeader();
     while ($row = $data->fetch_assoc())
       $this->renderRow($row);
@@ -303,6 +316,9 @@ class TableViewer
 
   public $queryCoreData;
   public $secondaryQueryCoreData;
+  public $limit;
+  public $caption;
+  public $tableClass;
   private $columns;
   private $get;
   private $fixedSort;

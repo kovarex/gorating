@@ -114,4 +114,11 @@ function inviteAddress($inviteID, $secret)
 {
   return "http://".$_SERVER['HTTP_HOST']."/register?id=".$inviteID."&secret=".$secret;
 }
+
+function showWinOrLoss($result)
+{
+  if ($result == "JIGO")
+    return $result;
+  return "<span class=\"".($result == "WIN" ? "winner" : "loser")."\">".$result."</span>";
+}
 ?>

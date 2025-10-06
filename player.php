@@ -169,22 +169,7 @@ $table->addColumn("handicap",
                   "Handicap",
                   array(array("game.handicap", "handicap"),
                         array("game.komi", "komi"),),
-                  function($row)
-                  {
-                    if ($row["handicap"] == 0 and ($row["komi"] == 6.5 or $row["komi"] == 7.5))
-                      echo "Even";
-                    else
-                    {
-                      if ($row["handicap"] != 0)
-                      {
-                        echo $row["handicap"]."h";
-                        if ($row["komi"] != 0.5)
-                          echo " komi ".$row["komi"];
-                      }
-                      else
-                        echo "komi ".$row["komi"];
-                    }
-                  },
+                  function($row) { echo showHandicap($row["handicap"], $row["komi"]); },
                   "style=\"text-align:center;\"");
 
 $table->addColumn("game_timestamp",
