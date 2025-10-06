@@ -97,7 +97,7 @@ if (canEditAnyGame() or userID() == $_GET["id"] or userID() == $_GET["id"])
                     {
                       global $player;
                       if (canEditGame($row["opponent_id"], $_GET["id"], $row["timestamp"]))
-                        echo "<a href=\"/edit_game?id=".$row["game_id"]."&redirect=".getPlayerPath($player["id"], @$player["username"])."\">Edit</a>";
+                        echo "<a href=\"/edit_game?id=".$row["game_id"]."&redirect=".urlencode(getPlayerPath($player["id"], @$player["username"]))."\">Edit</a>";
                     });
 
 $table->addColumn("result",

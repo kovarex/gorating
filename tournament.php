@@ -136,7 +136,7 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
     if ($cellData != NULL)
     {
       if (canEditAnyGame())
-        echo "<a href=\"/edit_game?id=".$cellData["game_id"]."&redirect=/tournament?id=".$id."\">Edit</a> ";
+        echo "<a href=\"/edit_game?id=".$cellData["game_id"]."&redirect=".urlencode("/tournament?id=".$id)."\">Edit</a> ";
       if ($cellData["result"] === "jigo")
         echo "JIGO";
       else
