@@ -42,6 +42,7 @@ if (empty($existingUser))
               last_name,
               email,
               rating,
+              register_rating,
               password,
               country_id,
               admin_level_id,
@@ -51,6 +52,7 @@ if (empty($existingUser))
                    escape($invite["first_name"]).",".
                    escape($invite["last_name"]).",".
                    escape($invite["email"]).",".
+                   escape($rating).",".
                    escape($rating).",".
                    escape(password_hash($_POST["password"], PASSWORD_DEFAULT)).",".
                    escape($countryByCode["id"]).",".
@@ -68,7 +70,8 @@ else
            password=".escape(password_hash($_POST["password"], PASSWORD_DEFAULT)).",
            admin_level_id=".ADMIN_LEVEL_USER.",
            invited_by_user_id=".$invite["from_user_id"].",
-           register_timestamp=now()
+           register_timestamp=now(),
+           register_rating=user.rating
          WHERE
            user.id=".escape($invite["user_id"]));
   $newUserID = $existingUser["id"];

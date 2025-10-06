@@ -136,4 +136,48 @@ function showHandicap($handicap, $komi)
   return $handicap."h".($komi == 0.5 ? " " : (" komi ".$komi));
 }
 
+function fetchUserRatingBeforeFromUser($user,
+                                       $userID,
+                                       $timestamp = NULL,
+                                       $tournamentID = NULL,
+                                       $lastResortGorFromTournament = NULL,
+                                       $egdOnly = false)
+{
+  $lastGame = query("SELECT".
+                    "  IF(game.winner_user_id=".$userID.", game.winner_new_rating, game.loser_new_rating) as rating,\n".
+                    "  IF(game.winner_user_id=".$userID.", game.winner_new_egd_rating, game.loser_new_egd_rating) as egd_rating\n".
+                    "FROM\n".
+                    "  game\n".
+                    "WHERE\n".
+                    "  (game.winner_user_id=".escape($userID)." or game.loser_user_id=".escape($userID).")\n".
+                    ($timestamp ? (" and  game.timestamp < ".escape($timestamp)."\n") : "").
+                    ($tournamentID ? " and (game.egd_tournament_id is null or game.egd_tournament_id != ".escape($tournamentID).")\n" : "").
+                    ($egdOnly ? " and IF(game.winner_user_id=".$userID.", game.winner_new_egd_rating, game.loser_new_egd_rating) is not null \n" : "").
+                   " ORDER BY game.timestamp DESC, game.egd_tournament_round DESC \n".
+                    "LIMIT 1", true)->fetch_assoc();
+  if (!$lastGame)
+  {
+    if ($user["register_rating"])
+      return $user["register_rating"];
+    return $lastResortGorFromTournament;
+  }
+  if (!$egdOnly and isset($lastGame["rating"]))
+    return $lastGame["rating"];
+  return $lastGame["egd_rating"];
+}
+
+function fetchUserRatingBefore($userID, $timestamp, $tournamentID, $lastResortGorFromTournament = NULL)
+{
+  return fetchUserRatingBeforeFromUser(query("SELECT * FROM user where id=".escape($userID))->fetch_assoc(), $userID, $timestamp, $tournamentID, $lastResortGorFromTournament);
+}
+
+function updateFinalRating($userID)
+{
+  $user = query("SELECT * FROM user where id=".escape($userID))->fetch_assoc();
+  $rating = fetchUserRatingBeforeFromUser($user, $userID, NULL /* timestamp */, NULL /* tournamentID */, NULL /* last resort */, false /* egdOnly */);
+  $egdRating = fetchUserRatingBeforeFromUser($user, $userID, NULL /* timestamp */, NULL /* tournamentID */, NULL /* last resort */, true /* egdOnly */);
+  if ($user["rating"] != $rating or $user["egd_rating"] != $egdRating)
+    query("UPDATE user SET  rating=".escape($rating).",egd_rating=".escape($egdRating)." WHERE user.id=".escape($userID));
+}
+
 ?>

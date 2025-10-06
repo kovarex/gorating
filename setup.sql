@@ -66,6 +66,7 @@ CREATE TABLE `user` (
   `admin_level_id` INT UNSIGNED NOT NULL,
   `invited_by_user_id` INT UNSIGNED NULL DEFAULT NULL,
   `register_timestamp` TIMESTAMP NULL DEFAULT NULL,
+  `register_rating` double NULL DEFAULT NULL,
   `club` VARCHAR(10) NULL DEFAULT 'xxx',
   `win_count` INT UNSIGNED NOT NULL DEFAULT '0',
   `loss_count` INT UNSIGNED NOT NULL DEFAULT '0',

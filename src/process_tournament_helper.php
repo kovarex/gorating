@@ -1,6 +1,7 @@
 <?php
 require_once("db.php");
 require_once("egd_api.php");
+require_once("rating_helper.php");
 
 function getTournamentsToIgnore()
 {
@@ -74,7 +75,8 @@ function processTournament($key)
     if (empty($roundCount))
       throw new Exception("Round count couldn't be determined. key=".$key);
 
-    $timestamp = date("Y-m-d H:i:s", strtotime($date));
+    $phpTimestamp = strtotime($date);
+    $timestamp = date("Y-m-d H:i:s", $phpTimestamp);
 
     $divs = $doc->getElementsByTagName("div");
 
@@ -131,6 +133,15 @@ function processTournament($key)
           query("INSERT INTO
                    egd_tournament_result(egd_tournament_id, user_id, placement)
                    VALUES(".escape($tournamentID).",".escape($userID).",".escape($placement).")");
+        if (!empty($user["register_timestamp"]) && strtotime($user["register_timestamp"]) < $phpTimestamp)
+        {
+          $userRating = fetchUserRatingBeforeFromUser($user, $userID, $timestamp, $tournamentID);
+          $userStartRating = $userRating;
+          echo "\n\nUser with id=".$userID." starting with friendly rating=".$userRating."<br/>\n";
+        }
+        else
+          unset($userRating);
+
         $placement = $placement + 1;
 
         $rows = $div->getElementsByTagName("table")[1]->getElementsByTagName("tr");
@@ -198,18 +209,47 @@ function processTournament($key)
           $winnerIsBlack = ($userWon == ($color == "b"));
           $prefix = $userWon ? "winner_" : "loser_";
 
+          if (isset($userRating))
+          {
+            $oldUserRating = $userRating;
+            $opponentRating = fetchUserRatingBefore($opponentUserID, $timestamp, $tournamentID, $opponentGor);
+            echo "<br/>\nMy rating=".$userRating."<br/>\n";
+            echo "Opponent rating=".$opponentRating."<br/>\n";
+            $userRating += calculateNewRating($userStartRating,
+                                              $opponentRating,
+                                              $jigo ? 0.5 : ($userWon ? 1 : 0),
+                                              $gameTypeID,
+                                              ($color == "b" ? $handicap : -$handicap),
+                                              ($color == "b" ? -1 : 1) * ($komi - 6.5)) - $userStartRating;
+            echo "Result rating=".$userRating."<br/>\n";
+          }
+
           if (!empty($pinsProcessed[$opponentPin][$playerPin][$round]))
           {
             $id = $pinsProcessed[$opponentPin][$playerPin][$round];
             if (!$existingTournament)
-              query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.",".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id);
+              query("UPDATE".
+                    "  game ".
+                    "SET ".
+                    "  ".$prefix."old_egd_rating=".$currentGor.",".
+                    "  ".$prefix."new_egd_rating=".($currentGor + $gorChange).
+                    (isset($userRating) ? (",".$prefix."old_rating=".$oldUserRating.",".$prefix."new_rating=".$userRating) : "").
+                    " WHERE id=".$id);
             else
             {
-              $game = query("SELECT ".$prefix."old_egd_rating as old,".$prefix."new_egd_rating as new FROM game WHERE id=".$id)->fetch_assoc();
-              $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.0001;
-              $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.0001;
-              if (!$oldIsCorrect || !$newIsCorrect)
-                query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$id);
+              $game = query("SELECT ".$prefix."old_egd_rating as old_egd,".$prefix."new_egd_rating as new_egd,".$prefix."old_rating as old,".$prefix."new_rating as new FROM game WHERE id=".$id)->fetch_assoc();
+              $oldEgdIsCorrect = abs($game["old_egd"] - $currentGor) <= 0.0001;
+              $newEgdIsCorrect = abs($game["new_egd"] - ($currentGor + $gorChange)) <= 0.0001;
+              $oldIsCorrect = !isset($rating) or abs($oldUserRating - $game["old"]) <= 0.0001;
+              $newIsCorrect = !isset($rating) or abs($userRating - $game["new"]) <= 0.0001;
+              if (!$oldEgdIsCorrect || !$newEgdIsCorrect || !$oldIsCorrect || !$newIsCorrect)
+                query("UPDATE ".
+                      "  game ".
+                      "SET "
+                        .$prefix."old_egd_rating=".$currentGor.", ".
+                         $prefix."new_egd_rating=".($currentGor + $gorChange).
+                         (isset($userRating) ? (",".$prefix."old_rating=".$oldUserRating.",".$prefix."new_rating=".$userRating) : "").
+                         " WHERE id=".$id);
             }
           }
           else
@@ -237,6 +277,7 @@ function processTournament($key)
                             winner_new_egd_rating,
                             loser_old_egd_rating,
                             loser_new_egd_rating,
+                            ".(!isset($userRating) ? "" : ($userWon ? "winner_old_rating, winner_new_rating," : "loser_old_rating, loser_new_rating,"))."
                             winner_is_black,
                             handicap,
                             komi,
@@ -251,6 +292,7 @@ function processTournament($key)
                                 escape($winnerNewGor).",".
                                 escape($loserOldGor).",".
                                 escape($loserNewGor).",".
+                                (!isset($userRating) ? "" : ($oldUserRating.",".$userRating.",")).
                                 ($winnerIsBlack ? "true" : "false").",".
                                 escape($handicap).",".
                                 escape($komi).",".
@@ -263,8 +305,10 @@ function processTournament($key)
             {
               $game = query("SELECT
                                id,".
-                               $prefix."old_egd_rating as old,".
-                               $prefix."new_egd_rating as new,
+                               $prefix."old_rating as old,".
+                               $prefix."new_rating as new,".
+                               $prefix."old_egd_rating as old_egd,".
+                               $prefix."new_egd_rating as new_egd,
                                jigo=".($jigo ? "true" : "false")."
                              FROM
                                game
@@ -279,38 +323,29 @@ function processTournament($key)
               $game = $game->fetch_assoc();
 
               $gameID = $game["id"];
-              $oldIsCorrect = abs($game["old"] - $currentGor) <= 0.0001;
-              $newIsCorrect = abs($game["new"] - ($currentGor + $gorChange)) <= 0.0001;
-              if (!$oldIsCorrect || !$newIsCorrect)
-                query("UPDATE game SET ".$prefix."old_egd_rating=".$currentGor.", ".$prefix."new_egd_rating=".($currentGor + $gorChange)." WHERE id=".$gameID);
+              $oldEgdIsCorrect = abs($game["old_egd"] - $currentGor) <= 0.0001;
+              $newEgdIsCorrect = abs($game["new_egd"] - ($currentGor + $gorChange)) <= 0.0001;
+              $oldIsCorrect = !isset($rating) or abs($oldUserRating - $game["old"]) <= 0.0001;
+              $newIsCorrect = !isset($rating) or abs($userRating - $game["new"]) <= 0.0001;
+              if (!$oldEgdIsCorrect || !$newEgdIsCorrect || !$oldIsCorrect || !$newIsCorrect)
+                query("UPDATE ".
+                      "  game ".
+                      "SET "
+                        .$prefix."old_egd_rating=".$currentGor.", ".
+                         $prefix."new_egd_rating=".($currentGor + $gorChange).
+                         (isset($userRating) ? (",".$prefix."old_rating=".$oldUserRating.",".$prefix."new_rating=".$userRating) : "").
+                         " WHERE id=".$gameID);
             }
-          }
-          if (!$existingTournament and !empty($user["username"]))
-          {
-            $opponent = query("SELECT * FROM user where id=".escape($opponentUserID))->fetch_assoc();
-            $user["rating"] = calculateNewRating($user["rating"],
-                                                 $opponent["rating"],
-                                                 $jigo ? 0.5 : ($userWon ? 1 : 0),
-                                                 $gameTypeID,
-                                                 ($color == "b" ? $extraHandicap : -$extraHandicap),
-                                                 ($color == "b" ? -1 : 1) * ($komi - 6.5),
-                                                 $extraKomi);
           }
           $currentGor = $currentGor + $gorChange;
           $pinsProcessed[$playerPin][$opponentPin][$round] = $gameID;
         }
-
-        if (!$existingTournament)
-        {
-          $ratingUpdateQuery = "UPDATE user SET egd_rating=".($currentGor);
-          $ratingUpdateQuery .= ", rating=".(empty($user["username"]) ? $currentGor : $user["rating"]);
-          $ratingUpdateQuery .= " WHERE user.id=".$user["id"];
-          array_push($ratingUpdates, $ratingUpdateQuery);
-        }
+        $usersToUpdateRating[$userID] = true;
       }
-    if (!$existingTournament)
-      foreach ($ratingUpdates as $ratingUpdate)
-        query($ratingUpdate);
+
+
+    foreach($usersToUpdateRating as $userID=>$value)
+      updateFinalRating($userID);
     commitTransaction();
     return true;
   }
