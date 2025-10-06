@@ -58,7 +58,7 @@ query("UPDATE
                             ", loser_new_egd_rating=".escape($game["winner_new_egd_rating"]).
                             ", loser_new_rating=".escape($game["winner_new_rating"])) : "").
         (isset($sgf) ? (", sgf=".escape($sgf)) : "").
-       " WHERE game.id=".$_POST["id"], true);
+       " WHERE game.id=".$_POST["id"]);
 
 $message = "Game id=".$_POST["id"].":<br/>\n";
 if ($originalWinnerID != $winnerID)
@@ -72,5 +72,6 @@ if ($game["komi"] != $_POST["komi"])
 if (isset($sgf))
   $message .= "SGF was ".(empty($game["sgf"]) ? "added" : "updated").".<br/>\n";
 $message .= processRating(50);
+//echo $message;
 redirectWithMessage($message);
 ?>
