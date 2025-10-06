@@ -121,4 +121,9 @@ function showWinOrLoss($result)
     return $result;
   return "<span class=\"".($result == "WIN" ? "winner" : "loser")."\">".$result."</span>";
 }
+
+function SGFLink($gameID)
+{
+  return "<a href=\"/sgf?id=".$gameID."\">SGF</a>";
+}
 ?>

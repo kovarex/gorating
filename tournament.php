@@ -6,7 +6,14 @@ if (empty($id))
   return;
 }
 
-$tournament = query("SELECT * FROM egd_tournament WHERE id=".escape($id))->fetch_assoc();
+$tournament = query("SELECT
+                       egd_tournament.*,
+                       country.name as country_name,
+                       game_type.name as game_type_name
+                     FROM
+                       egd_tournament JOIN country ON egd_tournament.country_id = country.id
+                                      JOIN game_type ON egd_tournament.game_type_id = game_type.id
+                     WHERE egd_tournament.id=".escape($id))->fetch_assoc();
 if (empty($tournament))
 {
   echo "Tournament with id=".$id." not found.";
@@ -14,9 +21,17 @@ if (empty($tournament))
 }
 
 echo "<h1>".$tournament["name"]."</h1>";
-echo "EGD:".egdTournamentLink($tournament["egd_key"])."<br/>";
+echo "<table class=\"centered-table\">";
+echo "<tr><td>EGD:</td><td>".egdTournamentLink($tournament["egd_key"])."</td></tr>";
+echo "<tr><td>Date:</td><td>".date("d. m. Y", strtotime($tournament["timestamp"]))."</td></tr>";
+echo "<tr><td>Type:</td><td>".$tournament["game_type_name"]."</td></tr>";
+echo "<tr><td>Players:</td><td>".$tournament["player_count"]."</td></tr>";
+echo "<tr><td>Country:</td><td>".$tournament["country_name"]."</td></tr>";
+echo "<tr><td>City:</td><td>".$tournament["city"]."</td></tr>";
+echo "</table><br/>";
 
 $data = query("SELECT
+                 game.id as game_id,
                  game.winner_user_id as winner_user_id,
                  winner.name as winner_name,
                  winner.username as winner_username,
@@ -30,7 +45,8 @@ $data = query("SELECT
                  game.egd_tournament_round as round,
                  winner_result.placement as winner_placement,
                  loser_result.placement as loser_placement,
-                 game.jigo as jigo
+                 game.jigo as jigo,
+                 length(game.sgf) > 0 as has_sgf
                FROM
                  game as game,
                  user as loser,
@@ -81,6 +97,8 @@ while ($row = $data->fetch_assoc())
   $table[$horizontalPlacement][$round]["rating"] = $row[$otherPrefix."rating"];
   $table[$horizontalPlacement][$round]["egd_rating"] = $row[$otherPrefix."egd_rating"];
   $table[$horizontalPlacement][$round]["result"] = ($row["jigo"] ? "jigo" : $horizontalPlayerIsWinner);
+  $table[$horizontalPlacement][$round]["has_sgf"] = $row["has_sgf"];
+  $table[$horizontalPlacement][$round]["game_id"] = $row["game_id"];
   $placementInfo[$horizontalPlacement]["id"] = $thisUserID;
   $placementInfo[$horizontalPlacement]["name"] = $thisName;
   $placementInfo[$horizontalPlacement]["username"] = $thisUsername;
@@ -94,6 +112,8 @@ while ($row = $data->fetch_assoc())
   $table[$verticalPlacement][$round]["rating"] = $row[$thisPrefix."rating"];
   $table[$verticalPlacement][$round]["egd_rating"] = $row[$thisPrefix."egd_rating"];
   $table[$verticalPlacement][$round]["result"] = ($row["jigo"] ? "jigo" : !$horizontalPlayerIsWinner);
+  $table[$verticalPlacement][$round]["has_sgf"] = $row["has_sgf"];
+  $table[$verticalPlacement][$round]["game_id"] = $row["game_id"];
   $placementInfo[$verticalPlacement]["id"] = $otherUserID;
   $placementInfo[$verticalPlacement]["name"] = $otherName;
   $placementInfo[$verticalPlacement]["username"] = $otherUsername;
@@ -115,6 +135,8 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
     $cellData = @$table[$placement][$round];
     if ($cellData != NULL)
     {
+      if (canEditAnyGame())
+        echo "<a href=\"/edit_game?id=".$cellData["game_id"]."&redirect=/tournament?id=".$id."\">Edit</a> ";
       if ($cellData["result"] === "jigo")
         echo "JIGO";
       else
@@ -124,6 +146,8 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
         echo "</span>";
       }
       echo " ".playerLink($cellData);
+      if ($cellData["has_sgf"])
+        echo " ".SGFLink($cellData["id"]);
     }
     echo "</td>";
   }

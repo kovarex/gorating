@@ -216,7 +216,7 @@ $table->addColumn("has_sgf",
                   "SGF",
                   array(array("length(game.sgf) > 0", "has_sgf"),
                         array("game.id", "game_id")),
-                  function($row){ if ($row["has_sgf"]) echo "<a href=\"/sgf?id=".$row["game_id"]."\">SGF</a>"; });
+                  function($row){ if ($row["has_sgf"]) echo SGFLink($row["game_id"]); });
 
 if (canDeleteAnyGame())
   $table->addColumn("delete",
