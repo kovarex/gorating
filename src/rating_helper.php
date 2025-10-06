@@ -154,7 +154,7 @@ function fetchUserRatingBeforeFromUser($user,
                     ($tournamentID ? " and (game.egd_tournament_id is null or game.egd_tournament_id != ".escape($tournamentID).")\n" : "").
                     ($egdOnly ? " and IF(game.winner_user_id=".$userID.", game.winner_new_egd_rating, game.loser_new_egd_rating) is not null \n" : "").
                    " ORDER BY game.timestamp DESC, game.egd_tournament_round DESC \n".
-                    "LIMIT 1", true)->fetch_assoc();
+                    "LIMIT 1")->fetch_assoc();
   if (!$lastGame)
   {
     if ($user["register_rating"])

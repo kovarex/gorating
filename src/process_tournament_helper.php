@@ -137,7 +137,6 @@ function processTournament($key)
         {
           $userRating = fetchUserRatingBeforeFromUser($user, $userID, $timestamp, $tournamentID);
           $userStartRating = $userRating;
-          echo "\n\nUser with id=".$userID." starting with friendly rating=".$userRating."<br/>\n";
         }
         else
           unset($userRating);
@@ -213,15 +212,12 @@ function processTournament($key)
           {
             $oldUserRating = $userRating;
             $opponentRating = fetchUserRatingBefore($opponentUserID, $timestamp, $tournamentID, $opponentGor);
-            echo "<br/>\nMy rating=".$userRating."<br/>\n";
-            echo "Opponent rating=".$opponentRating."<br/>\n";
             $userRating += calculateNewRating($userStartRating,
                                               $opponentRating,
                                               $jigo ? 0.5 : ($userWon ? 1 : 0),
                                               $gameTypeID,
                                               ($color == "b" ? $handicap : -$handicap),
                                               ($color == "b" ? -1 : 1) * ($komi - 6.5)) - $userStartRating;
-            echo "Result rating=".$userRating."<br/>\n";
           }
 
           if (!empty($pinsProcessed[$opponentPin][$playerPin][$round]))
