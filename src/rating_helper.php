@@ -122,7 +122,26 @@ function showRating($rating)
 function showRatingChange($oldRating, $newRating)
 {
   $myResultName = $oldRating < $newRating ? "winner" : "loser";
-  return "<span class=\"".$myResultName."\">".showRating($oldRating)."&rarr;".showRating($newRating)."</span>";
+  if (isset($_SESSION["user"]["setting_rating_change_format"]))
+    $ratingChangeFormat = $_SESSION["user"]["setting_rating_change_format"];
+  else
+    $ratingChangeFormat = 1;
+
+  if ($ratingChangeFormat == 1)
+    return "<span class=\"".$myResultName."\">".showRating($oldRating)."&rarr;".showRating($newRating)."</span>";
+
+  $delta = $newRating - $oldRating;
+  $significantDigits = isset($_SESSION["user"]["setting_significant_digits_in_rating"]) ? $_SESSION["user"]["setting_significant_digits_in_rating"] : 0;
+  if (abs($delta) < 1 and $significantDigits < 1)
+    $significantDigits = 1;
+
+  if (abs($delta) < 0.1 and $significantDigits < 2)
+    $significantDigits = 2;
+
+  if (abs($delta) < 0.01 and $significantDigits < 3)
+    $significantDigits = 3;
+
+  return "<span class=\"".$myResultName."\">".($delta > 0 ? "+" : "").sprintf("%.".$significantDigits."f", $delta)."</span>&nbsp;".showRating($newRating);
 }
 
 function showHandicap($handicap, $komi)
