@@ -287,7 +287,7 @@ INSERT INTO `change_type` (id, `name`) VALUES
 (17, 'Game timestamp');
 
 CREATE TABLE `change` (
-  `id` int(10) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `change_type_id` int(10) UNSIGNED NOT NULL,
   `game_id` int(10) UNSIGNED DEFAULT NULL,
   `user_id` int(10) UNSIGNED DEFAULT NULL,
