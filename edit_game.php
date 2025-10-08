@@ -50,6 +50,8 @@ echo "<tr><td><label for=\"handicap\">Handicap:</label></td><td colspan=2><input
 echo "<tr><td><label for=\"komi\">Komi:</label></td><td colspan=2><input type=\"text\" id=\"komi\" name=\"komi\" value=\"".$row["komi"]."\"/></td></tr>\n";
 echo "<tr><td><label for=\"location\">Location:</label></td><td colspan=2><input type=\"text\" id=\"location\" name=\"location\" value=\"".$row["location"]."\"/></td></tr>\n";
 echo "<tr><td><label for=\"sgf\">SGF(currently ".($row["has_sgf"] ? "" : "not ")."present:</label></td><td colspan=2><input type=\"file\" name=\"sgf\" accept=\".sgf\"/></td></tr>\n";
+if ($row["has_sgf"])
+  echo "<tr><td></td><td colspan=2><input type=\"checkbox\" id=\"delete-sgf\" name=\"delete-sgf\"/><label for=\"delete-sgf\">Delete Current sgf</label></td></tr>\n";
 echo "</table>\n";
 echo "<input type=\"hidden\" name=\"id\" value=\"".$_GET["id"]."\"/>\n";
 echo "<input type=\"hidden\" name=\"redirect\" value=\"".$_GET["redirect"]."\"/>\n";

@@ -57,7 +57,7 @@ query("UPDATE
                             ", loser_old_rating=".escape($game["winner_old_rating"]).
                             ", loser_new_egd_rating=".escape($game["winner_new_egd_rating"]).
                             ", loser_new_rating=".escape($game["winner_new_rating"])) : "").
-        (isset($sgf) ? (", sgf=".escape($sgf)) : "").
+        (isset($sgf) ? (", sgf=".escape($sgf)) : ($_POST["delete-sgf"] ? ",sgf=null" : "")).
        " WHERE game.id=".$_POST["id"]);
 
 $message = "Game id=".$_POST["id"].":<br/>\n";
@@ -71,6 +71,8 @@ if ($game["komi"] != $_POST["komi"])
   $message .= "Komi was changed from ".$game["komi"]." to ".$_POST["komi"]."<br/>\n";
 if (isset($sgf))
   $message .= "SGF was ".(empty($game["sgf"]) ? "added" : "updated").".<br/>\n";
+else if ($_POST["delete-sgf"] and $game["sgf"])
+  $message .= "SGF was removed<br/>\n";
 $message .= processRating(50);
 //echo $message;
 redirectWithMessage($message);
