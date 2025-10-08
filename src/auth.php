@@ -66,6 +66,11 @@ function canEditAnyGame()
   return userCanDo(ADMIN_LEVEL_ADMIN);
 }
 
+function canAccessChanges()
+{
+  return userCanDo(ADMIN_LEVEL_ADMIN);
+}
+
 function canEditWinner()
 {
   return userCanDo(ADMIN_LEVEL_MOD);

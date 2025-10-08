@@ -126,4 +126,9 @@ function SGFLink($gameID)
 {
   return "<a href=\"/sgf?id=".$gameID."\">SGF</a>";
 }
+
+function gameLink($gameID)
+{
+  return "<a href=\"/game?id=".$gameID."\">Game ".$gameID."</a>";
+}
 ?>

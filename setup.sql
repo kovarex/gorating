@@ -260,6 +260,49 @@ CREATE TABLE `rating_change`
   FOREIGN KEY (`rating_change_type_id`) REFERENCES `rating_change_type` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=INNODB;
 
+
+CREATE TABLE `change_type` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `name` varchar(256) NOT NULL,
+  PRIMARY KEY (`id`)
+) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
+
+INSERT INTO `change_type` (id, `name`) VALUES
+(1, 'User first name'),
+(2, 'User last name'),
+(3, 'User admin level'),
+(4, 'User email'),
+(5, 'User username'),
+(6, 'User egd pin'),
+(7, 'User country'),
+(8, 'User club'),
+(9, 'Game winner'),
+(10, 'Game who is black'),
+(11, 'Game Handicap'),
+(12, 'Game Komi'),
+(13, 'Game Location'),
+(14, 'Game winner comment'),
+(15, 'Game loser comment'),
+(16, 'Game SGF'),
+(17, 'Game timestamp');
+
+CREATE TABLE `change` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `change_type_id` int(10) UNSIGNED NOT NULL,
+  `game_id` int(10) UNSIGNED DEFAULT NULL,
+  `user_id` int(10) UNSIGNED DEFAULT NULL,
+  `old_value` longblob DEFAULT NULL,
+  `new_value` longblob DEFAULT NULL,
+  `executed_by_user_id` int(11) UNSIGNED NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  CONSTRAINT `change_change_type_id` FOREIGN KEY (`change_type_id`) REFERENCES `change_type` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT `change_executed_by_user_id` FOREIGN KEY (`executed_by_user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT `change_game_id` FOREIGN KEY (`game_id`) REFERENCES `game` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT `change_user_id` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT,
+  INDEX `timestamp` (`timestamp`)
+) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
+
 DROP TRIGGER IF EXISTS game_after_insert;
 DELIMITER //
 CREATE TRIGGER `game_after_insert` AFTER INSERT ON `game`
