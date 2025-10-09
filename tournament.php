@@ -147,7 +147,7 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
       }
       echo " ".playerLink($cellData);
       if ($cellData["has_sgf"])
-        echo " ".SGFLink($cellData["id"]);
+        echo " ".SGFLink($cellData["game_id"]);
     }
     echo "</td>";
   }
