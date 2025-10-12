@@ -29,7 +29,7 @@ $table->addColumn("executed_by",
 $table->addColumn("game",
                   "Game",
                   array(array("game.id", "game_id")),
-                  function($row) { echo gameLink($row["game_id"]); });
+                  function($row) { if (!empty($row["game_id"])) echo gameLink($row["game_id"]); });
 
 $table->addColumn("user",
                   "User",
