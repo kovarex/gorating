@@ -115,13 +115,6 @@ function inviteAddress($inviteID, $secret)
   return "http://".$_SERVER['HTTP_HOST']."/register?id=".$inviteID."&secret=".$secret;
 }
 
-function showWinOrLoss($result)
-{
-  if ($result == "JIGO")
-    return $result;
-  return "<span class=\"".($result == "WIN" ? "winner" : "loser")."\">".$result."</span>";
-}
-
 function SGFLink($gameID)
 {
   return "<a href=\"/sgf?id=".$gameID."\">SGF</a>";
@@ -131,4 +124,11 @@ function gameLink($gameID)
 {
   return "<a href=\"/game?id=".$gameID."\">Game ".$gameID."</a>";
 }
+
+function resultToImage($result)
+{
+  global $resourceAddress;
+  return "<img class=\"result-image\" src=\"".$resourceAddress."/img/".strtolower($result).".png\"/>";
+}
+
 ?>

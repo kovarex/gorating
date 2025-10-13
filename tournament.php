@@ -137,15 +137,8 @@ for ($placement = 1; $placement <= $tournament["player_count"]; $placement++)
     {
       if (canEditAnyGame())
         echo "<a href=\"/edit_game?id=".$cellData["game_id"]."&redirect=".urlencode("/tournament?id=".$id)."\">Edit</a> ";
-      if ($cellData["result"] === "jigo")
-        echo "JIGO";
-      else
-      {
-        echo "<span class=\"".($cellData["result"] ? "winner" : "loser")."\">";
-        echo $cellData["result"] ? "WIN" : "LOSS";
-        echo "</span>";
-      }
-      echo " ".playerLink($cellData);
+
+      echo resultToImage($cellData["result"] === "jigo" ? "JIGO" : ($cellData["result"] ? "WIN" : "LOSS"))." ".playerLink($cellData);
       if ($cellData["has_sgf"])
         echo " ".SGFLink($cellData["game_id"]);
     }

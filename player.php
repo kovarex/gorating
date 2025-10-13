@@ -117,16 +117,16 @@ if (canEditAnyGame() or userID() == $_GET["id"] or userID() == $_GET["id"])
                     });
 
 $table->addColumn("result",
-                  "Result",
+                  "",
                   array(array("IF(game.jigo, 'JIGO', IF(winner.id = ".escape($_GET["id"]).", 'WIN', 'LOSS'))", "result"),
                         array("NULL", "rating_change_type_id")),
-                  function($row) { echo $row["result"]; },
+                  function($row) { echo resultToImage($row["result"]); },
                   "style=\"text-align:center;\"")
       ->addSecondary(array(array("NULL", "result"),
                            array("rating_change_type_id", "rating_change_type_id")));
 
 $table->addColumn("rating_change",
-                  "Rating change",
+                  "Rating",
                   array(array("IF(winner.id = ".escape($_GET["id"]).", ".
                                 "IFNULL(game.winner_new_rating, 0) -".
                                 "IFNULL(game.winner_old_rating, 0),".
@@ -152,7 +152,7 @@ $table->addColumn("rating_change",
       ->setHeaderAttributes(getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "colspan=2" : "");
 
 $table->addColumn("egd_rating_change",
-                  "EGD Rating change",
+                  "EGD Rating",
                   array(array("IF(winner.id = ".escape($_GET["id"]).", ".
                                 "IFNULL(game.winner_new_egd_rating, 0) -".
                                 "IFNULL(game.winner_old_egd_rating, 0),".

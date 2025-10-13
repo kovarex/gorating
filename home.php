@@ -24,7 +24,7 @@ function showLatestGames($limit = NULL, $caption = NULL)
                           array("IF(game.winner_is_black, winner.rating, loser.rating)", "black_rating"),
                           array("game.winner_is_black", "winner_is_black"),
                           array("IF(game.jigo, 'JIGO', IF(game.winner_is_black, 'WIN', 'LOSS'))", "black_result")),
-                    function($row) { echo showWinOrLoss($row["black_result"])." ".playerLink($row, "black"); });
+                    function($row) { echo resultToImage($row["black_result"])." ".playerLink($row, "black"); });
 
   $table->addColumn("white",
                     "White",
@@ -33,7 +33,7 @@ function showLatestGames($limit = NULL, $caption = NULL)
                           array("IF(game.winner_is_black, loser.username, winner.username)", "white_username"),
                           array("IF(game.winner_is_black, loser.rating, winner.rating)", "white_rating"),
                           array("IF(game.jigo, 'JIGO', IF(game.winner_is_black, 'LOSS', 'WIN'))", "white_result")),
-                    function($row) { echo showWinOrLoss($row["white_result"])." ".playerLink($row, "white"); });
+                    function($row) { echo resultToImage($row["white_result"])." ".playerLink($row, "white"); });
 
   $table->addColumn("handicap",
                     "Handicap",
