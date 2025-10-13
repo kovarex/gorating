@@ -68,8 +68,24 @@ $table->setSpecialRow(function($row)
                           return false;
                         echo "<tr>";
                         echo "<td colspan=".(userID() ? "2" : "1")."></td>";
-                        echo "<td style=\"align:center;\">".($row["old_rating"] ? showRatingChange($row["old_rating"], $row["new_rating"]) : "")."</td>";
-                        echo "<td style=\"align:center;\">".($row["old_egd_rating"] ? showRatingChange($row["old_egd_rating"], $row["new_egd_rating"]) : "")."</td>";
+
+                        echo "<td ".(getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "style=\"text-align:right;border-right:none;\"" : "style=\"text-align:center;\"").">".
+                             ($row["old_rating"] ?
+                               showRatingChange($row["old_rating"],
+                                                $row["new_rating"],
+                                                getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ?
+                                                  "</td><td style=\"text-align:right;border-left:none;\">" :
+                                                  "&nbsp;") :
+                               (getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "</td><td style=\"border-left:none;\">" : ""))."</td>";
+
+                        echo "<td ".(getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "style=\"text-align:right;border-right:none;\"" : "style=\"text-align:center;\"").">".
+                             ($row["old_egd_rating"] ?
+                               showRatingChange($row["old_egd_rating"],
+                                                $row["new_egd_rating"],
+                                                getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ?
+                                                  "</td><td style=\"text-align:right;border-left:none;\">" :
+                                                  "&nbsp;") :
+                               (getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "</td><td>" : ""))."</td>";
                         switch ($row["rating_change_type_id"])
                         {
                           case RATING_CHANGE_TYPE_AUTOMATIC_EGD_RATING_RANK_RESET_OLD: $typeName = "Automatic"; break;
