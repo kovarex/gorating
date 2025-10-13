@@ -119,13 +119,17 @@ function showRating($rating)
   return sprintf("%.".$significantDigits."f", $rating);
 }
 
-function showRatingChange($oldRating, $newRating)
+function getRatingChangeFormat()
+{
+  if (!isset($_SESSION["user"]["setting_rating_change_format"]))
+		return 1;
+  return $_SESSION["user"]["setting_rating_change_format"];
+}
+
+function showRatingChange($oldRating, $newRating, $delimiter = "&nbsp;")
 {
   $myResultName = $oldRating < $newRating ? "winner" : "loser";
-  if (isset($_SESSION["user"]["setting_rating_change_format"]))
-    $ratingChangeFormat = $_SESSION["user"]["setting_rating_change_format"];
-  else
-    $ratingChangeFormat = 1;
+  $ratingChangeFormat = getRatingChangeFormat();
 
   if ($ratingChangeFormat == 1)
     return "<span class=\"".$myResultName."\">".showRating($oldRating)."&rarr;".showRating($newRating)."</span>";
@@ -141,7 +145,7 @@ function showRatingChange($oldRating, $newRating)
   if (abs($delta) < 0.01 and $significantDigits < 3)
     $significantDigits = 3;
 
-  return "<span class=\"".$myResultName."\">".($delta > 0 ? "+" : "").sprintf("%.".$significantDigits."f", $delta)."</span>&nbsp;".showRating($newRating);
+  return "<span class=\"".$myResultName."\">".($delta > 0 ? "+" : "").sprintf("%.".$significantDigits."f", $delta)."</span>".$delimiter.showRating($newRating);
 }
 
 function showHandicap($handicap, $komi)

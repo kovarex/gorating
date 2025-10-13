@@ -80,11 +80,17 @@ class TableColumn
   public function addSecondary($secondarySql)
   {
     $this->secondarySql = $secondarySql;
+		return $this;
   }
+
+	public function setHeaderAttributes($headerAttributes)
+	{
+		$this->headerAttributes = $headerAttributes;
+	}
 
   public function renderHeader($currentSort, $limit)
   {
-    echo "<th>";
+    echo "<th".(!empty($this->headerAttributes) ? (" ".$this->headerAttributes) : "") .">";
     echo "<span style=\"vertical-align: middle;\">";
     if (!isset($limit))
     {
@@ -140,6 +146,7 @@ class TableColumn
   public $cellFiller;
   public $cellParameters;
   public $defaultSortAscend;
+	public $headerAttributes;
 };
 
 class TableViewer

@@ -1,12 +1,13 @@
 <?php
 require("table_viewer.php");
 
-function showTournaments($limit = NULL, $caption = NULL)
+function showTournaments($limit = NULL, $caption = NULL, $countryLimit = NULL, $search = NULL)
 {
   $table = new TableViewer("egd_tournament, country, game_type
                             WHERE
                               egd_tournament.country_id=country.id and
-                              egd_tournament.game_type_id=game_type.id",
+                              egd_tournament.game_type_id=game_type.id".
+                              (!empty($countryLimit) ? (" and country.code=".escape($countryLimit)) : ""),
                            $_GET);
   $table->limit = $limit;
   $table->caption = $caption;

@@ -4,7 +4,7 @@ CREATE TABLE `country` (
   `code` VARCHAR(10) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `name` (`name`),
-  UNIQUE INDEX `code` (`code`)
+  UNIQUE INDEX `code` (`code`),
   INDEX `id_code` (`id`, `code`)
 ) COLLATE='utf8mb4_unicode_ci' ENGINE=InnoDB;
 
@@ -74,7 +74,7 @@ CREATE TABLE `user` (
   `egd_loss_count` INT UNSIGNED NOT NULL DEFAULT '0',
   `reset_password_secret` INT UNSIGNED NULL DEFAULT NULL,
   `password_password_timestamp` TIMESTAMP NULL DEFAULT NULL,
-  `name` VARCHAR(128) GENERATED ALWAYS AS CONCAT(first_name, ' ', last_name) STORED,
+  `name` VARCHAR(128) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)) STORED,
   `overall_game_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + loss_count + egd_win_count + egd_loss_count) STORED,
   `overall_win_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + egd_win_count) STORED,
   `overall_loss_count` INT UNSIGNED GENERATED ALWAYS AS (loss_count + egd_loss_count) STORED,
@@ -88,10 +88,10 @@ CREATE TABLE `user` (
   INDEX `invited_by_user_id` (`invited_by_user_id`),
   INDEX `country_id` (`country_id`),
   INDEX `admin_level_id` (`admin_level_id`),
-  INDEX `win_count` (`win_count),
-  INDEX `loss_count` (`loss_count),
-  INDEX `egd_win_count` (`egd_win_count),
-  INDEX `egd_loss_count` (`egd_loss_count),
+  INDEX `win_count` (`win_count`),
+  INDEX `loss_count` (`loss_count`),
+  INDEX `egd_win_count` (`egd_win_count`),
+  INDEX `egd_loss_count` (`egd_loss_count`),
   INDEX `overall_game_count` (`overall_game_count`),
   INDEX `overall_win_count` (`overall_win_count`),
   INDEX `overall_loss_count` (`overall_loss_count`),
@@ -109,8 +109,8 @@ CREATE TABLE `invite` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `from_user_id` INT UNSIGNED NOT NULL,
   `user_id` INT unsigned NULL DEFAULT NULL,
-  `first_name` VARCHAR(64) NOT DEFAULT NULL,
-  `last_name` VARCHAR(64) NOT DEFAULT NULL,
+  `first_name` VARCHAR(64) NULL DEFAULT NULL,
+  `last_name` VARCHAR(64) NULL DEFAULT NULL,
   `email` VARCHAR(256) NOT NULL,
   `secret` INT NOT NULL,
   `rating` DOUBLE NULL DEFAULT NULL,
@@ -118,7 +118,7 @@ CREATE TABLE `invite` (
   PRIMARY KEY (`id`),
   INDEX `from_user_id` (`from_user_id`),
   INDEX `user_id` (`user_id`),
-  FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT
+  FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT,
   FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) COLLATE='utf8mb4_unicode_ci'ENGINE=INNODB;
 

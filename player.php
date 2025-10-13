@@ -118,11 +118,22 @@ $table->addColumn("rating_change",
                                 "IFNULL(game.loser_old_rating, 0))", "rating_change"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_old_rating, game.loser_old_rating)", "old_rating"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_rating, game.loser_new_rating)", "new_rating")),
-                  function($row) { if ($row["old_rating"]) echo showRatingChange($row["old_rating"], $row["new_rating"]); },
-                  "style=\"text-align:center;\"")
+                  function($row)
+                  {
+                    if ($row["old_rating"])
+                      echo showRatingChange($row["old_rating"],
+                                            $row["new_rating"],
+                                            getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ?
+                                              "</td><td style=\"text-align:right;border-left:none;\">" :
+                                              "&nbsp;");
+                    else
+                      echo getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "</td><td style=\"border-left: none;\">" : "";
+                  },
+                  getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "style=\"text-align:right;border-right:none;\"" : "style=\"text-align:center;\"")
       ->addSecondary(array(array("rating_change.new_rating - rating_change.old_rating", "rating_change"),
                            array("rating_change.old_rating", "old_rating"),
-                           array("rating_change.new_rating", "new_rating")));
+                           array("rating_change.new_rating", "new_rating")))
+      ->setHeaderAttributes(getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "colspan=2" : "");
 
 $table->addColumn("egd_rating_change",
                   "EGD Rating change",
@@ -133,11 +144,22 @@ $table->addColumn("egd_rating_change",
                                 "IFNULL(game.loser_old_egd_rating, 0))", "egd_rating_change"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_old_egd_rating, game.loser_old_egd_rating)", "old_egd_rating"),
                         array("IF(winner.id = ".escape($_GET["id"]).", game.winner_new_egd_rating, game.loser_new_egd_rating)", "new_egd_rating")),
-                  function($row) { if ($row["old_egd_rating"]) echo showRatingChange($row["old_egd_rating"], $row["new_egd_rating"]); },
-                  "style=\"text-align:center;\"")
+                  function($row)
+                  {
+                    if ($row["old_egd_rating"])
+                      echo showRatingChange($row["old_egd_rating"],
+                                            $row["new_egd_rating"],
+                                            getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ?
+                                              "</td><td style=\"text-align:right;border-left:none;\">" :
+                                              "&nbsp;");
+                    else
+                      echo getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "</td><td style=\"border-left: none;\">" : "";
+                  },
+                  getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "style=\"text-align:right;border-right:none;\"" : "style=\"text-align:center;\"")
        ->addSecondary(array(array("rating_change.new_egd_rating - rating_change.old_egd_rating", "egd_rating_change"),
                             array("rating_change.old_egd_rating", "old_egd_rating"),
-                            array("rating_change.new_egd_rating", "new_egd_rating")));
+                            array("rating_change.new_egd_rating", "new_egd_rating")))
+       ->setHeaderAttributes(getRatingChangeFormat() == RATING_CHANGE_FORMAT_CHANGE_AND_RESULT ? "colspan=2" : "");
 
 $table->addColumn("opponent_name",
                   "Opponent",
