@@ -2,6 +2,7 @@
 $pageStart = microtime(true);
 error_reporting(E_ALL);
 $uri = $_SERVER["REQUEST_URI"];
+
 $pagePath = urldecode(substr(parse_url($uri, PHP_URL_PATH), 1));
 $query = parse_url($uri, PHP_URL_QUERY);
 
@@ -18,6 +19,9 @@ require_once("src/link_helper.php");
 require_once("src/constants.php");
 require_once("src/db.php");
 require_once("src/rating_helper.php");
+
+$source = @$_SERVER['HTTP_CLIENT_IP'] ?: (@$_SERVER['HTTP_X_FORWARDED_FOR']?: @$_SERVER['REMOTE_ADDR']);
+query("INSERT INTO visit (`url`, `source`) VALUES (".escape($uri).",".escape($source).")");
 
 define("PAGE_WITHOUT_HEADER", 1);
 define("NORMAL_PAGE", 2);
