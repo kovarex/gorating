@@ -13,6 +13,9 @@ if (!$user)
 if (!password_verify($_POST['password'], $user["password"]))
   redirectWithMessageCustom("/login", "Wrong password!");
 
+ini_set('session.gc_maxlifetime', 3600 * 24 * 7); // a week
+session_set_cookie_params(3600 * 24 * 7);
+session_start();
+
 $_SESSION["user"] = $user;
 header("Location: player?id=".$_SESSION["user"]["id"]);
-?>
