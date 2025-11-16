@@ -40,7 +40,16 @@ function processTournament($key)
         continue;
       $value = @$input->attributes->getNamedItem("value")->textContent;
       if ($inputName == "nation")
-        $country = getCountryCodeAndID($value);
+      {
+        try
+        {
+          $country = getCountryCodeAndID($value);
+        }
+        catch (Exception $e)
+        {
+          throw new Exception("Error while processing tournament: ".$key." Message: ".$e->getMessage());
+        }
+      }
       elseif ($inputName == "class")
         $gameTypeID = getGameTypeID($value);
       elseif ($inputName == "tournament_date")

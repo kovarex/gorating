@@ -24,7 +24,7 @@ INSERT INTO country (name, code) VALUES
 ('Iran', 'IR'),('Singapore', 'SG'),('Mexico', 'MX'),('Indonesia', 'ID'),('Uruguay', 'UY'),('Australia', 'AU'),
 ('New Zeland', 'NZ'),('South Africa', 'ZA'),('Viet Nam', 'VN'),('India', 'IN'),('Guatemala', 'GT'),
 ('North Korea', 'KP'),('Hong Kong', 'HK'),('Malaysia', 'MY'),('Macao', 'MO'),('Syria', 'SY'),('Dominican Republic', 'DO'),
-('Lao', 'LA'),('Panama', 'PA'),('Peru', 'PE'),('Nepal', 'NP'),('Madagascar', 'MG'),('French Guiana', 'GF'),('San Marino', 'SM');
+('Lao', 'LA'),('Panama', 'PA'),('Peru', 'PE'),('Nepal', 'NP'),('Madagascar', 'MG'),('French Guiana', 'GF'),('San Marino', 'SM'), ('Cambodia', 'KH');
 
 CREATE TABLE `game_type` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -492,3 +492,11 @@ BEGIN
   END IF;
 END //
 DELIMITER ;
+
+CREATE TABLE `visit` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `url` varchar(256) NOT NULL,
+  `source` varchar(100) NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT current_timestamp(),
+  INDEX `timestamp` (`timestamp`),
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

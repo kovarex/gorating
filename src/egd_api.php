@@ -57,7 +57,7 @@ function getCountryCodeAndID($country)
   $countryCode = substr($countryCodeInBrackets, 1, strlen($countryCodeInBrackets) - 2);
   $result = query("SELECT id FROM country WHERE code=".escape($countryCode))->fetch_assoc();
   if (empty($result))
-    die("Couldn't find country with code:".$countryCode." complete name:".$country);
+    throw new Exception("Couldn't find country with code:".$countryCode." complete name:".$country);
   $result["id"] = $result["id"];
   $result["code"] = $countryCode;
   return $result;
