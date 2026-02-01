@@ -48,6 +48,7 @@ foreach (array("login_action",
                "toggle_statistics",
                "collect_manual_rating_changes",
                "settings_action",
+               "update_tournament_list",
                "check_rating_changes") as $target)
   $pages[$target] = PAGE_WITHOUT_HEADER;
 
@@ -61,7 +62,6 @@ foreach (array("login",
                "report",
                "about",
                "get_all_egd_players",
-               "update_tournament_list",
                "deleted_games",
                "invite_existing_user",
                "edit_game",
