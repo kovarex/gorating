@@ -50,7 +50,8 @@ query("UPDATE
         "winner_is_black=".($winnerIsBlack ? "true" : "false").",".
         "handicap=".escape($_POST["handicap"]).",".
         "komi=".escape($_POST["komi"]).",".
-        "location=".escape($_POST["location"]).
+        "location=".escape($_POST["location"]).",".
+        "timestamp=".escape($_POST["timestamp"]).
         ($winnerSwitched ? (", winner_old_egd_rating=".escape($game["loser_old_egd_rating"]).
                             ", winner_old_rating=".escape($game["loser_old_rating"]).
                             ", winner_new_egd_rating=".escape($game["loser_old_egd_rating"]).
@@ -100,6 +101,14 @@ if ($game["location"] != $_POST["location"])
       "  VALUES(".escape(CHANGE_GAME_LOCATION).",".escape($game["id"]).",".escape(userID()).",".escape($game["location"]).",".escape($_POST["location"]).")");
 }
 
+if ($game["timestamp"] != $_POST["timestamp"])
+{
+  $message .= "Timestamp was changed from ".$game["timestamp"]." to ".$_POST["timestamp"]."<br/>\n";
+  query("INSERT INTO ".
+      "  `change`(change_type_id, game_id, executed_by_user_id,old_value,new_value)".
+      "  VALUES(".escape(CHANGE_GAME_TIMESTAMP).",".escape($game["id"]).",".escape(userID()).",".escape($game["timestamp"]).",".escape($_POST["timestamp"]).")");
+}
+
 if (isset($sgf))
 {
   $message .= "SGF was ".(empty($game["sgf"]) ? "added" : "updated").".<br/>\n";
@@ -118,4 +127,3 @@ $message .= processRating(50);
 //echo $message;
 commitTransaction();
 redirectWithMessage($message);
-?>

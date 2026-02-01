@@ -77,7 +77,8 @@ function processRatingIteration()
                             game.handicap as game_handicap,
                             game.komi as game_komi,
                             game.winner_is_black as game_winner_is_black,
-                            game.egd_tournament_id as game_egd_tournament_id
+                            game.egd_tournament_id as game_egd_tournament_id,
+                            game.egd_tournament_round as game_egd_tournament_round
                           FROM
                             rating_update_value JOIN game ON rating_update_value.user_id=game.winner_user_id
                           WHERE
@@ -103,15 +104,16 @@ function processRatingIteration()
                             game.handicap as game_handicap,
                             game.komi as game_komi,
                             game.winner_is_black as game_winner_is_black,
-                            game.egd_tournament_id as game_egd_tournament_id
+                            game.egd_tournament_id as game_egd_tournament_id,
+                            game.egd_tournament_round as game_egd_tournament_round
                           FROM
                             rating_update_value JOIN game ON rating_update_value.user_id=game.loser_user_id
                           WHERE
                             game.deleted = false and
                             game.rating_update_version < ".$ratingUpdateVersion." and
-                            game.timestamp >= '".$ratingUpdateTimestamp."'
-                          ORDER BY game_timestamp) as tmp
+                            game.timestamp >= '".$ratingUpdateTimestamp."') as tmp
                           GROUP BY game_id
+                          ORDER BY game_timestamp, game_egd_tournament_id, game_egd_tournament_round
                           LIMIT 1");
   $row = $gameToProcess->fetch_assoc();
   if (!$row)

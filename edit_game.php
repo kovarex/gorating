@@ -15,6 +15,7 @@ $row = query("SELECT
                 game.handicap as handicap,
                 game.komi as komi,
                 game.location as location,
+                game.timestamp as timestamp,
                 length(game.sgf) > 0 has_sgf
               FROM
                 game JOIN user as winner ON game.winner_user_id = winner.id
@@ -49,6 +50,7 @@ echo "</tr>\n";
 echo "<tr><td><label for=\"handicap\">Handicap:</label></td><td colspan=2><input type=\"text\" name=\"handicap\" value=\"".$row["handicap"]."\"/></td></tr>\n";
 echo "<tr><td><label for=\"komi\">Komi:</label></td><td colspan=2><input type=\"text\" id=\"komi\" name=\"komi\" value=\"".$row["komi"]."\"/></td></tr>\n";
 echo "<tr><td><label for=\"location\">Location:</label></td><td colspan=2><input type=\"text\" id=\"location\" name=\"location\" value=\"".$row["location"]."\"/></td></tr>\n";
+echo "<tr><td><label for=\"timestamp\">Timestamp:</label></td><td colspan=2><input type=\"text\" id=\"timestamp\" name=\"timestamp\" value=\"".$row["timestamp"]."\"/></td></tr>\n";
 echo "<tr><td><label for=\"sgf\">SGF(currently ".($row["has_sgf"] ? "" : "not ")."present:</label></td><td colspan=2><input type=\"file\" name=\"sgf\" accept=\".sgf\"/></td></tr>\n";
 if ($row["has_sgf"])
   echo "<tr><td></td><td colspan=2><input type=\"checkbox\" id=\"delete-sgf\" name=\"delete-sgf\"/><label for=\"delete-sgf\">Delete Current sgf</label></td></tr>\n";
