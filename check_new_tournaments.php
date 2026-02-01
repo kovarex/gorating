@@ -58,8 +58,7 @@ try
 catch (Exception $e)
 {
   echo "Error: ".$e;
-  $tmpDir = sys_get_temp_dir();
-  $tmpFile = tempnam($tmpDir, 'tournament_error_');
+  $tmpFile = tempnam('tmp', 'tournament_error_');
   file_put_contents($tmpFile, "Hello temporary world!");
   echo "<br>Source file saved to \n" . $tmpFile; // full path to the temp file
 }
