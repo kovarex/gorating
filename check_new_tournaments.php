@@ -4,7 +4,8 @@ require_once("src/process_tournament_helper.php");
 
 function checkNewTournaments()
 {
-  $doc = getStringDom(getPageOfLatestTournaments());
+  $pageSource = getPageOfLatestTournaments();
+  $doc = getStringDom($pageSource);
   $tournamentsToIgnore = getTournamentsToIgnore();
 
   $tables = $doc->getElementsByTagName('table');
@@ -57,5 +58,8 @@ try
 catch (Exception $e)
 {
   echo "Error: ".$e;
+  $tmpDir = sys_get_temp_dir();
+  $tmpFile = tempnam($tmpDir, 'tournament_error_');
+  file_put_contents($tmpFile, "Hello temporary world!");
+  echo "<br>Source file saved to \n" . $tmpFile; // full path to the temp file
 }
-?>
