@@ -26,7 +26,7 @@ while ($line !== false)
 
 for ($i = count($tournamentsToProcessInReversedOrder) - 1; $i >= 0; $i--)
   query("INSERT INTO egd_tournament_to_process(egd_key) VALUES(".escape($tournamentsToProcessInReversedOrder[$i]).")");
-echo "Inserted ".count($tournamentsToProcessInReversedOrder)." tournaments to be processed";
+//echo "Inserted ".count($tournamentsToProcessInReversedOrder)." tournaments to be processed";
 
 for ($i = 0; $i < TOURNAMENT_COUNT_TO_PRCESS_PER_BATCH; $i++)
 {
