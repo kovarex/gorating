@@ -81,6 +81,11 @@ function canEditWinner()
   return userCanDo(ADMIN_LEVEL_MOD);
 }
 
+function canReportWin()
+{
+  return userCanDo(ADMIN_LEVEL_TRUSTED_USER);
+}
+
 function canEditGame($winnerUserID, $loserUserID, $timestamp)
 {
   if (canEditAnyGame())

@@ -58,28 +58,31 @@ if (!is_numeric($_POST["komi"]))
 }
 
 if ($_POST["color"] == "black")
-  $winnerIsBlack = false;
+  $opponentIsBlack = false;
 elseif ($_POST["color"] == "white")
-  $winnerIsBlack = true;
+  $opponentIsBlack = true;
 else
 {
   echo "Invalid color value:".$_POST["color"];
   return;
 }
 
+$reportingWin = $_POST['result'] == "win";
+
 $myOldRating = $me["rating"];
 $opponentOldRating = $opponent["rating"];
 
-$myHandicap = ($winnerIsBlack ? -1 : 1) * $_POST["handicap"];
-$myExtraKomi = ($winnerIsBlack ? 1 : -1) * ($_POST["komi"] - 6.5);
-$myNewRating = calculateNewRating($myOldRating, $opponentOldRating, 0.0, $_POST["game_type"], $myHandicap, $myExtraKomi);
-$opponentNewRating = calculateNewRating($opponentOldRating, $myOldRating, 1.0, $_POST["game_type"], -$myHandicap, -$myExtraKomi);
+$myHandicap = ($opponentIsBlack ? -1 : 1) * $_POST["handicap"];
+$myExtraKomi = ($opponentIsBlack ? 1 : -1) * ($_POST["komi"] - 6.5);
+$myNewRating = calculateNewRating($myOldRating, $opponentOldRating, $reportingWin ? 1.0 : 0.0, $_POST["game_type"], $myHandicap, $myExtraKomi);
+$opponentNewRating = calculateNewRating($opponentOldRating, $myOldRating, $reportingWin ? 0.0 : 1.0, $_POST["game_type"], -$myHandicap, -$myExtraKomi);
 
 query("INSERT INTO
        game(winner_user_id,
             loser_user_id,
             game_type_id,
             location,
+            winner_comment,
             loser_comment,
             winner_old_rating,
             winner_new_rating,
@@ -89,17 +92,18 @@ query("INSERT INTO
             winner_is_black,
             handicap,
             komi)
-       VALUES(".$opponent["id"].",".
-                userID().",".
+       VALUES(".($reportingWin ? userID() : $opponent["id"]).",".
+                ($reportingWin ? $opponent["id"] : userID()).",".
                 escape($_POST["game_type"]).",".
                 escape($_POST["location"]).",".
-                escape($_POST["comment"]).",".
-                escape($opponentOldRating).",".
-                escape($opponentNewRating).",".
-                escape($myOldRating).",".
-                escape($myNewRating).",".
+                escape($reportingWin ? $_POST["comment"] : "").",".
+                escape($reportingWin ? "" : $_POST["comment"]).",".
+                escape($reportingWin ? $myOldRating : $opponentOldRating).",".
+                escape($reportingWin ? $myNewRating : $opponentNewRating).",".
+                escape($reportingWin ? $opponentOldRating : $myOldRating).",".
+                escape($reportingWin ? $opponentNewRating : $myNewRating).",".
                 escape($sgf).",".
-                ($winnerIsBlack ? "true" : "false").",".
+                (($opponentIsBlack != $reportingWin) ? "true" : "false").",".
                 escape($_POST["handicap"]).",".
                 escape($_POST["komi"]).")");
 

@@ -25,7 +25,11 @@ if (userID() && userID() != $player["id"])
 {
   echo "<div class=\"centered-div\"><a class=\"report-loss-link\" href=\"";
   if (@$player["username"])
+  {
     echo "report?id=".$player["id"]."\">Report loss";
+    if (canReportWin())
+      echo " or win";
+  }
   else
     echo "invite_existing_user?user_id=".$player["id"]."\">Invite";
   echo "</a></div>";

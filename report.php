@@ -9,8 +9,18 @@ if (empty($opponent))
 
 echo "<form method=\"post\" enctype=\"multipart/form-data\" action=\"report_action\" onsubmit=\"return tryToSubmit();\">";
 echo "<table class=\"data-table\">";
-echo "<tr><td>Winner:</td><td>".playerLink($opponent)." (".round($opponent["rating"]).")</td></tr>";
+echo "<tr><td>" . (canReportWin() ? "Opponent" : "Winner") .":</td><td>".playerLink($opponent)." (".round($opponent["rating"]).")</td></tr>";
 //echo "<tr><td>Loser:</td><td>".playerLink($_SESSION["user"])." (".round($_SESSION["user"]["rating"]).")</td></tr>";
+
+echo "<tr><td>Result:</td>";
+echo   "<td>";
+echo     "<input type=\"radio\" id=\"loss\" name=\"result\" value=\"loss\" checked=\"checked\" oninput=\"updateRatingPreview();\"/>";
+echo     "<label for=\"loss\">Loss</label>";
+echo     "<input type=\"radio\" id=\"win\" name=\"result\" value=\"win\" oninput=\"updateRatingPreview();\">";
+echo     "<label for=\"win\">Win</label>";
+echo   "</td>";
+echo "</tr>";
+
 echo "<tr><td>Game type:</td>";
 echo   "<td>";
 echo     "<input type=\"radio\" id=\"serious\" name=\"game_type\" value=\"".GAME_TYPE_SERIOUS."\" checked=\"checked\" oninput=\"updateRatingPreview();\"/>";
@@ -70,14 +80,18 @@ echo "{\n";
 echo " let myColorIsBlack = document.getElementById('black').checked;\n";
 echo " let myExtraKomi = (myColorIsBlack ? -1 : 1) * (document.getElementById('komi').value - 6.5);\n";
 echo " let myExtraHandicap = (myColorIsBlack ? 1 : -1) * document.getElementById('handicap').value;\n";
+echo " let result = 0;";
+echo " if (win = document.getElementById('win'))";
+echo "   result = win.checked ? 1 : 0;";
 echo " let myNewRating = calculateNewRating(myOldRating,\n";
 echo "                                      opponentOldRating,\n";
-echo "                                      0,\n";
+echo "                                      result,\n";
 echo "                                      currentGameType(),\n";
 echo "                                      myExtraHandicap,\n";
 echo "                                      myExtraKomi);\n";
 echo " let cell = document.getElementById('rating-preview');\n";
-echo " cell.innerHTML=showRatingChange(myNewRating - myOldRating) + '&nbsp;&nbsp;(' + showRating(myOldRating) + '&rarr;' + showRating(myNewRating) + ')'\n";
+echo " cell.innerHTML = showRatingChange(myNewRating - myOldRating) + '&nbsp;&nbsp;(' + showRating(myOldRating) + '&rarr;' + showRating(myNewRating) + ')'\n";
+echo " cell.className = (result == 0) ? 'loser' : 'winner'\n";
 echo " document.getElementById('adjusted-rating').innerHTML=showRating(calculateAdjustedRating(myOldRating, myExtraHandicap, myExtraKomi));\n";
 echo "}\n";
 echo "updateRatingPreview();\n";
