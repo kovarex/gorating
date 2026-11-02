@@ -1,0 +1,65 @@
+// The home page (home.php): the latest friendly games and the latest tournaments.
+
+constexpr html::HtmlTemplate sgfLinkTemplate(R"(<a href="/sgf?id={{id}}">SGF</a>)");
+constexpr html::HtmlTemplate h2Template(R"(<h2>{{text}}</h2>)");
+
+html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
+{
+  Table table(page, "game"
+                    " JOIN user as winner ON game.winner_user_id = winner.id"
+                    " JOIN user as loser ON game.loser_user_id = loser.id"
+                    " JOIN game_type ON game.game_type_id = game_type.id"
+                    " WHERE game.deleted = false and game.egd_tournament_id IS NULL");
+  table.limit = limit;
+  table.caption = h2Template.render({{"text", String(caption)}});
+  table.tableClass = "centered-data-table";
+  Page* p = &page;
+  table.addColumn("black", "Black",
+                  {{"IF(game.winner_is_black, winner.id, loser.id)", "black_id"},
+                   {"IF(game.winner_is_black, winner.name, loser.name)", "black_name"},
+                   {"IF(game.winner_is_black, winner.username, loser.username)", "black_username"},
+                   {"IF(game.winner_is_black, winner.rating, loser.rating)", "black_rating"},
+                   {"IF(game.jigo, 'JIGO', IF(game.winner_is_black, 'WIN', 'LOSS'))", "black_result"}},
+                  [p](const Row& row) {
+                    html::SafeHtml out = resultImage(*p, row["black_result"]);
+                    out.append(html::SafeHtml::trusted(" "));
+                    out.append(playerLink(row, "black"));
+                    return out;
+                  });
+  table.addColumn("white", "White",
+                  {{"IF(game.winner_is_black, loser.id, winner.id)", "white_id"},
+                   {"IF(game.winner_is_black, loser.name, winner.name)", "white_name"},
+                   {"IF(game.winner_is_black, loser.username, winner.username)", "white_username"},
+                   {"IF(game.winner_is_black, loser.rating, winner.rating)", "white_rating"},
+                   {"IF(game.jigo, 'JIGO', IF(game.winner_is_black, 'LOSS', 'WIN'))", "white_result"}},
+                  [p](const Row& row) {
+                    html::SafeHtml out = resultImage(*p, row["white_result"]);
+                    out.append(html::SafeHtml::trusted(" "));
+                    out.append(playerLink(row, "white"));
+                    return out;
+                  });
+  table.addColumn("handicap", "Handicap", {{"game.handicap", "handicap"}, {"game.komi", "komi"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showHandicap(row["handicap"], row["komi"])); },
+                  Align::center);
+  table.addColumn("game_type_name", "Game type", {{"game_type.name", "game_type_name"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["game_type_name"]); }, Align::center);
+  table.addColumn("timestamp", "Date", {{"game.timestamp", "timestamp"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showDate(row["timestamp"], true)); }, Align::center);
+  table.addColumn("has_sgf", "SGF", {{"length(game.sgf) > 0", "has_sgf"}, {"game.id", "game_id"}},
+                  [](const Row& row) {
+                    if (row["has_sgf"] != "1")
+                      return html::SafeHtml();
+                    return sgfLinkTemplate.render({{"id", row["game_id"]}});
+                  });
+  Sort last;
+  last.column = "timestamp";
+  last.ascending = false;
+  table.lastSort = Optional<Sort>(last);
+  return table.render();
+}
+
+void homePage(Page& page)
+{
+  page.body.append(latestGames(page, Optional<int>(10), "Latest friendly games"));
+  page.body.append(tournamentTable(page, Optional<int>(10), "Latest tournaments", ""));
+}

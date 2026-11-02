@@ -1,0 +1,7 @@
+// gorating.com in kpp (README.md). `kpp` here builds build/debug/gorating.exe.
+void build(Project& project)
+{
+  Executable& site = project.executable("gorating", {"src"});
+  for (StringView name : {"http", "html", "mariadb", "bcrypt", "url", "json"})
+    site.use(name);
+}

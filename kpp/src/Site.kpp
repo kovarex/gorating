@@ -1,0 +1,157 @@
+// One request's context, the database's rows as pages read them, and the links every page makes
+// (src/link_helper.php and src/rating_helper.php in the PHP version).
+
+// A row of a query, read by column name: NULL reads as "", as PHP's echo prints it.
+struct Row
+{
+  const mariadb::MariaDbResult* result = nullptr;
+  ContainerSize index = 0;
+
+  Row() {}
+  Row(const mariadb::MariaDbResult& result, ContainerSize index) : result(&result), index(index) {}
+
+  String operator[](StringView name) const
+  {
+    const Optional<String>& value = this->result->at(this->index, name);
+    return value.has_value() ? *value : String();
+  }
+  bool isNull(StringView name) const { return !this->result->at(this->index, name).has_value(); }
+  bool has(StringView name) const
+  {
+    for (const String& column : this->result->columns)
+      if (column == name)
+        return true;
+    return false;
+  }
+};
+
+struct Page
+{
+  const GoratingConfig* config = nullptr;
+  mariadb::MariaDbConnection* db = nullptr;
+  const http::HttpRequest* request = nullptr;
+  html::SafeHtml body;
+
+  // The query's parameter as start.php reads it: the last one of that name; "" when absent.
+  String get(StringView name) const
+  {
+    String value;
+    for (const url::UrlQueryParameter& p : this->request->parameters)
+      if (p.name == name && !p.value.empty())
+        value = p.value;
+    return value;
+  }
+
+  mariadb::MariaDbResult query(StringView sql) { return this->db->query(sql); }
+
+  String resource(StringView path) const { return this->config->resourceAddress + String(path); }
+};
+
+String quote(StringView text) { return mariadb::mariaDbQuote(text); }
+
+// The pages a username cannot name (start.php's list): /login is the login page, not a player.
+bool isPageName(StringView name)
+{
+  for (StringView page : {"login_action", "logout", "register_action", "report_action", "edit_player_name_action",
+                          "delete_game_action", "restore_game_action", "sgf", "process_tournament", "update_rating",
+                          "process_tournament_batch", "invite_action", "invite_existing_user_action", "edit_game_action",
+                          "check_new_tournaments", "get_new_tournaments_contents", "scrap", "reset_password_action",
+                          "reset_password_confirm_action", "toggle_statistics", "collect_manual_rating_changes",
+                          "settings_action", "update_tournament_list", "check_rating_changes", "login", "player",
+                          "players", "invites", "tournaments", "tournament", "register", "report", "about",
+                          "get_all_egd_players", "deleted_games", "invite_existing_user", "edit_game", "reset_password",
+                          "reset_password_confirm", "settings", "changes", "game"})
+    if (name == page)
+      return true;
+  return false;
+}
+
+// A player's page: /username, or /player?id= for one without a username or with a page's name.
+// (The PHP version meant to check the page names but checked an undefined variable.)
+String playerPath(StringView id, StringView username)
+{
+  if (!username.empty() && !isPageName(username))
+    return String("/") + String(username);
+  return String("/player?id=") + String(id);
+}
+
+// --- ranks (src/rating_helper.php) ---
+
+// 30k is rank 1, 1k rank 30, 1D rank 31: rating 2050 to 2150 is 1D.
+int rankFromRating(double rating)
+{
+  double rank = (rating + 1050) / 100;
+  return (int)floor(rank < 1 ? 1 : rank);
+}
+
+String readableRank(int rank)
+{
+  if (rank <= 30)
+    return format("{}k", 31 - rank);
+  return format("{}D", rank - 30);
+}
+
+double ratingValue(StringView text) { return text.empty() ? 0.0 : stod(String(text)); }
+
+// "Name 5k", from the prefix's name and rating columns (its egd_rating when rating is NULL).
+String playerNameWithRank(const Row& row, StringView prefix)
+{
+  String p = prefix.empty() ? String() : String(prefix) + "_";
+  String rating = row.has(p + "rating") && !row.isNull(p + "rating") ? row[p + "rating"] : row[p + "egd_rating"];
+  return row[p + "name"] + " " + readableRank(rankFromRating(ratingValue(rating)));
+}
+
+constexpr html::HtmlTemplate linkTemplate(R"(<a href="{{href}}">{{text}}</a>)");
+
+html::SafeHtml link(StringView href, StringView text)
+{
+  return linkTemplate.render({{"href", String(href)}, {"text", String(text)}});
+}
+
+// A link to the player whose columns start with prefix ("black" reads black_id, black_name...).
+html::SafeHtml playerLink(const Row& row, StringView prefix)
+{
+  String p = prefix.empty() ? String() : String(prefix) + "_";
+  String id = row[p + "id"];
+  if (id.empty())
+    return html::SafeHtml();
+  return link(playerPath(id, row[p + "username"]), playerNameWithRank(row, prefix));
+}
+
+html::SafeHtml tournamentLink(StringView id, StringView name)
+{
+  return link(String("/tournament?id=") + String(id), name.empty() ? StringView("[no name]") : name);
+}
+
+constexpr html::HtmlTemplate resultImageTemplate(R"(<img class="result-image" src="{{resources}}/img/{{result}}.png"/>)");
+
+// WIN, LOSS or JIGO as its picture.
+html::SafeHtml resultImage(const Page& page, StringView result)
+{
+  String lower;
+  for (char c : result)
+    lower.append(c >= 'A' && c <= 'Z' ? char(c - 'A' + 'a') : c);
+  return resultImageTemplate.render({{"resources", page.config->resourceAddress}, {"result", lower}});
+}
+
+// "Even", "komi 0.5", "3h" or "3h komi 5.5", from the database's text of each.
+String showHandicap(StringView handicap, StringView komi)
+{
+  double k = ratingValue(komi);
+  if (handicap == "0" && (k == 6.5 || k == 7.5))
+    return "Even";
+  if (handicap == "0")
+    return String("komi ") + String(komi);
+  return String(handicap) + "h" + (k == 0.5 ? String(" ") : String(" komi ") + String(komi));
+}
+
+// "2026-11-02 13:45:07" as "02. 11. 2026 13:45" (withTime) or "02. 11. 2026".
+String showDate(StringView timestamp, bool withTime)
+{
+  if (timestamp.size() < 16)
+    return String(timestamp);
+  String out = String(timestamp.substr(8, 2)) + ". " + String(timestamp.substr(5, 2)) + ". " + String(timestamp.substr(0, 4));
+  if (withTime)
+    out.append(String(" ") + String(timestamp.substr(11, 5)));
+  return out;
+}

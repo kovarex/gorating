@@ -1,0 +1,60 @@
+// The tournament list (tournaments.php, src/tournament_helper.php) and the country selector
+// (src/link_helper.php's countrySelector).
+
+constexpr html::HtmlTemplate optionTemplate(R"(<option value="{{value}}">{{name}}</option>)");
+constexpr html::HtmlTemplate selectedOptionTemplate(R"(<option value="{{value}}" selected="selected">{{name}}</option>)");
+constexpr html::HtmlTemplate selectTemplate(R"(<select name="country_code"><option value="">Any</option>{{options}}</select>)");
+
+html::SafeHtml countrySelector(Page& page, StringView selected)
+{
+  mariadb::MariaDbResult countries = page.query("SELECT code, name FROM country ORDER BY name");
+  html::SafeHtml options;
+  for (ContainerSize i = 0; i < countries.size(); ++i)
+  {
+    Row row(countries, i);
+    const html::HtmlTemplate& t = row["code"] == selected ? selectedOptionTemplate : optionTemplate;
+    options.append(t.render({{"value", row["code"]}, {"name", row["name"]}}));
+  }
+  return selectTemplate.render({{"options", options}});
+}
+
+html::SafeHtml tournamentTable(Page& page, Optional<int> limit, StringView caption, StringView country)
+{
+  String from = "egd_tournament, country, game_type"
+                " WHERE egd_tournament.country_id=country.id and egd_tournament.game_type_id=game_type.id";
+  if (!country.empty())
+    from.append(String(" and country.code=") + quote(country));
+  Table table(page, from);
+  table.limit = limit;
+  if (!caption.empty())
+    table.caption = h2Template.render({{"text", String(caption)}});
+  table.tableClass = "centered-data-table";
+  Sort primary;
+  primary.column = "timestamp";
+  primary.ascending = false;
+  table.currentSort = Optional<Sort>(primary);
+  Sort last;
+  last.column = "egd_tournament.id";
+  last.ascending = false;
+  table.lastSort = Optional<Sort>(last);
+  table.addColumn("name", "Name", {{"egd_tournament.name", "name"}, {"egd_tournament.id", "id"}},
+                  [](const Row& row) { return tournamentLink(row["id"], row["name"]); });
+  table.addColumn("country_code", "Country", {{"country.code", "country_code"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["country_code"]); }, Align::center);
+  table.addColumn("player_count", "Player count", {{"egd_tournament.player_count", "player_count"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["player_count"]); }, Align::right);
+  table.addColumn("game_type_name", "Class", {{"game_type.name", "game_type_name"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["game_type_name"]); });
+  table.addColumn("timestamp", "Date", {{"egd_tournament.timestamp", "timestamp"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showDate(row["timestamp"], false)); });
+  return table.render();
+}
+
+constexpr html::HtmlTemplate tournamentFormTemplate(R"(<div style="text-align:center;"><form><table class="centered-table"><tr><td><label for="country_code">Country:</label></td><td>{{selector}}</td></tr><tr><td colspan="2"><input type="submit" value="Submit"/></td></tr></table></form></div>)");
+
+void tournamentsPage(Page& page)
+{
+  String country = page.get("country_code");
+  page.body.append(tournamentFormTemplate.render({{"selector", countrySelector(page, country)}}));
+  page.body.append(tournamentTable(page, Optional<int>(), "", country));
+}

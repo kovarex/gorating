@@ -1,0 +1,242 @@
+// A table of query rows with sortable columns and pages of 100 (src/table_viewer.php): each column
+// says the SQL it selects and how a cell shows its row; the table builds the query, its ORDER BY
+// from ?sort= and ?d=, its LIMIT and OFFSET from ?start=, and the links between pages.
+
+enum class Align { left, center, right };
+
+struct SqlColumn
+{
+  String sql;
+  String as;
+};
+
+struct TableColumn
+{
+  String name;                       // ?sort= names it; empty: not sortable
+  String caption;
+  Vector<SqlColumn> sql;             // the first one is what it sorts by
+  Function<html::SafeHtml(const Row&)> cell;
+  Align align = Align::left;
+  bool defaultAscending = true;
+};
+
+struct Sort
+{
+  String column;                     // an SQL column or alias
+  bool ascending = true;
+};
+
+constexpr int tablePageSize = 100;
+
+constexpr html::HtmlTemplate tableTemplate(R"(<br/>
+<table class="{{class}}">
+{{caption}}<tr>{{header}}</tr>{{rows}}</table>)");
+constexpr html::HtmlTemplate captionTemplate(R"(<caption>{{content}}</caption>)");
+constexpr html::HtmlTemplate headerTemplate(R"(<th><span style="vertical-align: middle;">{{content}}</span></th>)");
+constexpr html::HtmlTemplate sortImageTemplate(R"(<img class="sorting-image" src="{{resources}}/img/arrow-{{direction}}.png"/>)");
+constexpr html::HtmlTemplate rowTemplate(R"(<tr>{{cells}}</tr>
+)");
+constexpr html::HtmlTemplate cellTemplate(R"(<td>{{content}}</td>)");
+constexpr html::HtmlTemplate centerCellTemplate(R"(<td style="text-align:center;">{{content}}</td>)");
+constexpr html::HtmlTemplate rightCellTemplate(R"(<td style="text-align:right;">{{content}}</td>)");
+
+struct Table
+{
+  Page* page = nullptr;
+  String from;                       // the FROM part: tables, joins and WHERE
+  Optional<int> limit;               // a fixed number of rows: no sorting links, no pages
+  html::SafeHtml caption;
+  String tableClass = "data-table";
+  Vector<TableColumn> columns;
+  Optional<Sort> fixedSort;
+  Optional<Sort> currentSort;
+  Optional<Sort> lastSort;
+
+  Table(Page& page, StringView from) : page(&page), from(from) {}
+
+  TableColumn& addColumn(StringView name, StringView caption, Vector<SqlColumn> sql,
+                         Function<html::SafeHtml(const Row&)> cell, Align align = Align::left, bool defaultAscending = true)
+  {
+    TableColumn& column = this->columns.emplace_back();
+    column.name = String(name);
+    column.caption = String(caption);
+    column.sql = move(sql);
+    column.cell = move(cell);
+    column.align = align;
+    column.defaultAscending = defaultAscending;
+    if (!column.name.empty() && this->page->get("sort") == column.name)
+    {
+      String d = this->page->get("d");
+      Sort sort;
+      sort.column = column.sql[0].as;
+      sort.ascending = d.empty() ? column.defaultAscending : d == "up";
+      this->currentSort = Optional<Sort>(sort);
+    }
+    return column;
+  }
+
+  // ?start=, the first row's number (1 for the first page).
+  int64_t start() const
+  {
+    String text = this->page->get("start");
+    if (text.empty())
+      return 1;
+    for (char c : text)
+      if (c < '0' || c > '9')
+        return 1;
+    int64_t value = stoll(text);
+    return value < 1 ? 1 : value;
+  }
+
+  String orderBy() const
+  {
+    String out;
+    for (const Optional<Sort>* sort : {&this->fixedSort, &this->currentSort, &this->lastSort})
+      if (sort->has_value())
+      {
+        out.append(out.empty() ? " ORDER BY " : ", ");
+        out.append((*sort)->column + ((*sort)->ascending ? "" : " DESC"));
+      }
+    return out;
+  }
+
+  String buildQuery() const
+  {
+    String select;
+    for (const TableColumn& column : this->columns)
+      for (const SqlColumn& part : column.sql)
+      {
+        if (!select.empty())
+          select.append(",\n");
+        select.append(part.sql + " as " + part.as);
+      }
+    String sql = "SELECT " + select + " FROM " + this->from + this->orderBy();
+    sql.append(format(" LIMIT {}", this->limit.has_value() ? *this->limit : tablePageSize));
+    if (this->start() > 1)
+      sql.append(format(" OFFSET {}", this->start() - 1));
+    return sql;
+  }
+
+  // The current path with the query's parameters, one of them set to value.
+  String address(StringView name, StringView value) const
+  {
+    Vector<url::UrlQueryParameter> parameters;
+    bool set = false;
+    for (const url::UrlQueryParameter& p : this->page->request->parameters)
+    {
+      if (p.name.empty() || p.value.empty())
+        continue;
+      url::UrlQueryParameter copy = p;
+      if (copy.name == name)
+      {
+        if (set)
+          continue;
+        copy.value = String(value);
+        set = true;
+      }
+      parameters.push_back(copy);
+    }
+    if (!set)
+    {
+      url::UrlQueryParameter p;
+      p.name = String(name);
+      p.value = String(value);
+      parameters.push_back(p);
+    }
+    return this->page->request->path + "?" + url::writeUrlQuery(parameters);
+  }
+
+  html::SafeHtml header() const
+  {
+    html::SafeHtml out;
+    for (const TableColumn& column : this->columns)
+    {
+      html::SafeHtml content;
+      if (this->limit.has_value() || column.name.empty())
+        content = html::SafeHtml::escape(column.caption);
+      else
+      {
+        bool sorted = this->currentSort.has_value() && this->currentSort->column == column.sql[0].as;
+        bool ascending = sorted ? !this->currentSort->ascending : column.defaultAscending;
+        String path = this->addressWith(column.name, ascending ? "up" : "down");
+        content = link(path, column.caption);
+        if (sorted)
+          content.append(sortImageTemplate.render({{"resources", this->page->config->resourceAddress},
+                                                   {"direction", this->currentSort->ascending ? "up" : "down"}}));
+      }
+      out.append(headerTemplate.render({{"content", content}}));
+    }
+    return out;
+  }
+
+  // The current address with sort= and d= set (start= dropped: a new order starts at its top).
+  String addressWith(StringView sort, StringView direction) const
+  {
+    Vector<url::UrlQueryParameter> parameters;
+    for (const url::UrlQueryParameter& p : this->page->request->parameters)
+      if (!p.name.empty() && !p.value.empty() && p.name != "sort" && p.name != "d" && p.name != "start")
+        parameters.push_back(p);
+    url::UrlQueryParameter s;
+    s.name = "sort";
+    s.value = String(sort);
+    parameters.push_back(s);
+    url::UrlQueryParameter d;
+    d.name = "d";
+    d.value = String(direction);
+    parameters.push_back(d);
+    return this->page->request->path + "?" + url::writeUrlQuery(parameters);
+  }
+
+  html::SafeHtml render()
+  {
+    mariadb::MariaDbResult data = this->page->query(this->buildQuery());
+    html::SafeHtml captionContent;
+    bool hasCaption = false;
+    if (!this->limit.has_value())
+    {
+      int64_t total = stoll(*this->page->db->scalar(String("SELECT COUNT(*) FROM ") + this->from));
+      int64_t first = this->start();
+      int64_t shown = (int64_t)data.size();
+      if (shown < total)
+      {
+        hasCaption = true;
+        if (first > 1)
+        {
+          int64_t previous = first - tablePageSize < 1 ? 1 : first - tablePageSize;
+          captionContent.append(link(this->address("start", format("{}", previous)), "Previous"));
+          captionContent.append(html::SafeHtml::trusted(" "));
+        }
+        int64_t last = first + shown - 1;
+        captionContent.append(html::SafeHtml::escape(format("{}-{} of {}", first, last < first ? first : last, total)));
+        if (first + shown <= total && shown == tablePageSize)
+        {
+          captionContent.append(html::SafeHtml::trusted(" "));
+          captionContent.append(link(this->address("start", format("{}", first + tablePageSize)), "Next"));
+        }
+      }
+    }
+    else if (!this->caption.html.empty())
+    {
+      hasCaption = true;
+      captionContent = this->caption;
+    }
+    html::SafeHtml rows;
+    for (ContainerSize i = 0; i < data.size(); ++i)
+    {
+      Row row(data, i);
+      html::SafeHtml cells;
+      for (const TableColumn& column : this->columns)
+      {
+        html::SafeHtml content = column.cell(row);
+        const html::HtmlTemplate& t = column.align == Align::center ? centerCellTemplate
+                                      : column.align == Align::right ? rightCellTemplate : cellTemplate;
+        cells.append(t.render({{"content", content}}));
+      }
+      rows.append(rowTemplate.render({{"cells", cells}}));
+    }
+    return tableTemplate.render({{"class", this->tableClass},
+                                 {"caption", hasCaption ? captionTemplate.render({{"content", captionContent}}) : html::SafeHtml()},
+                                 {"header", this->header()},
+                                 {"rows", rows}});
+  }
+};

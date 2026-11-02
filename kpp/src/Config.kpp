@@ -1,0 +1,54 @@
+// The site's configuration: a JSON file that is never committed (it has the database's password),
+// named by GORATING_CONFIG, else gorating-config.json in the working directory. Its form:
+//   {"database": {"host": "127.0.0.1", "port": 3306, "user": "...", "password": "...", "name": "..."},
+//    "resourceAddress": "https://..."}
+// resourceAddress is where style2.css, common.js and img/ are; "" serves them from this program.
+
+struct GoratingConfig
+{
+  mariadb::MariaDbOptions database;
+  String resourceAddress;
+  String staticDirectory; // with resourceAddress "": where the files are (the PHP checkout)
+};
+
+struct GoratingError : RuntimeError
+{
+  GoratingError() {}
+  GoratingError(const String& message) : RuntimeError(message) {}
+};
+
+String goratingReadFile(const String& path)
+{
+  FILE* file = fopen(path.c_str(), "rb");
+  if (!file)
+    throw GoratingError(format("cannot read {}", path));
+  String text;
+  char buffer[65536];
+  for (;;)
+  {
+    size_t n = fread(buffer, 1, 65536, file);
+    if (n == 0)
+      break;
+    text.append(StringView(buffer, (ContainerSize)n));
+  }
+  fclose(file);
+  return text;
+}
+
+GoratingConfig goratingReadConfig()
+{
+  const char* named = getenv("GORATING_CONFIG");
+  String path = named != nullptr ? String(StringView(named)) : String("gorating-config.json");
+  json::JsonValue root = json::parseJson(goratingReadFile(path));
+  GoratingConfig config;
+  const json::JsonValue& database = root["database"];
+  config.database.host = database["host"].asString();
+  config.database.port = (int)database["port"].asInteger();
+  config.database.user = database["user"].asString();
+  config.database.password = database["password"].asString();
+  config.database.database = database["name"].asString();
+  config.resourceAddress = root["resourceAddress"].asString();
+  if (const json::JsonValue* directory = root.find("staticDirectory"))
+    config.staticDirectory = directory->asString();
+  return config;
+}

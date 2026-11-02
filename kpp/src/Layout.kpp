@@ -1,0 +1,74 @@
+// The frame of every normal page (src/header_internal.php, src/header.php, src/footer.php): the
+// head, the account box, the menu, a message from ?message=, the page, and the footer.
+
+constexpr html::HtmlTemplate layoutTemplate(R"(<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      Friendly go rating
+    </title>
+    <link rel="stylesheet" href="{{resources}}/style2.css"/>
+    <script src="{{resources}}/common.js" type="text/javascript"></script>
+  </head>
+<body>{{account}}<div class="centered-div">
+<div class="centered-div">
+{{menu}}</div><br/><br/>
+{{message}}{{content}}<div style="position:screen;bottom:0px;">
+  <hr/>
+  Friendly go rating made by kovarex.
+{{generated}}</div>
+</div>
+</body>
+</html>
+)");
+
+constexpr html::HtmlTemplate loggedOutTemplate(R"(<div style="position: absolute;right: 0px;">
+          Currently not logged in
+          <form method="post" action="/login" style="display:inline;">
+            <input type="submit" value="Login"/>
+          </form>
+        </div>)");
+
+constexpr html::HtmlTemplate menuItemTemplate(R"(&nbsp;&nbsp;:&nbsp;&nbsp;<a href="{{href}}">{{text}}</a>
+)");
+constexpr html::HtmlTemplate firstMenuItemTemplate(R"(<a href="{{href}}">{{text}}</a>
+)");
+constexpr html::HtmlTemplate messageTemplate(R"(<div class="message-div"><h3><b>Message:</b></h3><br/>{{message}}</div>)");
+
+html::SafeHtml menu()
+{
+  html::SafeHtml out = firstMenuItemTemplate.render({{"href", "/"}, {"text", "Home"}});
+  out.append(menuItemTemplate.render({{"href", "/players"}, {"text", "Players"}}));
+  out.append(menuItemTemplate.render({{"href", "/tournaments"}, {"text", "Tournaments"}}));
+  out.append(menuItemTemplate.render({{"href", "/about"}, {"text", "About"}}));
+  return out;
+}
+
+// PHP's round(seconds, 4) as echo prints it: up to 4 decimals, no trailing zeros.
+String secondsText(double seconds)
+{
+  int64_t tenThousandths = (int64_t)floor(seconds * 10000 + 0.5);
+  String out = format("{}", tenThousandths / 10000);
+  int64_t fraction = tenThousandths % 10000;
+  if (fraction != 0)
+  {
+    String digits = format("{}", fraction + 10000).substr(1);
+    while (!digits.empty() && digits[digits.size() - 1] == '0')
+      digits.pop_back();
+    out.append(String(".") + digits);
+  }
+  return out;
+}
+
+String layout(const Page& page, const html::SafeHtml& content, double seconds)
+{
+  String message = page.get("message");
+  return layoutTemplate
+      .render({{"resources", page.config->resourceAddress},
+               {"account", loggedOutTemplate.render({})},
+               {"menu", menu()},
+               {"message", message.empty() ? html::SafeHtml() : messageTemplate.render({{"message", message}})},
+               {"content", content},
+               {"generated", String(" - Page generated in ") + secondsText(seconds) + " seconds"}})
+      .html;
+}

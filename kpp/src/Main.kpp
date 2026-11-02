@@ -1,0 +1,86 @@
+// gorating.com in kpp: the router (start.php). Under Apache it runs as CGI, one request per
+// process; `gorating --port 8082` serves on one's own machine. README.md says how to run it.
+
+GoratingConfig goratingConfig;
+
+// The pages ported so far; the others answer 501 until they are.
+bool route(Page& page, StringView name)
+{
+  if (name.empty())
+    homePage(page);
+  else if (name == "about")
+    aboutPage(page);
+  else if (name == "tournaments")
+    tournamentsPage(page);
+  else
+    return false;
+  return true;
+}
+
+String contentTypeOf(StringView path)
+{
+  if (path.ends_with(".css"))
+    return "text/css";
+  if (path.ends_with(".js"))
+    return "text/javascript";
+  if (path.ends_with(".png"))
+    return "image/png";
+  return "application/octet-stream";
+}
+
+// With resourceAddress "", style2.css, common.js and img/*.png come from staticDirectory.
+bool serveStatic(const http::HttpRequest& request, http::HttpResponse& response)
+{
+  if (!goratingConfig.resourceAddress.empty() || goratingConfig.staticDirectory.empty())
+    return false;
+  StringView path = request.path;
+  bool known = path == "/style2.css" || path == "/common.js";
+  if (path.starts_with("/img/") && path.ends_with(".png") && path.find("..") == StringView::npos &&
+      path.find('/', 5) == StringView::npos)
+    known = true;
+  if (!known)
+    return false;
+  response.setHeader("Content-Type", contentTypeOf(path));
+  response.body = goratingReadFile(goratingConfig.staticDirectory + String(path));
+  return true;
+}
+
+void handle(const http::HttpRequest& request, http::HttpResponse& response)
+{
+  auto start = SteadyClock::now();
+  if (serveStatic(request, response))
+    return;
+  mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(goratingConfig.database);
+  const String* forwarded = request.header("x-forwarded-for");
+  String source = forwarded != nullptr ? *forwarded : request.remoteAddress;
+  db.query(String("INSERT INTO visit (`url`, `source`) VALUES (") + quote(request.target) + "," + quote(source) + ")");
+
+  Page page;
+  page.config = &goratingConfig;
+  page.db = &db;
+  page.request = &request;
+  String name = request.path.size() > 0 ? request.path.substr(1) : String();
+  if (!route(page, name))
+  {
+    response.status = 501;
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.body = format("The page {} is not in the kpp version yet.\n", request.path);
+    return;
+  }
+  double seconds = (double)durationCast<Microseconds>(SteadyClock::now() - start).count() / 1e6;
+  response.body = layout(page, page.body, seconds);
+}
+
+int main(int argc, char** argv)
+{
+  goratingConfig = goratingReadConfig();
+  if (getenv("REQUEST_METHOD") != nullptr)
+    return http::httpCgi(handle);
+  http::HttpServerOptions options;
+  options.port = 8082;
+  for (int i = 1; i + 1 < argc; ++i)
+    if (StringView(argv[i]) == "--port")
+      options.port = (int)stoll(String(StringView(argv[i + 1])));
+  http::httpServe(options, handle);
+  return 0;
+}
