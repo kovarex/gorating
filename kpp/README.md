@@ -45,7 +45,8 @@ reader, and PHP's is_numeric and loose equality.
 
 **Differences from the PHP version, on purpose:** every text is escaped (names, comments,
 messages); player links are absolute (`/kovarex`), and a username that is also a page's name links
-to `/player?id=`; a table's range on its last page is right.
+to `/player?id=`; a table's range on its last page is right; a rating before a game counts no
+deleted game (kovarex, 2026-11-02); an EGD opponent's whole name is kept (PHP kept two words).
 
 **Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). It waits for kpp to
 build FreeBSD programs (exceptions and the FreeBSD sysroot, kpp's docs/design.md "Targets and
@@ -54,5 +55,6 @@ hosts").
 ## Not yet
 
 
-- For kovarex to decide: a rating before a game is read from deleted games too (RatingUpdate.kpp,
-  kept as PHP does it); invite and reset secrets are 31 bits because their columns are int.
+- For kovarex to decide: whether reprocessing a tournament corrects a game whose gorating ratings
+  differ when its EGD ones do not (PHP meant to, but compared an undefined variable); invite and
+  reset secrets are 31 bits because their columns are int.

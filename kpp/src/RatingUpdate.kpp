@@ -7,9 +7,9 @@
 // one copies the values into user.rating.
 //
 // Ported as PHP computes it, so the database gets the same values: a rating read from the database
-// goes back as its text, a computed one as PHP printed its doubles (phpNumber). One thing that looks
-// like a PHP bug is kept until kovarex decides: a player's rating before a game is read from their
-// latest earlier game, deleted ones included.
+// goes back as its text, a computed one as PHP printed its doubles (phpNumber). One difference on
+// purpose (kovarex, 2026-11-02: "deleted games are deleted, they don't count"): a player's rating
+// before a game is read from their latest earlier game that is not deleted; PHP read deleted ones too.
 
 // A column's PHP truthiness: NULL, "" and "0" are false.
 bool phpTrue(const Optional<String>& value) { return value.has_value() && !value->empty() && *value != "0"; }
@@ -23,7 +23,7 @@ Optional<String> fetchUserRatingBefore(Page& page, const Row& user, StringView u
   String id(userId);
   String sql = String("SELECT IF(game.winner_user_id=") + id + ", game.winner_new_rating, game.loser_new_rating) as rating,"
                " IF(game.winner_user_id=" + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) as egd_rating"
-               " FROM game WHERE (game.winner_user_id=" + quote(id) + " or game.loser_user_id=" + quote(id) + ")";
+               " FROM game WHERE game.deleted = false and (game.winner_user_id=" + quote(id) + " or game.loser_user_id=" + quote(id) + ")";
   if (phpTrue(timestamp))
     sql.append(String(" and game.timestamp < ") + quote(*timestamp));
   if (phpTrue(tournamentId))

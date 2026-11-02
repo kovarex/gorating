@@ -5,10 +5,9 @@
 // tournament again (rating checks do) corrects what differs.
 //
 // Ported as PHP computes it, so the database gets the same values: the comparisons run both on the
-// same saved pages (testdata/scenario-*.sh). Two things that look like PHP bugs are kept until
-// kovarex decides: an opponent's name keeps only its first two words, and a re-processed game's
-// gorating ratings are always rewritten when its EGD ones differ (PHP compared with an undefined
-// variable).
+// same saved pages (testdata/scenario-*.sh). On purpose: an opponent's whole name is kept (PHP kept
+// two words). Kept until kovarex decides: a reprocessed game is corrected only when its EGD ratings
+// differ; PHP meant to compare its gorating ratings too, but compared an undefined variable.
 
 // A cell's text as PHP compared it.
 String egdCell(const HtmlDocument& doc, const Vector<int>& cells, ContainerSize index)
@@ -211,13 +210,10 @@ bool processTournament(Page& page, String key)
         bool userWon = jigo ? processedGame(processed, opponentPin, playerPin, round) == nullptr : result == "Win";
         String opponentName = egdCell(doc, cells, 7);
         ContainerSize space = opponentName.find(' ');
+        // The first word is the first name, the rest the last name, as for the players' own blocks
+        // (PHP kept only the second word: kovarex, 2026-11-02, "could be fixed").
         String opponentFirst = space == String::npos ? opponentName : opponentName.substr(0, space);
-        String opponentLast;
-        if (space != String::npos)
-        {
-          ContainerSize next = opponentName.find(' ', space + 1);
-          opponentLast = opponentName.substr(space + 1, next == String::npos ? String::npos : next - space - 1);
-        }
+        String opponentLast = space == String::npos ? String() : opponentName.substr(space + 1);
         if (opponentLast.empty())
         {
           opponentLast = opponentFirst;
