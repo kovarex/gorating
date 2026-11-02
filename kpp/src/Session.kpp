@@ -1,0 +1,171 @@
+// Who is logged in (src/auth.php). PHP kept a copy of the user's row in a server-side session; here
+// the cookie gorating_id is signed instead, so nothing is stored on the server:
+//   <user id>.<expiry, Unix seconds>.<HMAC-SHA256 of "<id>.<expiry>.<password hash>", hex>
+// keyed by the configuration's sessionSecret. A changed password ends every session of that user,
+// and the user's row is read on every request, so a page never shows a stale rating or setting.
+
+constexpr int64_t sessionSeconds = 3600 * 24 * 7; // a week, as PHP's
+constexpr StringView sessionCookie = "gorating_id";
+
+enum AdminLevel
+{
+  adminLevelOwner = 1,
+  adminLevelAdmin = 2,
+  adminLevelMod = 3,
+  adminLevelTrustedUser = 4,
+  adminLevelUser = 5,
+  adminLevelUnregistered = 6,
+};
+
+int64_t unixNow() { return durationCast<Seconds>(SystemClock::now().time_since_epoch()).count(); }
+
+String sessionSignature(const GoratingConfig& config, StringView id, int64_t expires, StringView passwordHash)
+{
+  return sha256::hmacSha256(config.sessionSecret, format("{}.{}.{}", id, expires, passwordHash)).hex();
+}
+
+String sessionCookieValue(const GoratingConfig& config, StringView id, int64_t expires, StringView passwordHash)
+{
+  return format("{}.{}.{}", id, expires, sessionSignature(config, id, expires, passwordHash));
+}
+
+// The logged-in user's row, read into page; nothing when the cookie is missing, malformed, expired
+// or signed with another secret or password.
+void readSession(Page& page)
+{
+  Optional<String> cookie = page.request->cookie(sessionCookie);
+  if (!cookie.has_value())
+    return;
+  StringView value = *cookie;
+  ContainerSize dot1 = value.find('.');
+  ContainerSize dot2 = dot1 == StringView::npos ? StringView::npos : value.find('.', dot1 + 1);
+  if (dot2 == StringView::npos)
+    return;
+  StringView id = value.substr(0, dot1);
+  StringView expiresText = value.substr(dot1 + 1, dot2 - dot1 - 1);
+  if (id.empty() || expiresText.empty() || id.size() > 10 || expiresText.size() > 12)
+    return;
+  for (char c : id)
+    if (c < '0' || c > '9')
+      return;
+  for (char c : expiresText)
+    if (c < '0' || c > '9')
+      return;
+  int64_t expires = stoll(String(expiresText));
+  if (expires < unixNow())
+    return;
+  mariadb::MariaDbResult user = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
+  if (user.empty() || !user.at(0, "password").has_value())
+    return;
+  String expected = sessionSignature(*page.config, id, expires, *user.at(0, "password"));
+  if (!sha256::Sha256::constantTimeEqual(expected, value.substr(dot2 + 1)))
+    return;
+  page.user = Optional<mariadb::MariaDbResult>(move(user));
+}
+
+bool loggedIn(const Page& page) { return page.user.has_value(); }
+
+// The user's column (the row PHP kept in $_SESSION["user"]).
+String userValue(const Page& page, StringView column)
+{
+  if (!page.user.has_value())
+    return String();
+  return Row(*page.user, 0)[column];
+}
+
+// PHP's adminLevel(): 1000 for a visitor, below every level.
+int adminLevel(const Page& page) { return loggedIn(page) ? (int)stoll(userValue(page, "admin_level_id")) : 1000; }
+bool userCanDo(const Page& page, int level) { return adminLevel(page) <= level; }
+
+bool canEditPlayerName(const Page& page) { return userCanDo(page, adminLevelMod); }
+bool canSeeInviters(const Page& page) { return userCanDo(page, adminLevelMod); }
+bool canSeeEmails(const Page& page) { return userCanDo(page, adminLevelMod); }
+bool canInvite(const Page& page) { return userCanDo(page, adminLevelUser); }
+bool canDeleteAnyGame(const Page& page) { return userCanDo(page, adminLevelAdmin); }
+bool canAccessDeletedGames(const Page& page) { return userCanDo(page, adminLevelAdmin); }
+bool canEditAnyGame(const Page& page) { return userCanDo(page, adminLevelAdmin); }
+bool canAccessChanges(const Page& page) { return userCanDo(page, adminLevelAdmin); }
+bool canReportWin(const Page& page) { return userCanDo(page, adminLevelTrustedUser); }
+
+// The rating's decimals the user chose (settings), 0 for a visitor.
+int significantDigits(const Page& page)
+{
+  String digits = userValue(page, "setting_significant_digits_in_rating");
+  return digits.empty() ? 0 : (int)stoll(digits);
+}
+
+constexpr html::HtmlTemplate loginTemplate(R"(<form method="post" action="/login_action">
+    <table>
+      <tr>
+        <td><label for="username">Username:</label></td>
+        <td><input name="username" type="text"/></td>
+      </tr>
+      <tr>
+        <td><label for="password">Password:</label></td>
+        <td><input name="password" type="password"/></td>
+      </tr>
+    </table>
+    <input type="submit" value="Login"/>
+  </form>
+  <a href="/reset_password">Reset password</a>
+)");
+constexpr html::HtmlTemplate loggedInAsTemplate(R"(Currently logged in as {{username}}<form method="post" action="/logout"><input type="submit" value="Logoff"/></form>)");
+
+void loginPage(Page& page)
+{
+  if (loggedIn(page))
+    page.body.append(loggedInAsTemplate.render({{"username", userValue(page, "username")}}));
+  else
+    page.body.append(loginTemplate.render({}));
+}
+
+// The value of the form's field, or "".
+String formValue(const Vector<url::UrlQueryParameter>& form, StringView name)
+{
+  for (const url::UrlQueryParameter& p : form)
+    if (p.name == name)
+      return p.value;
+  return String();
+}
+
+// A redirect with ?message= (src/link_helper.php's redirectWithMessageCustom).
+void redirectWithMessage(http::HttpResponse& response, StringView target, StringView message)
+{
+  String location(target);
+  location.append(location.find('?') == String::npos ? "?" : "&");
+  location.append(String("message=") + url::urlEncode(message));
+  response.redirect(location);
+}
+
+void loginAction(Page& page, http::HttpResponse& response)
+{
+  if (page.request->method != "POST")
+  {
+    response.redirect("/login");
+    return;
+  }
+  Vector<url::UrlQueryParameter> form = page.request->form();
+  String username = formValue(form, "username");
+  String password = formValue(form, "password");
+  if (username.empty())
+    return redirectWithMessage(response, "/login", "username not provided");
+  if (password.empty())
+    return redirectWithMessage(response, "/login", "password not provided");
+  mariadb::MariaDbResult user = page.query(String("SELECT id, username, password FROM user WHERE username=") + quote(username));
+  // One message for both, so the form does not tell which usernames exist (PHP said "not found").
+  if (user.empty() || !user.at(0, "password").has_value() || !bcrypt::bcryptVerify(password, *user.at(0, "password")))
+    return redirectWithMessage(response, "/login", "Wrong username or password!");
+  Row row(user, 0);
+  int64_t expires = unixNow() + sessionSeconds;
+  http::HttpCookieOptions options;
+  options.maxAgeSeconds = Optional<int64_t>(sessionSeconds);
+  options.secure = page.config->secureCookies;
+  response.setCookie(sessionCookie, sessionCookieValue(*page.config, row["id"], expires, row["password"]), options);
+  response.redirect(playerPath(row["id"], row["username"]));
+}
+
+void logoutAction(http::HttpResponse& response)
+{
+  response.deleteCookie(sessionCookie);
+  response.redirect("/");
+}

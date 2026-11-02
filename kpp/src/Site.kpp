@@ -30,6 +30,7 @@ struct Page
   const GoratingConfig* config = nullptr;
   mariadb::MariaDbConnection* db = nullptr;
   const http::HttpRequest* request = nullptr;
+  Optional<mariadb::MariaDbResult> user; // the logged-in user's row (Session.kpp)
   html::SafeHtml body;
 
   // The query's parameter as start.php reads it: the last one of that name; "" when absent.
@@ -157,8 +158,11 @@ constexpr html::HtmlTemplate sgfLinkTemplate(R"(<a href="/sgf?id={{id}}">SGF</a>
 
 html::SafeHtml sgfLink(StringView gameId) { return sgfLinkTemplate.render({{"id", String(gameId)}}); }
 
-// A rating with the viewer's decimals (none until settings are ported), as %.Nf rounds.
-String showRating(StringView rating) { return format("{}", fixed(ratingValue(rating), 0)); }
+// The viewer's decimals for ratings (their setting; 0 for a visitor), set for each request.
+int ratingDigits = 0;
+
+// A rating with the viewer's decimals, as %.Nf rounds.
+String showRating(StringView rating) { return format("{}", fixed(ratingValue(rating), ratingDigits)); }
 
 html::SafeHtml tournamentLink(StringView id, StringView name)
 {

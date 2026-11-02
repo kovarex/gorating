@@ -25,6 +25,8 @@ bool route(Page& page, StringView name)
     gamePage(page);
   else if (name == "player")
     playerPage(page, page.get("id"));
+  else if (name == "login")
+    loginPage(page);
   else if (isPageName(name))
     return false;
   else if (!playerByUsername(page, name))
@@ -75,10 +77,22 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   page.db = &db;
   page.request = &request;
   String name = request.path.size() > 0 ? request.path.substr(1) : String();
+  readSession(page);
+  ratingDigits = significantDigits(page);
   // The pages without the layout.
   if (name == "sgf")
   {
     sgfDownload(page, response);
+    return;
+  }
+  if (name == "login_action")
+  {
+    loginAction(page, response);
+    return;
+  }
+  if (name == "logout")
+  {
+    logoutAction(response);
     return;
   }
   bool routed = false;

@@ -29,17 +29,31 @@ constexpr html::HtmlTemplate loggedOutTemplate(R"(<div style="position: absolute
           </form>
         </div>)");
 
+constexpr html::HtmlTemplate loggedInTemplate(R"(<div style="position: absolute;right: 0px;">
+          Currently logged in as {{username}}
+          <form method="post" action="/logout" style="display:inline;">
+            <input type="submit" value="Logoff"/>
+          </form><form method="post" action="/settings" style="display:inline;">
+          <input type="submit" value="Settings"/>
+        </form></div>)");
+
 constexpr html::HtmlTemplate menuItemTemplate(R"(&nbsp;&nbsp;:&nbsp;&nbsp;<a href="{{href}}">{{text}}</a>
 )");
 constexpr html::HtmlTemplate firstMenuItemTemplate(R"(<a href="{{href}}">{{text}}</a>
 )");
 constexpr html::HtmlTemplate messageTemplate(R"(<div class="message-div"><h3><b>Message:</b></h3><br/>{{message}}</div>)");
 
-html::SafeHtml menu()
+html::SafeHtml menu(const Page& page)
 {
   html::SafeHtml out = firstMenuItemTemplate.render({{"href", "/"}, {"text", "Home"}});
   out.append(menuItemTemplate.render({{"href", "/players"}, {"text", "Players"}}));
   out.append(menuItemTemplate.render({{"href", "/tournaments"}, {"text", "Tournaments"}}));
+  if (userCanDo(page, adminLevelUser))
+    out.append(menuItemTemplate.render({{"href", "/invites"}, {"text", "Invites"}}));
+  if (canAccessChanges(page))
+    out.append(menuItemTemplate.render({{"href", "/changes"}, {"text", "Changes"}}));
+  if (canAccessDeletedGames(page))
+    out.append(menuItemTemplate.render({{"href", "/deleted_games"}, {"text", "Deleted games"}}));
   out.append(menuItemTemplate.render({{"href", "/about"}, {"text", "About"}}));
   return out;
 }
@@ -65,8 +79,9 @@ String layout(const Page& page, const html::SafeHtml& content, double seconds)
   String message = page.get("message");
   return layoutTemplate
       .render({{"resources", page.config->resourceAddress},
-               {"account", loggedOutTemplate.render({})},
-               {"menu", menu()},
+               {"account", loggedIn(page) ? loggedInTemplate.render({{"username", userValue(page, "username")}})
+                                          : loggedOutTemplate.render({})},
+               {"menu", menu(page)},
                {"message", message.empty() ? html::SafeHtml() : messageTemplate.render({{"message", message}})},
                {"content", content},
                {"generated", String(" - Page generated in ") + secondsText(seconds) + " seconds"}})

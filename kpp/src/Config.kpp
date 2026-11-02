@@ -1,7 +1,7 @@
 // The site's configuration: a JSON file that is never committed (it has the database's password),
 // named by GORATING_CONFIG, else gorating-config.json in the working directory. Its form:
 //   {"database": {"host": "127.0.0.1", "port": 3306, "user": "...", "password": "...", "name": "..."},
-//    "resourceAddress": "https://..."}
+//    "resourceAddress": "https://...", "sessionSecret": "<32+ random characters>", "secureCookies": true}
 // resourceAddress is where style2.css, common.js and img/ are; "" serves them from this program.
 
 struct GoratingConfig
@@ -9,6 +9,8 @@ struct GoratingConfig
   mariadb::MariaDbOptions database;
   String resourceAddress;
   String staticDirectory; // with resourceAddress "": where the files are (the PHP checkout)
+  String sessionSecret;   // signs the session cookie (Session.kpp): 32 or more random characters
+  bool secureCookies = false; // true when the site is HTTPS: cookies are never sent in clear
 };
 
 struct GoratingError : RuntimeError
@@ -50,5 +52,10 @@ GoratingConfig goratingReadConfig()
   config.resourceAddress = root["resourceAddress"].asString();
   if (const json::JsonValue* directory = root.find("staticDirectory"))
     config.staticDirectory = directory->asString();
+  config.sessionSecret = root["sessionSecret"].asString();
+  if (config.sessionSecret.size() < 32)
+    throw GoratingError(format("{}: sessionSecret has {} characters; it needs 32 or more", path, (int64_t)config.sessionSecret.size()));
+  if (const json::JsonValue* secure = root.find("secureCookies"))
+    config.secureCookies = secure->asBool();
   return config;
 }
