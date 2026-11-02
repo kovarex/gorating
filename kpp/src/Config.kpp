@@ -11,6 +11,9 @@ struct GoratingConfig
   String staticDirectory; // with resourceAddress "": where the files are (the PHP checkout)
   String sessionSecret;   // signs the session cookie (Session.kpp): 32 or more random characters
   bool secureCookies = false; // true when the site is HTTPS: cookies are never sent in clear
+  String siteAddress;         // "https://gorating.com" for links in mails; "": from the request's Host
+  String mailCommand;         // reads a whole message on its input: "/usr/sbin/sendmail -t -i"
+  String mailDirectory;       // or: a directory each message is written to as a file
 };
 
 struct GoratingError : RuntimeError
@@ -57,5 +60,10 @@ GoratingConfig goratingReadConfig()
     throw GoratingError(format("{}: sessionSecret has {} characters; it needs 32 or more", path, (int64_t)config.sessionSecret.size()));
   if (const json::JsonValue* secure = root.find("secureCookies"))
     config.secureCookies = secure->asBool();
+  for (auto [name, field] : {Pair<const char*, String*>{"siteAddress", &config.siteAddress},
+                             Pair<const char*, String*>{"mailCommand", &config.mailCommand},
+                             Pair<const char*, String*>{"mailDirectory", &config.mailDirectory}})
+    if (const json::JsonValue* value = root.find(name))
+      *field = value->asString();
   return config;
 }

@@ -15,7 +15,10 @@ page, against the same MariaDB database (its triggers and procedures stay as the
 - `src/pages/`: one file per page. Ported: home, about, tournaments, tournament, players, player
   (and /username), game, the SGF download, login, settings; the
   others answer 501. Actions: report a game, edit, delete and restore one (with the change log and
-  the rating update), edit a player's name. Admin pages: deleted games, the change log.
+  the rating update), edit a player's name, invite (a new or an EGD player), register, reset a
+  password. Admin pages: deleted games, the change log.
+- `src/Mail.kpp`: mail through the configuration's `mailCommand` (sendmail on the server) or into
+  its `mailDirectory` (locally). `src/Platform.kpp`: the operating system's secure random source.
 - `testdata/compare.sh`: fetches paths from the PHP site (port 8081) and this one (8082) and
   compares the HTML after masking the differences below; `PHP_JAR` and `KPP_JAR` name curl cookie
   files to compare as a logged-in user.

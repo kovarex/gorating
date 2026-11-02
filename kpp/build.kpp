@@ -2,6 +2,6 @@
 void build(Project& project)
 {
   Executable& site = project.executable("gorating", {"src"});
-  for (StringView name : {"http", "html", "mariadb", "bcrypt", "sha256", "url", "json"})
+  for (StringView name : {"http", "html", "mariadb", "bcrypt", "sha256", "base64", "url", "json"})
     site.use(name);
 }

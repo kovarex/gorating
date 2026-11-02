@@ -1,13 +1,17 @@
 #!/bin/bash
 # Compares gorating_php and gorating_kpp after the same scenario ran against each: every table a
 # page writes, with the values that cannot match masked (the time a row was written, random
-# secrets). Prints "databases equal" or the differences.
+# secrets, password hashes, which bcrypt salts at random). Prints "databases equal" or the differences.
 ENV=${GORATING_ENV:?set GORATING_ENV to the local setup: mariadb/}
 M=$ENV/mariadb/bin/mariadb.exe
 dump() {
   local db=$1
   $M -h127.0.0.1 -P3307 -uroot -N --default-character-set=utf8mb4 $db 2>/dev/null <<EOF
-SELECT 'user', u.* FROM user u ORDER BY id;
+SELECT 'user', id, username, first_name, last_name, email, egd_pin, egd_rating, rating, win_count, loss_count, egd_win_count,
+       egd_loss_count, country_id, password IS NOT NULL, admin_level_id, invited_by_user_id,
+       IF(register_timestamp > '2026-01-01', 'new', register_timestamp), club, reset_password_secret IS NOT NULL,
+       reset_password_timestamp IS NOT NULL, setting_significant_digits_in_rating, setting_rating_change_format,
+       rating_change_checked, register_rating FROM user ORDER BY id;
 SELECT 'game', id, winner_user_id, loser_user_id, game_type_id, IF(id > 3503, 'new', timestamp), location,
        winner_comment, loser_comment, HEX(sgf), winner_old_rating, winner_new_rating, loser_old_rating,
        loser_new_rating, winner_old_egd_rating, winner_new_egd_rating, loser_old_egd_rating,

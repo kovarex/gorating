@@ -1,0 +1,58 @@
+// Sending mail (PHP's mail()): an HTML message from webmaster@gorating.com. The configuration names
+// either mailCommand, which reads the whole message on its input (sendmail -t -i on the server), or
+// mailDirectory, where each message is written as a file (on one's own machine).
+
+constexpr StringView mailFrom = "webmaster@gorating.com";
+
+// An address one can send to: something@domain, with no character that could start another header.
+bool isMailAddress(StringView address)
+{
+  if (address.size() < 3 || address.size() > 254)
+    return false;
+  ContainerSize at = address.find('@');
+  if (at == StringView::npos || at == 0 || at + 1 >= address.size() || address.find('@', at + 1) != StringView::npos)
+    return false;
+  for (char c : address)
+    if ((unsigned char)c <= 0x20 || c == ',' || c == ';' || c == '<' || c == '>' || c == '"' || (unsigned char)c >= 0x7f)
+      return false;
+  return true;
+}
+
+// A header's text as RFC 2047 words when it is not ASCII.
+String mailHeaderText(StringView text)
+{
+  bool ascii = true;
+  for (char c : text)
+    if ((unsigned char)c >= 0x80 || c == '\r' || c == '\n')
+      ascii = false;
+  if (ascii)
+    return String(text);
+  return String("=?UTF-8?B?") + base64::base64Encode(text) + "?=";
+}
+
+void sendMail(const GoratingConfig& config, StringView to, StringView subject, const html::SafeHtml& body)
+{
+  if (!isMailAddress(to))
+    throw GoratingError(format("not a mail address: {}", to));
+  String message = String("To: ") + String(to) + "\r\nFrom: " + String(mailFrom) + "\r\nReply-To: " + String(mailFrom) +
+                   "\r\nSubject: " + mailHeaderText(subject) +
+                   "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n" + body.html + "\r\n";
+  if (!config.mailCommand.empty())
+  {
+    int status = runWithInput(config.mailCommand, message);
+    if (status != 0)
+      throw GoratingError(format("{} exited with {}", config.mailCommand, status));
+    return;
+  }
+  if (!config.mailDirectory.empty())
+  {
+    String name = config.mailDirectory + "/" + format("{}-{}.eml", unixNow(), secureRandomSecret());
+    FILE* file = fopen(name.c_str(), "wb");
+    if (!file)
+      throw GoratingError(format("cannot write {}", name));
+    fwrite(message.data(), 1, message.size(), file);
+    fclose(file);
+    return;
+  }
+  throw GoratingError("the configuration has neither mailCommand nor mailDirectory: mail cannot be sent");
+}

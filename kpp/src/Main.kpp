@@ -33,6 +33,16 @@ bool route(Page& page, StringView name)
     reportPage(page);
   else if (name == "edit_game")
     editGamePage(page);
+  else if (name == "invites")
+    invitesPage(page);
+  else if (name == "invite_existing_user")
+    inviteExistingUserPage(page);
+  else if (name == "register")
+    registerPage(page);
+  else if (name == "reset_password")
+    resetPasswordPage(page);
+  else if (name == "reset_password_confirm")
+    resetPasswordConfirmPage(page);
   else if (name == "deleted_games")
     deletedGamesPage(page);
   else if (name == "changes")
@@ -101,6 +111,17 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
     loginAction(page, response);
     return;
   }
+  using Action = void (*)(Page&, http::HttpResponse&);
+  for (Pair<const char*, Action> action : {Pair<const char*, Action>{"invite_action", inviteAction},
+                                           Pair<const char*, Action>{"invite_existing_user_action", inviteExistingUserAction},
+                                           Pair<const char*, Action>{"register_action", registerAction},
+                                           Pair<const char*, Action>{"reset_password_action", resetPasswordAction},
+                                           Pair<const char*, Action>{"reset_password_confirm_action", resetPasswordConfirmAction}})
+    if (name == action.first)
+    {
+      action.second(page, response);
+      return;
+    }
   if (name == "edit_player_name_action")
   {
     editPlayerNameAction(page, response);
