@@ -1,0 +1,154 @@
+// The European Go Database's pages (src/egd_api.php): fetching them and reading a player's card.
+//
+// fetchEgd takes a page from the configuration's egdPageDirectory when it names one (saved pages,
+// named by egdPageName: the comparisons with PHP read the same files), else from EGD over HTTPS. PHP
+// went through scrape.do there; that path waits for scrape()'s code (the token will come from the
+// configuration, like the database's password).
+
+// A saved page's file name: the SHA-256 of the address and the form (empty for a GET), in hex.
+String egdPageName(StringView url, StringView form)
+{
+  return sha256::sha256(String(url) + "\n" + String(form)).hex() + ".html";
+}
+
+String fetchEgd(const GoratingConfig& config, StringView url, StringView form = "")
+{
+  if (!config.egdPageDirectory.empty())
+    return goratingReadFile(config.egdPageDirectory + "/" + egdPageName(url, form));
+  httpclient::HttpClientResponse page = form.empty() ? httpclient::fetch(url) : httpclient::postForm(url, form);
+  if (page.status != 200)
+    throw GoratingError(format("EGD answered {} for {}", page.status, url));
+  return page.body;
+}
+
+// A number as PHP keeps it: the text it was read as (a page's, the database's), or a double it
+// computed. Written into SQL as PHP wrote it: the text as it is, a double with 14 digits.
+struct PhpNumber
+{
+  bool computed = false;
+  String text;
+  double value = 0;
+
+  PhpNumber() {}
+  static PhpNumber read(StringView text)
+  {
+    PhpNumber n;
+    n.text = String(text);
+    n.value = text.empty() ? 0.0 : stod(String(text));
+    return n;
+  }
+  static PhpNumber of(double value)
+  {
+    PhpNumber n;
+    n.computed = true;
+    n.value = value;
+    return n;
+  }
+  String sql() const { return this->computed ? phpNumber(this->value) : this->text; }
+  PhpNumber operator+(const PhpNumber& other) const { return PhpNumber::of(this->value + other.value); }
+};
+
+// PHP's is_numeric for what EGD's pages hold: an optional sign, digits, a point, an exponent.
+bool phpIsNumeric(StringView text)
+{
+  return number(text).has_value();
+}
+
+// PHP 8's loose == of two column values: as numbers when both are numeric, else as text; NULL
+// equals "" only.
+bool phpLooseEqual(const Optional<String>& a, const Optional<String>& b)
+{
+  if (!a.has_value() || !b.has_value())
+    return (a.has_value() ? a->empty() : true) && (b.has_value() ? b->empty() : true);
+  if (phpIsNumeric(*a) && phpIsNumeric(*b))
+    return *number(*a) == *number(*b);
+  return *a == *b;
+}
+
+struct EgdCountry
+{
+  String id;
+  String code;
+};
+
+// "Germany (DE)": the code in the last brackets, and its country (getCountryCodeAndID).
+EgdCountry egdCountry(Page& page, StringView country)
+{
+  ContainerSize space = country.rfind(' ');
+  StringView last = space == StringView::npos ? country : country.substr(space + 1);
+  String code = last.size() >= 2 ? String(last.substr(1, last.size() - 2)) : String();
+  mariadb::MariaDbResult found = page.query(String("SELECT id FROM country WHERE code=") + quote(code));
+  if (found.empty())
+    throw GoratingError(format("Couldn't find country with code:{} complete name:{}", code, country));
+  return EgdCountry{Row(found, 0)["id"], code};
+}
+
+// A tournament's class, "A (1x)", as its game type (getGameTypeID).
+int egdGameType(StringView text)
+{
+  if (text.starts_with("A"))
+    return gameTypeEgdA;
+  if (text.starts_with("B"))
+    return gameTypeEgdB;
+  if (text.starts_with("C"))
+    return gameTypeEgdC;
+  if (text.starts_with("D"))
+    return gameTypeEgdD;
+  throw GoratingError(format("Couldn't determine egd tournament class from the string:{}", text));
+}
+
+// T, W, E or G and 3 to 9 more characters (isTournamentKey).
+bool isTournamentKey(StringView key)
+{
+  return key.size() >= 4 && key.size() <= 10 && (key[0] == 'T' || key[0] == 'W' || key[0] == 'E' || key[0] == 'G');
+}
+
+constexpr StringView egdAddress = "https://www.europeangodatabase.eu/EGD/";
+
+struct EgdPlayerInfo
+{
+  String rating;
+  EgdCountry country;
+};
+
+// A player's rating and country from their EGD card (getEgdInfo).
+EgdPlayerInfo egdPlayerInfo(Page& page, StringView pin)
+{
+  String url = String(egdAddress) + "Player_Card.php?&key=" + String(pin);
+  HtmlDocument doc = readHtml(fetchEgd(*page.config, url));
+  Optional<String> rating;
+  Optional<EgdCountry> country;
+  for (int input : doc.elements(0, "input"))
+  {
+    const String* name = doc.attribute(input, "name");
+    const String* value = doc.attribute(input, "value");
+    if (name == nullptr || value == nullptr)
+      continue;
+    if (*name == "gor")
+    {
+      ContainerSize space = value->find(' ');
+      String gor = space == String::npos ? *value : value->substr(0, space);
+      if (!phpIsNumeric(gor))
+        throw GoratingError(format("The provided rating from egd ({}) doesn't seem to be a number.", gor));
+      rating = Optional<String>(gor);
+    }
+    else if (*name == "country")
+      country = Optional<EgdCountry>(egdCountry(page, *value));
+  }
+  if (!rating.has_value() || rating->empty() || !country.has_value())
+    throw GoratingError(format("Couldn't determine the rating from the EGD page. Link:{}", url));
+  return EgdPlayerInfo{*rating, *country};
+}
+
+// The user with this EGD pin, made from their card when there is none yet (addEGDPlayerIfNotPresent).
+String addEgdPlayerIfNotPresent(Page& page, StringView pin, StringView firstName, StringView lastName)
+{
+  mariadb::MariaDbResult found = page.query(String("SELECT id FROM user WHERE egd_pin =") + quote(pin));
+  if (!found.empty())
+    return Row(found, 0)["id"];
+  EgdPlayerInfo info = egdPlayerInfo(page, pin);
+  page.query(String("INSERT INTO user(first_name, last_name, egd_pin, egd_rating, rating, country_id, admin_level_id) VALUES(") +
+             quoteOrNull(firstName) + "," + quoteOrNull(lastName) + "," + quote(pin) + "," + quote(info.rating) + "," +
+             quote(info.rating) + "," + quote(info.country.id) + ",6)");
+  return *page.db->scalar("SELECT LAST_INSERT_ID()");
+}

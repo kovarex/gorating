@@ -44,12 +44,12 @@ Optional<String> fetchUserRatingBefore(Page& page, const Row& user, StringView u
 }
 
 Optional<String> fetchUserRatingBefore(Page& page, StringView userId, const Optional<String>& timestamp,
-                                       const Optional<String>& tournamentId)
+                                       const Optional<String>& tournamentId, const Optional<String>& lastResort = Optional<String>())
 {
   mariadb::MariaDbResult user = page.query(String("SELECT * FROM user where id=") + quote(userId));
   if (user.empty())
     throw GoratingError(format("no user {}", userId));
-  return fetchUserRatingBefore(page, Row(user, 0), userId, timestamp, tournamentId, Optional<String>(), false);
+  return fetchUserRatingBefore(page, Row(user, 0), userId, timestamp, tournamentId, lastResort, false);
 }
 
 // The rating a player's game starts from: the update's value for them or the game's own, whichever

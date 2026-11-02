@@ -23,6 +23,9 @@ SELECT 'invite', id, from_user_id, user_id, first_name, last_name, email, IF(id 
        IF(id > 15, 'new', timestamp) FROM invite ORDER BY id;
 SELECT 'rating_change', r.* FROM rating_change r ORDER BY id;
 SELECT 'variable', v.* FROM variable v ORDER BY name;
+SELECT 'egd_tournament', t.* FROM egd_tournament t ORDER BY id;
+SELECT 'egd_tournament_result', r.* FROM egd_tournament_result r ORDER BY id;
+SELECT 'egd_tournament_to_process', q.* FROM egd_tournament_to_process q ORDER BY id;
 SELECT 'rating_update_value', r.* FROM rating_update_value r ORDER BY user_id;
 SELECT 'user_game_count_to_update', u.* FROM user_game_count_to_update u ORDER BY user_id;
 EOF

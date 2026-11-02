@@ -1,0 +1,139 @@
+// The background jobs (update_tournament_list.php, check_new_tournaments.php, process_tournament.php,
+// process_tournament_batch.php, update_rating.php): the cron calls update_tournament_list hourly.
+// PHP's job addresses were open to anyone; here they take ?secret= with the configuration's
+// jobSecret (the cron's address carries it) or the owner's login. They answer in plain text.
+
+constexpr int tournamentsPerBatch = 30;
+
+bool mayRunJobs(const Page& page)
+{
+  if (canShowStatistics(page))
+    return true;
+  String secret = page.get("secret");
+  return !page.config->jobSecret.empty() && sha256::Sha256::constantTimeEqual(secret, page.config->jobSecret);
+}
+
+// The tournaments already stored or queued (getTournamentsToIgnore).
+bool tournamentKnown(Page& page, StringView key)
+{
+  return !page.query(String("SELECT egd_key FROM egd_tournament WHERE egd_key=") + quote(key) +
+                     " UNION SELECT egd_key FROM egd_tournament_to_process WHERE egd_key=" + quote(key)).empty();
+}
+
+// Queues keys, the last one first (EGD lists the newest first), skipping the known ones; how many.
+int queueTournaments(Page& page, const Vector<String>& keys)
+{
+  int queued = 0;
+  for (ContainerSize i = keys.size(); i > 0; --i)
+  {
+    const String& key = keys[i - 1];
+    if (!isTournamentKey(key) || tournamentKnown(page, key))
+      continue;
+    page.query(String("INSERT INTO egd_tournament_to_process(egd_key) VALUES(") + quote(key) + ")");
+    ++queued;
+  }
+  return queued;
+}
+
+// Up to tournamentsPerBatch queued tournaments, half a second apart when EGD is asked (as PHP).
+String processTournamentBatch(Page& page)
+{
+  String out;
+  int done = 0;
+  for (int i = 0; i < tournamentsPerBatch; ++i)
+  {
+    if (!processTournament(page, String()))
+      break;
+    ++done;
+    if (page.config->egdPageDirectory.empty())
+      thisThread::sleepFor(Milliseconds(500));
+  }
+  String remaining = page.db->scalar("SELECT COUNT(*) FROM egd_tournament_to_process").value_or(String("0"));
+  out.append(format("Processed {} tournaments, {} remaining.\n", done, remaining));
+  return out;
+}
+
+// EGD's whole tournament list (downloads/tlist.html): its lines " T261031D  A  5 ..." with a key in
+// columns 2 to 10.
+Vector<String> tournamentListKeys(StringView list)
+{
+  Vector<String> keys;
+  ContainerSize at = 0;
+  while (at < list.size())
+  {
+    ContainerSize end = at;
+    while (end < list.size() && list[end] != '\r' && list[end] != '\n')
+      ++end;
+    StringView line = list.substr(at, end - at);
+    if (line.size() >= 11 && line[0] == ' ' && line[10] == ' ')
+    {
+      StringView key = line.substr(0, 11);
+      while (!key.empty() && key[0] == ' ')
+        key = key.substr(1);
+      while (!key.empty() && key[key.size() - 1] == ' ')
+        key = key.substr(0, key.size() - 1);
+      keys.push_back(String(key));
+    }
+    at = end + 1;
+  }
+  return keys;
+}
+
+// EGD's tournament search, newest first, as PHP posted it (getPageOfLatestTournaments).
+constexpr StringView latestTournamentsForm = "ricerca=1&orderBy=orderBy%3DTournament_Date%2CTournament_Code&viewStart=viewStart%3D0"
+                                             "&orderDir=orderDir%3DDESC&tournament_code=&date_from=&date_to=&tournament_description="
+                                             "&country_code=%2A&city=%2A&filter=All";
+
+Vector<String> latestTournamentKeys(Page& page)
+{
+  HtmlDocument doc = readHtml(fetchEgd(*page.config, String(egdAddress) + "Find_Tournament.php", latestTournamentsForm));
+  for (int table : doc.elements(0, "table"))
+    if (doc.hasAttribute(table, "bordercolor", "#396B95"))
+    {
+      Vector<String> keys;
+      for (int row : doc.elements(table, "tr"))
+      {
+        Vector<int> cells = doc.elements(row, "td");
+        if (!cells.empty())
+          keys.push_back(doc.text(cells[0]));
+      }
+      return keys;
+    }
+  throw GoratingError("Didn't find a single entry that would look like a tournament.");
+}
+
+// The jobs' addresses; false for any other.
+bool runJob(Page& page, StringView name, http::HttpResponse& response)
+{
+  bool job = name == "update_tournament_list" || name == "check_new_tournaments" || name == "process_tournament" ||
+             name == "process_tournament_batch" || name == "update_rating";
+  if (!job)
+    return false;
+  response.setHeader("Content-Type", "text/plain; charset=utf-8");
+  if (!mayRunJobs(page))
+  {
+    response.status = 403;
+    response.body = "The jobs take the configuration's secret.\n";
+    return true;
+  }
+  if (name == "update_tournament_list")
+  {
+    int queued = queueTournaments(page, tournamentListKeys(fetchEgd(*page.config, String(egdAddress) + "EGD_2_0/downloads/tlist.html")));
+    response.body = format("Queued {} tournaments.\n", queued) + processTournamentBatch(page);
+  }
+  else if (name == "check_new_tournaments")
+  {
+    int queued = queueTournaments(page, latestTournamentKeys(page));
+    response.body = format("Added {} to be processed.\n", queued) + processTournamentBatch(page);
+  }
+  else if (name == "process_tournament")
+  {
+    String key = page.get("egd_tournament_key");
+    response.body = processTournament(page, key) ? String("Processed.\n") : String("No tournament to process.\n");
+  }
+  else if (name == "process_tournament_batch")
+    response.body = processTournamentBatch(page);
+  else
+    response.body = processRating(page, 50) + "\n";
+  return true;
+}

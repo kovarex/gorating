@@ -1,0 +1,344 @@
+// EGD tournaments into games and ratings (src/process_tournament_helper.php's processTournament):
+// a tournament's GoR page gives its facts and each player's block of games; each game is stored
+// once (the first of its two players seen inserts it, the second fills in its side), with EGD's
+// ratings and, for players registered before the tournament, gorating's own. Processing a
+// tournament again (rating checks do) corrects what differs.
+//
+// Ported as PHP computes it, so the database gets the same values: the comparisons run both on the
+// same saved pages (testdata/scenario-*.sh). Two things that look like PHP bugs are kept until
+// kovarex decides: an opponent's name keeps only its first two words, and a re-processed game's
+// gorating ratings are always rewritten when its EGD ones differ (PHP compared with an undefined
+// variable).
+
+// A cell's text as PHP compared it.
+String egdCell(const HtmlDocument& doc, const Vector<int>& cells, ContainerSize index)
+{
+  if (index >= cells.size())
+    throw GoratingError(format("a game row with {} cells, not {} or more", (int64_t)cells.size(), (int64_t)index + 1));
+  return doc.text(cells[index]);
+}
+
+// "31-10-2026" (EGD's tournament_date) as "2026-10-31 00:00:00" (PHP: strtotime, then date()).
+String egdTimestamp(StringView date)
+{
+  if (date.size() != 10 || date[2] != '-' || date[5] != '-')
+    throw GoratingError(format("Tournament date \"{}\" is not DD-MM-YYYY", date));
+  return String(date.substr(6, 4)) + "-" + String(date.substr(3, 2)) + "-" + String(date.substr(0, 2)) + " 00:00:00";
+}
+
+// Pins of the two players and a round: the game id stored for them (PHP's $pinsProcessed).
+struct ProcessedGame
+{
+  String playerPin;
+  String opponentPin;
+  String round;
+  String gameId;
+};
+
+const String* processedGame(const Vector<ProcessedGame>& processed, StringView playerPin, StringView opponentPin, StringView round)
+{
+  for (const ProcessedGame& g : processed)
+    if (g.playerPin == playerPin && g.opponentPin == opponentPin && g.round == round)
+      return &g.gameId;
+  return nullptr;
+}
+
+// Whether a and b differ by more than PHP's tolerance (PHP: abs($a - $b) <= 0.0001).
+bool egdDiffers(StringView a, double b) { return !(ratingValue(a) - b <= 0.0001 && b - ratingValue(a) <= 0.0001); }
+
+// Processes the tournament of key, or the first one queued in egd_tournament_to_process when key is
+// empty. False when there was none queued; a page or a database that does not fit throws, and the
+// tournament's changes are rolled back.
+bool processTournament(Page& page, String key)
+{
+  if (key.empty())
+  {
+    mariadb::MariaDbResult queued = page.query("SELECT egd_key FROM egd_tournament_to_process ORDER BY id LIMIT 1");
+    if (queued.empty())
+      return false;
+    key = Row(queued, 0)["egd_key"];
+  }
+  mariadb::MariaDbResult existing = page.query(String("SELECT * FROM egd_tournament WHERE egd_key =") + quote(key));
+  HtmlDocument doc = readHtml(fetchEgd(*page.config, String(egdAddress) + "Tournament_ShowGoR.php?key=" + key));
+
+  Optional<EgdCountry> country;
+  int gameType = 0;
+  String date;
+  Optional<String> city;
+  String roundCount;
+  String playerCount;
+  for (int input : doc.elements(0, "input"))
+  {
+    const String* name = doc.attribute(input, "name");
+    if (name == nullptr || name->empty() || *name == "0")
+      continue;
+    const String* attribute = doc.attribute(input, "value");
+    String value = attribute == nullptr ? String() : *attribute;
+    if (*name == "nation")
+      country = Optional<EgdCountry>(egdCountry(page, value));
+    else if (*name == "class")
+      gameType = egdGameType(value);
+    else if (*name == "tournament_date")
+      date = value;
+    else if (*name == "city")
+      city = Optional<String>(value);
+    else if (*name == "rounds" && phpIsNumeric(value))
+      roundCount = value;
+    else if (*name == "total_player")
+      playerCount = value;
+  }
+  Optional<String> tournamentName;
+  for (int span : doc.elements(0, "span"))
+    if (doc.hasAttribute(span, "class", "plain5"))
+    {
+      tournamentName = Optional<String>(doc.text(span));
+      break;
+    }
+  if (!country.has_value())
+    throw GoratingError(format("Tournament country info couldn't be determined. key={}", key));
+  if (gameType == 0)
+    throw GoratingError(format("Game type info couldn't be determined. key={}", key));
+  if (date.empty())
+    throw GoratingError(format("Tournament date couldn't be determined. key={}", key));
+  if (!city.has_value())
+    throw GoratingError(format("Tournament city couldn't be determined. key={}", key));
+  if (playerCount.empty() || playerCount == "0")
+    throw GoratingError(format("Player count couldn't be determined. key={}", key));
+  if (roundCount.empty() || roundCount == "0")
+    throw GoratingError(format("Round count couldn't be determined. key={}", key));
+  String timestamp = egdTimestamp(date);
+
+  page.db->begin();
+  try
+  {
+    bool existed = !existing.empty();
+    String tournamentId;
+    if (!existed)
+    {
+      page.query(String("INSERT INTO egd_tournament(egd_key, timestamp, country_id, game_type_id, city, name, player_count, round_count) VALUES(") +
+                 quote(key) + "," + quote(timestamp) + "," + quote(country->id) + "," + quote(format("{}", gameType)) + "," +
+                 quoteOrNull(*city) + "," + (tournamentName.has_value() ? quoteOrNull(*tournamentName) : String("NULL")) + "," +
+                 quoteOrNull(playerCount) + "," + quoteOrNull(roundCount) + ")");
+      tournamentId = *page.db->scalar("SELECT LAST_INSERT_ID()");
+    }
+    else
+      tournamentId = Row(existing, 0)["id"];
+    page.query(String("DELETE FROM egd_tournament_to_process WHERE egd_key=") + quote(key));
+
+    int placement = 1;
+    Vector<ProcessedGame> processed;
+    Vector<String> usersToUpdate;
+    for (int div : doc.elements(0, "div"))
+    {
+      if (!doc.hasAttribute(div, "class", "thisdiv"))
+        continue;
+      Vector<int> bold = doc.elements(div, "b");
+      Vector<int> links = doc.elements(div, "a");
+      Vector<int> tables = doc.elements(div, "table");
+      if (bold.size() < 2 || links.empty() || tables.size() < 2)
+        throw GoratingError(format("a player's block of tournament {} lacks its rating, link or games", key));
+      String gorText = doc.text(bold[1]);
+      if (!phpIsNumeric(gorText))
+        throw GoratingError(format("The value of gor before tournament: \"{} is not a number.", gorText));
+      PhpNumber currentGor = PhpNumber::read(gorText);
+      Vector<String> pieces;
+      String link = doc.text(links[0]);
+      for (ContainerSize at = 0;;)
+      {
+        ContainerSize space = link.find(' ', at);
+        pieces.push_back(link.substr(at, space == String::npos ? String::npos : space - at));
+        if (space == String::npos)
+          break;
+        at = space + 1;
+      }
+      String playerPin = pieces[0];
+      if (!phpIsNumeric(playerPin) || pieces.size() < 4)
+        throw GoratingError(format("Pin {} isn't numeric", playerPin));
+      String firstName = pieces[2];
+      String lastName = pieces[3];
+      for (ContainerSize i = 4; i < pieces.size(); ++i)
+        lastName.append(String(" ") + pieces[i]);
+      String userId = addEgdPlayerIfNotPresent(page, playerPin, firstName, lastName);
+      mariadb::MariaDbResult userResult = page.query(String("SELECT * from user WHERE user.id=") + quote(userId));
+      Row user(userResult, 0);
+      if (!existed)
+        page.query(format("INSERT INTO egd_tournament_result(egd_tournament_id, user_id, placement) VALUES({},{},{})", quote(tournamentId),
+                          quote(userId), quote(format("{}", placement))));
+      // gorating's own rating moves only for players registered before the tournament.
+      Optional<PhpNumber> userRating;
+      Optional<String> userStartRating;
+      if (!user["register_timestamp"].empty() && user["register_timestamp"] < timestamp)
+      {
+        Optional<String> before = fetchUserRatingBefore(page, user, userId, Optional<String>(timestamp), Optional<String>(tournamentId),
+                                                        Optional<String>(), false);
+        if (before.has_value())
+        {
+          userRating = Optional<PhpNumber>(PhpNumber::read(*before));
+          userStartRating = before;
+        }
+      }
+      ++placement;
+
+      for (int row : doc.elements(tables[1], "tr"))
+      {
+        Vector<int> cells = doc.elements(row, "td");
+        if (cells.empty())
+          continue;
+        String round = egdCell(doc, cells, 0);
+        if (!phpIsNumeric(round))
+          throw GoratingError(format("Round should be numeric, but is \"{}\"", round));
+        String gorChangeText = egdCell(doc, cells, 1);
+        if (!phpIsNumeric(gorChangeText))
+          throw GoratingError(format("gor change isn't numeric: \"{}\"", gorChangeText));
+        PhpNumber gorChange = PhpNumber::read(gorChangeText);
+        String color = egdCell(doc, cells, 3);
+        if (color.empty())
+          color = "b"; // some old tournaments don't have the colour
+        if (color != "w" && color != "b")
+          throw GoratingError(format("Color value unexpected:\"{}\"", color));
+        String handicapText = egdCell(doc, cells, 4);
+        String handicap = handicapText.substr(0, handicapText.find(' '));
+        double handicapValue = ratingValue(handicap);
+        double komi = handicapValue == 0 ? 6.5 : 0.5;
+        String result = egdCell(doc, cells, 5);
+        bool jigo = result == "Jigo";
+        if (result != "Win" && result != "Loss" && result != "Jigo")
+          throw GoratingError(format("Result text has unexpected value:\"{}\"", result));
+        String opponentPin = egdCell(doc, cells, 6);
+        if (!phpIsNumeric(opponentPin))
+          throw GoratingError(format("Opponent pin {} isn't numeric.", opponentPin));
+        // A jigo is stored with the player seen first as its winner.
+        bool userWon = jigo ? processedGame(processed, opponentPin, playerPin, round) == nullptr : result == "Win";
+        String opponentName = egdCell(doc, cells, 7);
+        ContainerSize space = opponentName.find(' ');
+        String opponentFirst = space == String::npos ? opponentName : opponentName.substr(0, space);
+        String opponentLast;
+        if (space != String::npos)
+        {
+          ContainerSize next = opponentName.find(' ', space + 1);
+          opponentLast = opponentName.substr(space + 1, next == String::npos ? String::npos : next - space - 1);
+        }
+        if (opponentLast.empty())
+        {
+          opponentLast = opponentFirst;
+          opponentFirst = " "; // some people have just a space as a first name
+        }
+        String opponentId = addEgdPlayerIfNotPresent(page, opponentPin, opponentFirst, opponentLast);
+        String opponentGorText = egdCell(doc, cells, 9);
+        if (!phpIsNumeric(opponentGorText))
+          throw GoratingError("Opponent gor not numeric.");
+        String opponentGorChangeText = egdCell(doc, cells, 10);
+        if (!phpIsNumeric(opponentGorChangeText))
+          throw GoratingError("Opponent gor Change is not numeric.");
+        PhpNumber opponentGor = PhpNumber::read(opponentGorText);
+        PhpNumber opponentGorChange = PhpNumber::read(opponentGorChangeText);
+
+        String winnerId = userWon ? userId : opponentId;
+        String loserId = userWon ? opponentId : userId;
+        PhpNumber winnerOldGor = userWon ? currentGor : opponentGor;
+        PhpNumber winnerNewGor = userWon ? currentGor + gorChange : opponentGor + opponentGorChange;
+        PhpNumber loserOldGor = userWon ? opponentGor : currentGor;
+        PhpNumber loserNewGor = userWon ? opponentGor + opponentGorChange : currentGor + gorChange;
+        bool winnerIsBlack = userWon == (color == "b");
+        String prefix = userWon ? "winner_" : "loser_";
+
+        Optional<PhpNumber> oldUserRating;
+        if (userRating.has_value())
+        {
+          oldUserRating = userRating;
+          Optional<String> opponentRating = fetchUserRatingBefore(page, opponentId, Optional<String>(timestamp), Optional<String>(tournamentId),
+                                                                  Optional<String>(opponentGorText));
+          double start = ratingValue(*userStartRating);
+          double delta = calculateNewRating(start, ratingValue(opponentRating.value_or(String())), jigo ? 0.5 : (userWon ? 1 : 0), gameType,
+                                            color == "b" ? handicapValue : -handicapValue, (color == "b" ? -1 : 1) * (komi - 6.5)) -
+                         start;
+          userRating = Optional<PhpNumber>(PhpNumber::of(userRating->value + delta));
+        }
+        String ownRatings = userRating.has_value()
+                                ? String(",") + prefix + "old_rating=" + oldUserRating->sql() + "," + prefix + "new_rating=" + userRating->sql()
+                                : String();
+        PhpNumber newGor = currentGor + gorChange;
+        String gameId;
+        if (const String* seen = processedGame(processed, opponentPin, playerPin, round))
+        {
+          // The opponent's block came first and stored the game: this player's side of it.
+          String id = *seen;
+          if (!existed)
+            page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + "," + prefix + "new_egd_rating=" +
+                       newGor.sql() + ownRatings + " WHERE id=" + id);
+          else
+          {
+            mariadb::MariaDbResult stored = page.query(String("SELECT ") + prefix + "old_egd_rating as old_egd," + prefix +
+                                                       "new_egd_rating as new_egd FROM game WHERE id=" + id);
+            if (egdDiffers(Row(stored, 0)["old_egd"], currentGor.value) || egdDiffers(Row(stored, 0)["new_egd"], newGor.value))
+              page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + ", " + prefix + "new_egd_rating=" +
+                         newGor.sql() + ownRatings + " WHERE id=" + id);
+          }
+          gameId = id;
+        }
+        else
+        {
+          mariadb::MariaDbResult stored;
+          if (existed)
+            stored = page.query(String("SELECT id, ") + prefix + "old_rating as old, " + prefix + "new_rating as new, " + prefix +
+                                "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd FROM game WHERE egd_tournament_id=" +
+                                quote(tournamentId) + " and egd_tournament_round=" + quote(round) + " and winner_user_id=" + quote(winnerId));
+          if (!existed || stored.empty())
+          {
+            page.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
+                              " loser_old_egd_rating, loser_new_egd_rating,") +
+                       (userRating.has_value() ? (userWon ? " winner_old_rating, winner_new_rating," : " loser_old_rating, loser_new_rating,") : "") +
+                       " winner_is_black, handicap, komi, egd_tournament_id, egd_tournament_round, jigo) VALUES(" + winnerId + "," + loserId +
+                       "," + format("{}", gameType) + "," + quote(timestamp) + "," + quote(winnerOldGor.sql()) + "," +
+                       quote(winnerNewGor.sql()) + "," + quote(loserOldGor.sql()) + "," + quote(loserNewGor.sql()) + "," +
+                       (userRating.has_value() ? oldUserRating->sql() + "," + userRating->sql() + "," : String()) +
+                       (winnerIsBlack ? "true" : "false") + "," + quoteOrNull(handicap) + "," + quote(phpNumber(komi)) + "," +
+                       quote(tournamentId) + "," + quote(round) + "," + (jigo ? "true" : "false") + ")");
+            gameId = *page.db->scalar("SELECT LAST_INSERT_ID()");
+          }
+          else
+          {
+            if (stored.size() > 1)
+              throw GoratingError("Processing existing tournament, but there are more games with the parameters.");
+            Row game(stored, 0);
+            gameId = game["id"];
+            if (egdDiffers(game["old_egd"], currentGor.value) || egdDiffers(game["new_egd"], newGor.value))
+              page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + ", " + prefix + "new_egd_rating=" +
+                         newGor.sql() + ownRatings + " WHERE id=" + gameId);
+          }
+        }
+        currentGor = newGor;
+        processed.push_back(ProcessedGame{playerPin, opponentPin, round, gameId});
+      }
+      bool listed = false;
+      for (const String& id : usersToUpdate)
+        if (id == userId)
+          listed = true;
+      if (!listed)
+        usersToUpdate.push_back(userId);
+    }
+    for (const String& id : usersToUpdate)
+      updateFinalRating(page, id);
+    page.db->commit();
+  }
+  catch (const Exception& e)
+  {
+    page.db->rollback();
+    throw;
+  }
+  return true;
+}
+
+// The user's rating and EGD rating from their latest game (src/rating_helper.php's updateFinalRating).
+void updateFinalRating(Page& page, StringView userId)
+{
+  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user where id=") + quote(userId));
+  Row user(found, 0);
+  Optional<String> rating = fetchUserRatingBefore(page, user, userId, Optional<String>(), Optional<String>(), Optional<String>(), false);
+  Optional<String> egdRating = fetchUserRatingBefore(page, user, userId, Optional<String>(), Optional<String>(), Optional<String>(), true);
+  Optional<String> current = found.at(0, "rating");
+  Optional<String> currentEgd = found.at(0, "egd_rating");
+  if (!phpLooseEqual(current, rating) || !phpLooseEqual(currentEgd, egdRating))
+    page.query(String("UPDATE user SET  rating=") + mariadb::mariaDbQuoteOrNull(rating) + ",egd_rating=" +
+               mariadb::mariaDbQuoteOrNull(egdRating) + " WHERE user.id=" + quote(userId));
+}

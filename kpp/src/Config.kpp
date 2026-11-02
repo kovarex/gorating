@@ -14,6 +14,8 @@ struct GoratingConfig
   String siteAddress;         // "https://gorating.com" for links in mails; "": from the request's Host
   String mailCommand;         // reads a whole message on its input: "/usr/sbin/sendmail -t -i"
   String mailDirectory;       // or: a directory each message is written to as a file
+  String jobSecret;           // the jobs' ?secret= (Jobs.kpp); "": only the owner runs them
+  String egdPageDirectory;    // saved EGD pages instead of EGD (Egd.kpp), for comparisons
 };
 
 struct GoratingError : RuntimeError
@@ -62,7 +64,9 @@ GoratingConfig goratingReadConfig()
     config.secureCookies = secure->asBool();
   for (auto [name, field] : {Pair<const char*, String*>{"siteAddress", &config.siteAddress},
                              Pair<const char*, String*>{"mailCommand", &config.mailCommand},
-                             Pair<const char*, String*>{"mailDirectory", &config.mailDirectory}})
+                             Pair<const char*, String*>{"mailDirectory", &config.mailDirectory},
+                             Pair<const char*, String*>{"jobSecret", &config.jobSecret},
+                             Pair<const char*, String*>{"egdPageDirectory", &config.egdPageDirectory}})
     if (const json::JsonValue* value = root.find(name))
       *field = value->asString();
   return config;

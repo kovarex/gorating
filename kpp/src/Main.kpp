@@ -102,6 +102,8 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   ratingDigits = significantDigits(page);
   ratingChangeFormat = userValue(page, "setting_rating_change_format") == "2" ? 2 : 1;
   // The pages without the layout.
+  if (runJob(page, name, response))
+    return;
   if (name == "sgf")
   {
     sgfDownload(page, response);
