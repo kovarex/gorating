@@ -98,6 +98,7 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   page.request = &request;
   String name = request.path.size() > 0 ? request.path.substr(1) : String();
   readSession(page);
+  page.statistics = canShowStatistics(page) && request.cookie(statisticsCookie).has_value();
   ratingDigits = significantDigits(page);
   ratingChangeFormat = userValue(page, "setting_rating_change_format") == "2" ? 2 : 1;
   // The pages without the layout.
@@ -116,7 +117,8 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
                                            Pair<const char*, Action>{"invite_existing_user_action", inviteExistingUserAction},
                                            Pair<const char*, Action>{"register_action", registerAction},
                                            Pair<const char*, Action>{"reset_password_action", resetPasswordAction},
-                                           Pair<const char*, Action>{"reset_password_confirm_action", resetPasswordConfirmAction}})
+                                           Pair<const char*, Action>{"reset_password_confirm_action", resetPasswordConfirmAction},
+                                           Pair<const char*, Action>{"toggle_statistics", toggleStatisticsAction}})
     if (name == action.first)
     {
       action.second(page, response);

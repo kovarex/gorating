@@ -86,6 +86,28 @@ bool canAccessDeletedGames(const Page& page) { return userCanDo(page, adminLevel
 bool canEditAnyGame(const Page& page) { return userCanDo(page, adminLevelAdmin); }
 bool canAccessChanges(const Page& page) { return userCanDo(page, adminLevelAdmin); }
 bool canReportWin(const Page& page) { return userCanDo(page, adminLevelTrustedUser); }
+bool canShowStatistics(const Page& page) { return userCanDo(page, adminLevelOwner); }
+
+constexpr StringView statisticsCookie = "gorating_statistics";
+
+// The owner's switch for query statistics, kept in a cookie that counts for the owner only.
+void toggleStatisticsAction(Page& page, http::HttpResponse& response)
+{
+  if (!canShowStatistics(page))
+    return redirectWithMessage(response, "/", "No rights");
+  if (page.request->method != "POST")
+    return redirectWithMessage(response, "/", "Statistics are toggled with the button.");
+  bool on = page.request->cookie(statisticsCookie).has_value();
+  if (on)
+    response.deleteCookie(statisticsCookie);
+  else
+  {
+    http::HttpCookieOptions options;
+    options.secure = page.config->secureCookies;
+    response.setCookie(statisticsCookie, "1", options);
+  }
+  redirectWithMessage(response, "/", on ? "Statistics turned OFF" : "Statistics turned ON");
+}
 
 // The rating's decimals the user chose (settings), 0 for a visitor.
 int significantDigits(const Page& page)

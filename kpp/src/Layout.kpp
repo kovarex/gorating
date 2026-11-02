@@ -13,7 +13,7 @@ constexpr html::HtmlTemplate layoutTemplate(R"(<!DOCTYPE html>
 <body>{{account}}<div class="centered-div">
 <div class="centered-div">
 {{menu}}</div><br/><br/>
-{{message}}{{content}}<div style="position:screen;bottom:0px;">
+{{statistics}}{{message}}{{content}}<div style="position:screen;bottom:0px;">
   <hr/>
   Friendly go rating made by kovarex.
 {{generated}}</div>
@@ -33,9 +33,15 @@ constexpr html::HtmlTemplate loggedInTemplate(R"(<div style="position: absolute;
           Currently logged in as {{username}}
           <form method="post" action="/logout" style="display:inline;">
             <input type="submit" value="Logoff"/>
-          </form><form method="post" action="/settings" style="display:inline;">
+          </form>{{statistics}}<form method="post" action="/settings" style="display:inline;">
           <input type="submit" value="Settings"/>
         </form></div>)");
+
+constexpr html::HtmlTemplate statisticsButtonTemplate(R"(<form method="post" action="/toggle_statistics" style="display:inline;">
+            <input type="submit" value="Toggle statistics"/>
+          </form>)");
+constexpr html::HtmlTemplate queryStatisticTemplate(R"(<div>Query:<pre>{{sql}}</pre>Took {{seconds}} seconds</div>
+)");
 
 constexpr html::HtmlTemplate menuItemTemplate(R"(&nbsp;&nbsp;:&nbsp;&nbsp;<a href="{{href}}">{{text}}</a>
 )");
@@ -74,13 +80,24 @@ String secondsText(double seconds)
   return out;
 }
 
+html::SafeHtml queryStatistics(const Page& page)
+{
+  html::SafeHtml out;
+  for (const Pair<String, double>& q : page.queries)
+    out.append(queryStatisticTemplate.render({{"sql", q.first}, {"seconds", secondsText(q.second)}}));
+  return out;
+}
+
 String layout(const Page& page, const html::SafeHtml& content, double seconds)
 {
   String message = page.get("message");
   return layoutTemplate
       .render({{"resources", page.config->resourceAddress},
-               {"account", loggedIn(page) ? loggedInTemplate.render({{"username", userValue(page, "username")}})
+               {"account", loggedIn(page) ? loggedInTemplate.render({{"username", userValue(page, "username")},
+                                                                     {"statistics", canShowStatistics(page) ? statisticsButtonTemplate.render({})
+                                                                                                            : html::SafeHtml()}})
                                           : loggedOutTemplate.render({})},
+               {"statistics", queryStatistics(page)},
                {"menu", menu(page)},
                {"message", message.empty() ? html::SafeHtml() : messageTemplate.render({{"message", message}})},
                {"content", content},

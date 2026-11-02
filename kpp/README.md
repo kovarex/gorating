@@ -16,7 +16,8 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   (and /username), game, the SGF download, login, settings; the
   others answer 501. Actions: report a game, edit, delete and restore one (with the change log and
   the rating update), edit a player's name, invite (a new or an EGD player), register, reset a
-  password. Admin pages: deleted games, the change log.
+  password, the owner's statistics toggle (each query and its time on the page; a cookie that counts
+  for the owner only). Admin pages: deleted games, the change log.
 - `src/Mail.kpp`: mail through the configuration's `mailCommand` (sendmail on the server) or into
   its `mailDirectory` (locally). `src/Platform.kpp`: the operating system's secure random source.
 - `testdata/compare.sh`: fetches paths from the PHP site (port 8081) and this one (8082) and
@@ -44,6 +45,5 @@ hosts").
 - The background jobs: `update_tournament_list` (hourly cron), tournament processing, the rating
   checks against EGD. They fetch EGD's pages over HTTPS through scrape.do, and kpp has no HTTPS
   client yet. The PHP site keeps running them until then.
-- The owner's statistics toggle (each query's time on the page).
 - For kovarex to decide: a rating before a game is read from deleted games too (RatingUpdate.kpp,
   kept as PHP does it); invite and reset secrets are 31 bits because their columns are int.

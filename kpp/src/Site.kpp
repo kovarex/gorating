@@ -43,7 +43,19 @@ struct Page
     return value;
   }
 
-  mariadb::MariaDbResult query(StringView sql) { return this->db->query(sql); }
+  // The owner's statistics (toggle_statistics): each query and its time, shown on the page.
+  bool statistics = false;
+  Vector<Pair<String, double>> queries;
+
+  mariadb::MariaDbResult query(StringView sql)
+  {
+    if (!this->statistics)
+      return this->db->query(sql);
+    auto start = SteadyClock::now();
+    mariadb::MariaDbResult result = this->db->query(sql);
+    this->queries.push_back(Pair<String, double>(String(sql), (double)durationCast<Microseconds>(SteadyClock::now() - start).count() / 1e6));
+    return result;
+  }
 
   String resource(StringView path) const { return this->config->resourceAddress + String(path); }
 };
