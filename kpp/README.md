@@ -34,3 +34,16 @@ page, against the same MariaDB database (its triggers and procedures stay as the
 **Differences from the PHP version, on purpose:** every text is escaped (names, comments,
 messages); player links are absolute (`/kovarex`), and a username that is also a page's name links
 to `/player?id=`; a table's range on its last page is right.
+
+**Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). It waits for kpp to
+build FreeBSD programs (exceptions and the FreeBSD sysroot, kpp's docs/design.md "Targets and
+hosts").
+
+## Not yet
+
+- The background jobs: `update_tournament_list` (hourly cron), tournament processing, the rating
+  checks against EGD. They fetch EGD's pages over HTTPS through scrape.do, and kpp has no HTTPS
+  client yet. The PHP site keeps running them until then.
+- The owner's statistics toggle (each query's time on the page).
+- For kovarex to decide: a rating before a game is read from deleted games too (RatingUpdate.kpp,
+  kept as PHP does it); invite and reset secrets are 31 bits because their columns are int.
