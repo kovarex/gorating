@@ -1,0 +1,33 @@
+// Deleting and restoring a game (delete_game_action.php, restore_game_action.php), for admins: the
+// game's deleted flag, then the rating update the database's trigger starts. PHP did both on a GET
+// link, which another site could make an admin's browser follow; here they take a POST from a form.
+
+// A redirect target from a form: a path on this site only (PHP sent the browser to any address).
+String localRedirect(StringView target, StringView fallback)
+{
+  if (target.size() >= 1 && target[0] == '/' && !(target.size() >= 2 && (target[1] == '/' || target[1] == '\\')))
+    return String(target);
+  return String(fallback);
+}
+
+void setGameDeleted(Page& page, http::HttpResponse& response, bool deleted)
+{
+  if (!canDeleteAnyGame(page))
+    return redirectWithMessage(response, "/", deleted ? "No rights to delete this game." : "No rights to restore this game.");
+  if (page.request->method != "POST")
+    return redirectWithMessage(response, "/", "A game is deleted and restored with a form.");
+  Vector<url::UrlQueryParameter> form = page.request->form();
+  String id = formValue(form, "id");
+  String redirect = localRedirect(formValue(form, "redirect"), "/");
+  if (id.empty())
+    return redirectWithMessage(response, redirect, "Game id not specified");
+  for (char c : id)
+    if (c < '0' || c > '9')
+      return redirectWithMessage(response, redirect, String("Game id is not numeric:") + id);
+  page.query(String("UPDATE game SET deleted=") + (deleted ? "true" : "false") + " WHERE id=" + quote(id));
+  String message = String("Game with id=") + id + (deleted ? " deleted. " : " restored. ") + processRating(page, 50);
+  redirectWithMessage(response, redirect, message);
+}
+
+void deleteGameAction(Page& page, http::HttpResponse& response) { setGameDeleted(page, response, true); }
+void restoreGameAction(Page& page, http::HttpResponse& response) { setGameDeleted(page, response, false); }

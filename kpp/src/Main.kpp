@@ -95,6 +95,16 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
     loginAction(page, response);
     return;
   }
+  if (name == "delete_game_action")
+  {
+    deleteGameAction(page, response);
+    return;
+  }
+  if (name == "restore_game_action")
+  {
+    restoreGameAction(page, response);
+    return;
+  }
   if (name == "report_action")
   {
     reportAction(page, response);
