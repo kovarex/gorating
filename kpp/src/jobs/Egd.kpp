@@ -1,9 +1,8 @@
 // The European Go Database's pages (src/egd_api.php): fetching them and reading a player's card.
 //
 // fetchEgd takes a page from the configuration's egdPageDirectory when it names one (saved pages,
-// named by egdPageName: the comparisons with PHP read the same files), else from EGD over HTTPS. PHP
-// went through scrape.do there; that path waits for scrape()'s code (the token will come from the
-// configuration, like the database's password).
+// named by egdPageName: the comparisons with PHP read the same files); else through scrape.do when
+// the configuration has its token (scrapeDoToken), as PHP's scrape() did; else from EGD itself.
 
 // A saved page's file name: the SHA-256 of the address and the form (empty for a GET), in hex.
 String egdPageName(StringView url, StringView form)
@@ -11,13 +10,31 @@ String egdPageName(StringView url, StringView form)
   return sha256::sha256(String(url) + "\n" + String(form)).hex() + ".html";
 }
 
+// The address scrape.do fetches url through. Over HTTPS: PHP asked http://api.scrape.do, which sent
+// the token in clear.
+String scrapeDoAddress(StringView token, StringView url)
+{
+  return String("https://api.scrape.do/?url=") + url::urlEncode(url) + "&token=" + url::urlEncode(token);
+}
+
 String fetchEgd(const GoratingConfig& config, StringView url, StringView form = "")
 {
   if (!config.egdPageDirectory.empty())
     return goratingReadFile(config.egdPageDirectory + "/" + egdPageName(url, form));
-  httpclient::HttpClientResponse page = form.empty() ? httpclient::fetch(url) : httpclient::postForm(url, form);
+  String address = config.scrapeDoToken.empty() ? String(url) : scrapeDoAddress(config.scrapeDoToken, url);
+  httpclient::HttpClientRequest request;
+  request.url = address;
+  request.timeoutMilliseconds = 120000; // scrape.do waits for the page it fetches
+  if (!form.empty())
+  {
+    // scrape.do sends a POST's body on to the page, as PHP's getUrlContent posted it.
+    request.method = "POST";
+    request.headers.push_back(httpclient::HttpClientHeader{String("Content-Type"), String("application/x-www-form-urlencoded")});
+    request.body = String(form);
+  }
+  httpclient::HttpClientResponse page = httpclient::fetch(request);
   if (page.status != 200)
-    throw GoratingError(format("EGD answered {} for {}", page.status, url));
+    throw GoratingError(format("{} answered {} for {}", StringView(config.scrapeDoToken.empty() ? "EGD" : "scrape.do"), page.status, url));
   return page.body;
 }
 

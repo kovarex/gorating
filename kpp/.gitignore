@@ -2,3 +2,4 @@ libraries
 build
 gorating-config.json
 gorating-config-scenario.json
+gorating-config-live.json

@@ -54,7 +54,9 @@ RewriteRule ^ /gorating.cgi [L]
  "sessionSecret": "<64 random hex characters: openssl rand -hex 32>",
  "secureCookies": true,
  "siteAddress": "https://gorating-test.nfshost.com",
- "mailCommand": "/usr/sbin/sendmail -t -i"}
+ "mailCommand": "/usr/sbin/sendmail -t -i",
+ "jobSecret": "<64 random hex characters, also in the cron's address: ...?secret=...>",
+ "scrapeDoToken": "<the scrape.do token, as config.php has it>"}
 ```
 
 The site uses no other files and writes none: sessions are signed cookies, mail goes to sendmail.
@@ -70,8 +72,8 @@ The site uses no other files and writes none: sessions are signed cookies, mail 
 
 ## 4. The switch (kovarex decides when)
 
-- The cron job (NFS panel, Scheduled Tasks) that calls `update_tournament_list` hourly stays on
-  the PHP site until the jobs are ported (README.md, "Not yet").
+- The cron job (NFS panel, Scheduled Tasks) that calls `update_tournament_list` hourly gets
+  `?secret=<jobSecret>` added to its address: the kpp version's jobs need it (PHP's were open).
 - Then: the same files on the gorating.com site, its config pointing at the production database,
   and the PHP files moved aside (kept, so going back is renaming them).
 - Everyone logs in once: PHP's sessions do not carry over (kovarex agreed, 2026-11-02).

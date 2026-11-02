@@ -21,7 +21,9 @@ page, against the same MariaDB database (its triggers and procedures stay as the
 - `src/jobs/`: the background jobs: update_tournament_list (hourly), check_new_tournaments,
   process_tournament(_batch), update_rating, check_rating_changes, collect_manual_rating_changes.
   They take `?secret=` with the configuration's
-  `jobSecret` (PHP's were open to anyone). `src/egd/`: the reader of EGD's pages.
+  `jobSecret` (PHP's were open to anyone). They fetch EGD's pages through scrape.do with the
+  configuration's `scrapeDoToken`, as PHP did (EGD's front end answers 403 to a plain client).
+  `src/egd/`: the reader of EGD's pages.
 - `src/Mail.kpp`: mail through the configuration's `mailCommand` (sendmail on the server) or into
   its `mailDirectory` (locally). `src/Platform.kpp`: the operating system's secure random source.
 - `testdata/compare.sh`: fetches paths from the PHP site (port 8081) and this one (8082) and
@@ -47,7 +49,5 @@ hosts").
 ## Not yet
 
 
-- Fetching EGD through scrape.do as PHP did: it waits for scrape()'s code (the token will come from
-  the configuration). Without it the jobs ask EGD directly (httpclient), which works from here.
 - For kovarex to decide: a rating before a game is read from deleted games too (RatingUpdate.kpp,
   kept as PHP does it); invite and reset secrets are 31 bits because their columns are int.
