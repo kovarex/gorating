@@ -31,6 +31,8 @@ bool route(Page& page, StringView name)
     settingsPage(page);
   else if (name == "report")
     reportPage(page);
+  else if (name == "edit_game")
+    editGamePage(page);
   else if (isPageName(name))
     return false;
   else if (!playerByUsername(page, name))
@@ -93,6 +95,11 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   if (name == "login_action")
   {
     loginAction(page, response);
+    return;
+  }
+  if (name == "edit_game_action")
+  {
+    editGameAction(page, response);
     return;
   }
   if (name == "delete_game_action")
