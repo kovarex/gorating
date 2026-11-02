@@ -1,0 +1,170 @@
+// EGD rating jumps between a player's games (src/rating_change_helper.php, rating_helper.php's
+// getRatingJumpReason, check_rating_changes.php, collect_manual_rating_changes.php): where a game's
+// old EGD rating is not the previous game's new one, the jump is recorded as a rating change with
+// its likely reason; one that looks like an error has its tournaments processed again instead.
+
+constexpr int ratingChangeAutomaticOld = 1;
+constexpr int ratingChangeAutomaticNew = 2;
+constexpr int ratingChangeManualEgd = 4;
+constexpr int ratingChangeError = 6;
+
+// Why the EGD rating went from what the last tournament ended with to reported (getRatingJumpReason).
+int ratingJumpReason(double reported, bool firstRoundOfTheTournament, const Optional<double>& lastStart, const Optional<double>& lastEnd)
+{
+  if (reported > 2700 && reported == floor((reported - 2700) / 30) * 30 + 2700)
+    return ratingChangeManualEgd; // pro ranks
+  if (fmod(reported, 100) != 0)
+    return ratingChangeError;
+  if (!firstRoundOfTheTournament || !lastStart.has_value())
+    return ratingChangeError;
+  if (reported == (floor(lastEnd.value_or(0.0) / 100) + 1) * 100)
+  {
+    if (rankFromRating(lastEnd.value_or(0.0)) - rankFromRating(*lastStart) >= 2)
+      return ratingChangeAutomaticNew;
+    if (rankFromRating(lastEnd.value_or(0.0) + 50) - rankFromRating(*lastStart + 50) >= 2)
+      return ratingChangeAutomaticOld;
+  }
+  return ratingChangeManualEgd;
+}
+
+// Checks one player; false when a jump looked like an error and its tournaments were processed again
+// (check once more then). The log of what it found goes into out.
+bool checkUserRatingChanges(Page& page, StringView userId, String& out)
+{
+  String id = quote(userId);
+  page.db->begin();
+  out.append(format("user_id={}\n", userId));
+  mariadb::MariaDbResult rows = page.query(
+      String("SELECT IF(game.winner_user_id=") + id + ", game.winner_old_egd_rating, game.loser_old_egd_rating) as old_egd_rating,"
+      " IF(game.winner_user_id=" + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) as new_egd_rating,"
+      " egd_tournament.egd_key as egd_tournament_key, game.egd_tournament_round as egd_tournament_round,"
+      " egd_tournament.timestamp as timestamp, NULL as rating_change_id"
+      " FROM game LEFT JOIN egd_tournament ON game.egd_tournament_id=egd_tournament.id"
+      " WHERE game.deleted = false AND (game.winner_user_id=" + id + " or game.loser_user_id=" + id + ") AND winner_old_egd_rating IS NOT NULL"
+      " UNION ALL SELECT rating_change.old_egd_rating as old_egd_rating, rating_change.new_egd_rating as new_egd_rating,"
+      " 'z' as egd_tournament_key, NULL as egd_tournament_round, rating_change.timestamp as timestamp, rating_change.id as rating_change_id"
+      " FROM rating_change WHERE rating_change.user_id=" + id + " ORDER BY timestamp, egd_tournament_key, egd_tournament_round");
+  Optional<String> egdRating;
+  Optional<String> lastKey;
+  Optional<double> tournamentStart;
+  Optional<double> lastStart;
+  Optional<double> lastEnd;
+  Optional<String> tournamentTimestamp;
+  Optional<String> lastTimestamp;
+  Optional<String> previousKey;
+  bool firstRound = false;
+  for (ContainerSize i = 0; i < rows.size(); ++i)
+  {
+    Row row(rows, i);
+    String egdOld = row["old_egd_rating"];
+    Optional<String> egdNew = rows.at(i, "new_egd_rating");
+    String key = row["egd_tournament_key"];
+    bool thisIsJump = !row["rating_change_id"].empty();
+    if (!lastKey.has_value() || key != *lastKey)
+    {
+      if (tournamentStart.has_value())
+        lastStart = tournamentStart;
+      if (egdRating.has_value())
+      {
+        lastEnd = Optional<double>(ratingValue(*egdRating));
+        if (tournamentTimestamp.has_value())
+          lastTimestamp = tournamentTimestamp;
+      }
+      if (!thisIsJump)
+      {
+        tournamentStart = Optional<double>(ratingValue(egdOld));
+        tournamentTimestamp = Optional<String>(row["timestamp"]);
+        firstRound = true;
+      }
+      lastKey = Optional<String>(key);
+    }
+    if (egdRating.has_value())
+    {
+      double expected = ratingValue(*egdRating);
+      double reported = ratingValue(egdOld);
+      if (expected - reported > 0.01 || reported - expected > 0.01)
+      {
+        if (!thisIsJump)
+        {
+          out.append(format("Rating jumped from {} to {} in tournament {} round {}\n", *egdRating, egdOld, key, row["egd_tournament_round"]));
+          int type = lastStart.has_value() ? ratingJumpReason(reported, firstRound, lastStart, lastEnd) : ratingChangeError;
+          if (type == ratingChangeError)
+          {
+            out.append("Since this looks like an error, recomputing ");
+            // Processing starts a transaction of its own, which ends this one (as in PHP).
+            for (const Optional<String>& again : {previousKey, Optional<String>(key)})
+            {
+              if (!again.has_value())
+                continue;
+              // A tournament that cannot be processed is reported and the check goes on (as PHP).
+              try
+              {
+                processTournament(page, *again);
+              }
+              catch (const Exception& e)
+              {
+                out.append(String("Error: ") + String(StringView(e.what())) + "\n");
+              }
+              out.append(*again + " ");
+            }
+            out.append("\n");
+            page.db->rollback();
+            return false;
+          }
+          page.query(String("INSERT INTO rating_change(old_egd_rating, new_egd_rating, user_id, timestamp, rating_change_type_id) VALUES(") +
+                     quoteOrNull(*egdRating) + "," + quoteOrNull(egdOld) + "," + id + "," +
+                     (lastTimestamp.has_value() ? quoteOrNull(*lastTimestamp) : String("NULL")) + "," + format("{}", type) + ")");
+        }
+        else
+          page.query(String("UPDATE rating_change SET old_egd_rating=") + quoteOrNull(egdOld) + " WHERE id=" + quote(row["rating_change_id"]));
+      }
+      previousKey = Optional<String>(key);
+    }
+    egdRating = egdNew.has_value() && !egdNew->empty() ? egdNew : Optional<String>();
+    firstRound = false;
+  }
+  page.query(String("UPDATE user SET rating_change_checked=true WHERE id=") + id);
+  page.db->commit();
+  return true;
+}
+
+// Up to 1000 players not checked yet, each tried 3 times (check_rating_changes).
+String checkRatingChanges(Page& page)
+{
+  mariadb::MariaDbResult users = page.query("SELECT id from user where rating_change_checked=false");
+  String out = format("Remaining {} users to check.\n", (int64_t)users.size());
+  for (ContainerSize i = 0; i < users.size() && i < 1000; ++i)
+  {
+    String userId = Row(users, i)["id"];
+    bool checked = false;
+    for (int attempt = 0; attempt < 3 && !checked; ++attempt)
+      checked = checkUserRatingChanges(page, userId, out);
+    if (!checked)
+    {
+      out.append("This user seems to be broken, manual check needed.\n");
+      break;
+    }
+  }
+  return out;
+}
+
+// One player, by ?id= or ?username= (collect_manual_rating_changes).
+String collectManualRatingChanges(Page& page)
+{
+  String id = page.get("id");
+  if (id.empty())
+  {
+    String username = page.get("username");
+    if (username.empty())
+      return "User id nor username provided\n";
+    mariadb::MariaDbResult found = page.query(String("SELECT id FROM user WHERE username=") + quote(username));
+    if (found.empty())
+      return format("User with username=\"{}\" doesn't exist.\n", username);
+    id = Row(found, 0)["id"];
+  }
+  else if (page.query(String("SELECT id FROM user WHERE id=") + quote(id)).empty())
+    return format("User with id=\"{}\" doesn't exist.\n", id);
+  String out;
+  checkUserRatingChanges(page, id, out);
+  return out;
+}

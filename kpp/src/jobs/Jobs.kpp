@@ -106,7 +106,8 @@ Vector<String> latestTournamentKeys(Page& page)
 bool runJob(Page& page, StringView name, http::HttpResponse& response)
 {
   bool job = name == "update_tournament_list" || name == "check_new_tournaments" || name == "process_tournament" ||
-             name == "process_tournament_batch" || name == "update_rating";
+             name == "process_tournament_batch" || name == "update_rating" || name == "check_rating_changes" ||
+             name == "collect_manual_rating_changes";
   if (!job)
     return false;
   response.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -133,6 +134,10 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   }
   else if (name == "process_tournament_batch")
     response.body = processTournamentBatch(page);
+  else if (name == "check_rating_changes")
+    response.body = checkRatingChanges(page);
+  else if (name == "collect_manual_rating_changes")
+    response.body = collectManualRatingChanges(page);
   else
     response.body = processRating(page, 50) + "\n";
   return true;
