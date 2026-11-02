@@ -119,12 +119,16 @@ void loginPage(Page& page)
     page.body.append(loginTemplate.render({}));
 }
 
-// The value of the form's field, or "".
+// The value of the form's field, or "". Text that is not UTF-8 is the request's error (400).
 String formValue(const Vector<url::UrlQueryParameter>& form, StringView name)
 {
   for (const url::UrlQueryParameter& p : form)
     if (p.name == name)
+    {
+      if (!isUtf8(p.value))
+        throw http::HttpError(format("the field {} is not UTF-8 text", name), 400);
       return p.value;
+    }
   return String();
 }
 

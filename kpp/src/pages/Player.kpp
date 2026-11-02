@@ -126,7 +126,8 @@ void playerPage(Page& page, StringView id)
   // a game of theirs, for a day after it). PHP widened the rating change rows for it whenever
   // someone was logged in, column or not.
   bool editColumn = loggedIn(page) && (canEditAnyGame(page) || userId == player["id"]);
-  table.specialRow = [editColumn](const Row& row) -> Optional<html::SafeHtml> {
+  bool deleteColumn = canDeleteAnyGame(page);
+  table.specialRow = [editColumn, deleteColumn](const Row& row) -> Optional<html::SafeHtml> {
     if (row["rating_change_type_id"].empty())
       return Optional<html::SafeHtml>();
     html::SafeHtml by = row["opponent_id"].empty() ? html::SafeHtml::escape("EGD") : playerLink(row, "opponent");
@@ -134,7 +135,7 @@ void playerPage(Page& page, StringView id)
         {{"editColumns", editColumn ? 2 : 1},
          {"change", ratingChangeCells(row["old_rating"], row["new_rating"])},
          {"egdChange", ratingChangeCells(row["old_egd_rating"], row["new_egd_rating"])},
-         {"lastColumns", 5},
+         {"lastColumns", deleteColumn ? 6 : 5},
          {"kind", String(ratingChangeKind(row["rating_change_type_id"]))},
          {"by", by},
          {"time", showDate(row["timestamp"], true)},
@@ -236,6 +237,12 @@ void playerPage(Page& page, StringView id)
                   [](const Row& row) { return html::SafeHtml::escape(row["opponent_comment"]); });
   table.addColumn("has_sgf", "SGF", {{"length(game.sgf) > 0", "has_sgf"}, {"game.id", "game_id"}},
                   [](const Row& row) { return row["has_sgf"] == "1" ? sgfLink(row["game_id"]) : html::SafeHtml(); });
+  if (deleteColumn)
+  {
+    String redirect = page.request->target;
+    table.addColumn("", "Delete", {},
+                    [redirect](const Row& row) { return deleteButtonTemplate.render({{"id", row["game_id"]}, {"redirect", redirect}}); });
+  }
   page.body.append(table.render());
 }
 

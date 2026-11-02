@@ -1,0 +1,162 @@
+// The admins' pages: deleted games with a way back (deleted_games.php), the change log
+// (changes.php), and a mod's edit of a player's name (edit_player_name_action.php).
+
+constexpr html::HtmlTemplate restoreButtonTemplate(R"(<form method="post" action="/restore_game_action" onsubmit="return confirm('Are you sure to restore the game?');" style="display:inline;"><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="redirect" value="{{redirect}}"/><input type="submit" value="Restore"/></form>)");
+constexpr html::HtmlTemplate deleteButtonTemplate(R"(<form method="post" action="/delete_game_action" onsubmit="return confirm('Are you sure to delete the game?');" style="display:inline;"><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="redirect" value="{{redirect}}"/><input type="submit" value="X"/></form>)");
+constexpr html::HtmlTemplate gameLinkTemplate(R"(<a href="/game?id={{id}}">Game {{id}}</a>)");
+constexpr html::HtmlTemplate changeSgfLinkTemplate(R"(<a href="/sgf?from={{from}}&amp;id={{id}}">{{text}}</a>)");
+
+// The handicap as the deleted games page wrote it ("2h", "2h komi 5.5", "komi 0.5", "Even").
+String deletedGameHandicap(StringView handicap, StringView komi)
+{
+  double h = ratingValue(handicap);
+  double k = ratingValue(komi);
+  if (h == 0 && (k == 6.5 || k == 7.5))
+    return "Even";
+  if (h != 0)
+    return String(handicap) + "h" + (k != 0.5 ? String(" komi ") + String(komi) : String());
+  return String("komi ") + String(komi);
+}
+
+void deletedGamesPage(Page& page)
+{
+  if (!canAccessDeletedGames(page))
+  {
+    page.body.append(pageMessageTemplate.render({{"message", "No rights to access deleted games."}}));
+    return;
+  }
+  Table table(page, "game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,"
+                    " user as winner, user as loser, game_type WHERE game.deleted = true and game.winner_user_id = winner.id"
+                    " and game.loser_user_id = loser.id and game.game_type_id = game_type.id");
+  Sort primary;
+  primary.column = "game.timestamp";
+  primary.ascending = false;
+  table.currentSort = Optional<Sort>(primary);
+  Sort last;
+  last.column = "game.egd_tournament_round";
+  last.ascending = false;
+  table.lastSort = Optional<Sort>(last);
+  for (StringView side : {"winner", "loser"})
+  {
+    String s(side);
+    table.addColumn(s + "_name", side == "winner" ? "Winner" : "Loser",
+                    {{s + ".name", s + "_name"}, {s + ".username", s + "_username"}, {String("game.") + s + "_user_id", s + "_id"},
+                     {s + ".egd_pin", s + "_egd_pin"}, {String("game.") + s + "_new_rating", s + "_rating"},
+                     {String("game.") + s + "_new_egd_rating", s + "_egd_rating"}},
+                    [s](const Row& row) { return playerLink(row, s); });
+  }
+  table.addColumn("game_type_name", "Game type", {{"game_type.name", "game_type_name"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["game_type_name"]); }, Align::center);
+  table.addColumn("handicap", "Handicap", {{"game.handicap", "handicap"}, {"game.komi", "komi"}},
+                  [](const Row& row) { return html::SafeHtml::escape(deletedGameHandicap(row["handicap"], row["komi"])); },
+                  Align::center);
+  table.addColumn("game_timestamp", "Time", {{"game.timestamp", "game_timestamp"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showDate(row["game_timestamp"], true)); });
+  table.addColumn("egd_tournament_name", "Tournament",
+                  {{"egd_tournament.name", "egd_tournament_name"}, {"egd_tournament.egd_key", "egd_tournament_key"},
+                   {"egd_tournament.id", "egd_tournament_id"}},
+                  [](const Row& row) {
+                    if (row["egd_tournament_id"].empty())
+                      return html::SafeHtml();
+                    String name = row["egd_tournament_name"];
+                    return tournamentLink(row["egd_tournament_id"], shortened(name.empty() ? String("[no name]") : name));
+                  });
+  table.addColumn("game_location", "Location", {{"game.location", "game_location"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["game_location"]); });
+  table.addColumn("winner_comment", "Winner Comment", {{"game.winner_comment", "winner_comment"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["winner_comment"]); });
+  table.addColumn("loser_comment", "Loser Comment", {{"game.loser_comment", "loser_comment"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["loser_comment"]); });
+  table.addColumn("has_sgf", "SGF", {{"length(game.sgf) > 0", "has_sgf"}, {"game.id", "game_id"}},
+                  [](const Row& row) { return row["has_sgf"] == "1" ? sgfLink(row["game_id"]) : html::SafeHtml(); });
+  String redirect = page.request->target;
+  table.addColumn("", "Restore", {},
+                  [redirect](const Row& row) { return restoreButtonTemplate.render({{"id", row["game_id"]}, {"redirect", redirect}}); });
+  page.body.append(table.render());
+}
+
+constexpr int changeGameSgfType = 16;
+
+void changesPage(Page& page)
+{
+  if (!canAccessChanges(page))
+  {
+    page.body.append(pageMessageTemplate.render({{"message", "No rights."}}));
+    return;
+  }
+  Table table(page, "`change` JOIN user as executed_by ON change.executed_by_user_id=executed_by.id"
+                    " JOIN change_type ON change.change_type_id=change_type.id LEFT JOIN game ON change.game_id=game.id"
+                    " LEFT JOIN user ON change.user_id=user.id");
+  Sort primary;
+  primary.column = "timestamp";
+  primary.ascending = false;
+  table.currentSort = Optional<Sort>(primary);
+  Sort last;
+  last.column = "change_id";
+  last.ascending = false;
+  table.lastSort = Optional<Sort>(last);
+  table.addColumn("change", "Change",
+                  {{"change_type.name", "change_type_name"}, {"change_type.id", "change_type_id"}, {"change.id", "change_id"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["change_type_name"]); });
+  table.addColumn("executed_by", "Executed by",
+                  {{"executed_by.name", "executed_by_name"}, {"executed_by.id", "executed_by_id"},
+                   {"executed_by.username", "executed_by_username"}, {"executed_by.rating", "executed_by_rating"}},
+                  [](const Row& row) { return playerLink(row, "executed_by"); });
+  table.addColumn("game", "Game", {{"game.id", "game_id"}}, [](const Row& row) {
+    return row["game_id"].empty() ? html::SafeHtml() : gameLinkTemplate.render({{"id", row["game_id"]}});
+  });
+  table.addColumn("user", "User",
+                  {{"user.name", "user_name"}, {"user.id", "user_id"}, {"user.username", "user_username"}, {"user.rating", "user_rating"}},
+                  [](const Row& row) { return playerLink(row, "user"); });
+  for (StringView side : {"old", "new"})
+  {
+    String s(side);
+    table.addColumn(side == "old" ? "from" : "to", side == "old" ? "From" : "To", {{String("change.") + s + "_value", String("change_") + s + "_value"}},
+                    [s](const Row& row) {
+                      String value = row[String("change_") + s + "_value"];
+                      if (row["change_type_id"] == format("{}", changeGameSgfType) && !value.empty())
+                        return changeSgfLinkTemplate.render({{"from", String("change_") + s}, {"id", row["change_id"]},
+                                                             {"text", s == "old" ? "Old SGF" : "New SGF"}});
+                      return html::SafeHtml::escape(value);
+                    });
+  }
+  table.addColumn("timestamp", "Date", {{"change.timestamp", "timestamp"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showDate(row["timestamp"], true)); });
+  page.body.append(table.render());
+}
+
+constexpr int changeUserFirstName = 1;
+constexpr int changeUserLastName = 2;
+
+void editPlayerNameAction(Page& page, http::HttpResponse& response)
+{
+  if (!canEditPlayerName(page))
+    return redirectWithMessage(response, "/", "No rights to edit names");
+  if (page.request->method != "POST")
+    return redirectWithMessage(response, "/", "A name is edited with the form on the player's page.");
+  Vector<url::UrlQueryParameter> form = page.request->form();
+  String id = formValue(form, "id");
+  String first = formValue(form, "first_name");
+  String last = formValue(form, "last_name");
+  String back = String("/player?id=") + url::urlEncode(id);
+  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE user.id=") + quote(id));
+  if (found.empty())
+    return redirectWithMessage(response, "/", String("No player with id=") + id);
+  if (first.empty() || last.empty())
+    return redirectWithMessage(response, back, "A first and a last name are needed");
+  Row user(found, 0);
+  if (user["first_name"] == first && user["last_name"] == last)
+    return redirectWithMessage(response, back, "No change.");
+  page.db->begin();
+  page.query(String("UPDATE user SET first_name=") + quote(first) + ", last_name=" + quote(last) + " WHERE user.id=" + quote(id));
+  for (int type : {changeUserFirstName, changeUserLastName})
+  {
+    String oldValue = user[type == changeUserFirstName ? "first_name" : "last_name"];
+    String newValue = type == changeUserFirstName ? first : last;
+    if (oldValue != newValue)
+      page.query(format("INSERT INTO `change`(change_type_id, user_id, executed_by_user_id, old_value, new_value) VALUES({},{},{},{},{})",
+                        type, quote(user["id"]), quote(userValue(page, "id")), quote(oldValue), quote(newValue)));
+  }
+  page.db->commit();
+  redirectWithMessage(response, back, String("Changed name from ") + user["first_name"] + " " + user["last_name"] + " to " + first + " " + last);
+}

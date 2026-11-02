@@ -17,8 +17,8 @@ norm() {
 }
 same=0; ties=0; differ=0
 while read -r path; do
-  curl -s ${PHP_JAR:+-b $PHP_JAR} "http://127.0.0.1:8081$path" | norm > /tmp/php.html
-  curl -s ${KPP_JAR:+-b $KPP_JAR} "http://127.0.0.1:8082$path" | norm > /tmp/kpp.html
+  curl -s ${PHP_JAR:+-b $PHP_JAR} "http://127.0.0.1:${PHP_PORT:-8081}$path" | norm > /tmp/php.html
+  curl -s ${KPP_JAR:+-b $KPP_JAR} "http://127.0.0.1:${KPP_PORT:-8082}$path" | norm > /tmp/kpp.html
   if cmp -s /tmp/php.html /tmp/kpp.html; then
     same=$((same+1))
   elif cmp -s <(sort /tmp/php.html) <(sort /tmp/kpp.html); then
