@@ -1,0 +1,47 @@
+// A game's SGF file as a download (sgf.php). PHP also gave any change log entry's old or new value
+// (?from=change_old, change_new) to anyone, and the log holds old and new email addresses: here
+// those are refused until sessions let an admin, and only an admin, see them.
+
+// Content-Disposition for name.sgf (RFC 6266): an ASCII filename for old browsers, the UTF-8 one
+// for the others.
+String attachmentHeader(StringView name)
+{
+  String ascii;
+  for (char c : name)
+  {
+    unsigned char u = (unsigned char)c;
+    ascii.append(u < 0x20 || u >= 0x7f || c == '"' || c == '\\' ? '_' : c);
+  }
+  return String("attachment; filename=\"") + ascii + ".sgf\"; filename*=UTF-8''" + url::urlEncode(String(name) + ".sgf");
+}
+
+void sgfDownload(Page& page, http::HttpResponse& response)
+{
+  response.setHeader("Content-Type", "text/plain; charset=utf-8");
+  String id = page.get("id");
+  if (id.empty())
+  {
+    response.body = "Sgf id not provided.";
+    return;
+  }
+  if (!page.get("from").empty())
+  {
+    response.status = 403;
+    response.body = "The change log's values are for admins.";
+    return;
+  }
+  mariadb::MariaDbResult found = page.query(String("SELECT sgf, winner.name as winner_name, loser.name as loser_name FROM game"
+                                                   " JOIN user as winner ON game.winner_user_id=winner.id"
+                                                   " JOIN user as loser ON game.loser_user_id=loser.id WHERE game.id=") + quote(id));
+  if (found.empty())
+  {
+    response.status = 404;
+    response.body = String("Game with id=") + id + " not found.";
+    return;
+  }
+  Row game(found, 0);
+  response.setHeader("Content-Description", "File Transfer");
+  response.setHeader("Content-Type", "application/octet-stream");
+  response.setHeader("Content-Disposition", attachmentHeader(id + " " + game["winner_name"] + " vs " + game["loser_name"]));
+  response.body = game["sgf"];
+}

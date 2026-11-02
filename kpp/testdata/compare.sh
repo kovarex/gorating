@@ -7,11 +7,13 @@ norm() {
       -e 's/href="\//href="/g' \
       -e 's/action="\/login"/action="login"/' \
       -e 's/&amp;/\&/g' -e "s/&#39;/'/g" -e 's/&quot;/"/g' -e 's/&lt;/</g' -e 's/&gt;/>/g' \
-      -e 's/colspan=2/colspan="2"/g' \
+      -e 's/colspan=\([0-9]\)/colspan="\1"/g' \
+      -e 's/action="\//action="/g' \
       -e 's/text-align: right;/text-align:right;/g' \
       -e 's#</br>#<br/>#g' \
       -e 's# value=""/>#/>#g' \
-      -e 's/"value=/" value=/g' | sed -e 's#</tr>#</tr>\n#g'
+      -e 's/"value=/" value=/g' | sed -e 's#</tr>#</tr>\n#g' |
+    perl -0pe 's#<script>\n.*?</script>\n##sg'
 }
 same=0; ties=0; differ=0
 while read -r path; do

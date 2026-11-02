@@ -18,6 +18,15 @@ struct TableColumn
   Function<html::SafeHtml(const Row&)> cell;
   Align align = Align::left;
   bool defaultAscending = true;
+  bool hasSecondary = false;         // with Table::secondaryFrom: what the second query selects
+  Vector<SqlColumn> secondarySql;    // (else NULL for each of sql's columns)
+
+  TableColumn& addSecondary(Vector<SqlColumn> sql)
+  {
+    this->secondarySql = move(sql);
+    this->hasSecondary = true;
+    return *this;
+  }
 };
 
 struct Sort
@@ -51,6 +60,10 @@ struct Table
   Optional<Sort> fixedSort;
   Optional<Sort> currentSort;
   Optional<Sort> lastSort;
+  // A second query whose rows come after UNION ALL (the player page's rating changes), and a row
+  // that is shown its own way (a whole <tr>) instead of the columns' cells.
+  Optional<String> secondaryFrom;
+  Function<Optional<html::SafeHtml>(const Row&)> specialRow;
 
   Table(Page& page, StringView from) : page(&page), from(from) {}
 
@@ -110,7 +123,21 @@ struct Table
           select.append(",\n");
         select.append(part.sql + " as " + part.as);
       }
-    String sql = "SELECT " + select + " FROM " + this->from + this->orderBy();
+    String sql = "SELECT " + select + " FROM " + this->from;
+    if (this->secondaryFrom.has_value())
+    {
+      String second;
+      for (const TableColumn& column : this->columns)
+        for (ContainerSize i = 0; i < (column.hasSecondary ? column.secondarySql.size() : column.sql.size()); ++i)
+        {
+          if (!second.empty())
+            second.append(",\n");
+          second.append(column.hasSecondary ? column.secondarySql[i].sql + " as " + column.secondarySql[i].as
+                                            : String("NULL as ") + column.sql[i].as);
+        }
+      sql.append(" UNION ALL SELECT " + second + " FROM " + *this->secondaryFrom);
+    }
+    sql.append(this->orderBy());
     sql.append(format(" LIMIT {}", this->limit.has_value() ? *this->limit : tablePageSize));
     if (this->start() > 1)
       sql.append(format(" OFFSET {}", this->start() - 1));
@@ -211,7 +238,10 @@ struct Table
     bool hasCaption = false;
     if (!this->limit.has_value())
     {
+      // The second query's rows count too (PHP counted the first's only).
       int64_t total = stoll(*this->page->db->scalar(String("SELECT COUNT(*) FROM ") + this->from));
+      if (this->secondaryFrom.has_value())
+        total += stoll(*this->page->db->scalar(String("SELECT COUNT(*) FROM ") + *this->secondaryFrom));
       int64_t first = this->start();
       int64_t shown = (int64_t)data.size();
       if (shown < total)
@@ -242,6 +272,15 @@ struct Table
     for (ContainerSize i = 0; i < data.size(); ++i)
     {
       Row row(data, i);
+      if (this->specialRow)
+      {
+        Optional<html::SafeHtml> special = this->specialRow(row);
+        if (special.has_value())
+        {
+          rows.append(*special);
+          continue;
+        }
+      }
       html::SafeHtml cells;
       for (const TableColumn& column : this->columns)
       {

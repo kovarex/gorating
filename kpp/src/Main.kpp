@@ -3,6 +3,11 @@
 
 GoratingConfig goratingConfig;
 
+// A path that is no page and no player's username.
+struct PageNotFound : Exception
+{
+};
+
 // The pages ported so far; the others answer 501 until they are.
 bool route(Page& page, StringView name)
 {
@@ -18,8 +23,12 @@ bool route(Page& page, StringView name)
     playersPage(page);
   else if (name == "game")
     gamePage(page);
-  else
+  else if (name == "player")
+    playerPage(page, page.get("id"));
+  else if (isPageName(name))
     return false;
+  else if (!playerByUsername(page, name))
+    throw PageNotFound();
   return true;
 }
 
@@ -66,7 +75,25 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   page.db = &db;
   page.request = &request;
   String name = request.path.size() > 0 ? request.path.substr(1) : String();
-  if (!route(page, name))
+  // The pages without the layout.
+  if (name == "sgf")
+  {
+    sgfDownload(page, response);
+    return;
+  }
+  bool routed = false;
+  try
+  {
+    routed = route(page, name);
+  }
+  catch (const PageNotFound& e)
+  {
+    response.status = 404;
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.body = format("Unknown page:{}", name);
+    return;
+  }
+  if (!routed)
   {
     response.status = 501;
     response.setHeader("Content-Type", "text/plain; charset=utf-8");
