@@ -1,0 +1,235 @@
+// Reporting a game against a player (report.php, report_action.php): a loss, or a win for trusted
+// users and above. Fixed: PHP's action took a win from anyone (only the form's label checked the
+// right), and the page broke for a visitor.
+
+constexpr html::HtmlTemplate reportTemplate(R"(<form method="post" enctype="multipart/form-data" action="/report_action" onsubmit="return tryToSubmit();" id="report-form" data-my-rating="{{myRating}}" data-opponent-rating="{{opponentRating}}"><table class="data-table"><tr><td>{{role}}:</td><td>{{opponent}} ({{opponentRounded}})</td></tr><tr><td>Result:</td><td><input type="radio" id="loss" name="result" value="loss" checked="checked" oninput="updateRatingPreview();"/><label for="loss">Loss</label>{{win}}</td></tr><tr><td>Game type:</td><td><input type="radio" id="serious" name="game_type" value="5" checked="checked" oninput="updateRatingPreview();"/><label for="serious">Serious</label><input type="radio" id="rapid" name="game_type" value="6" oninput="updateRatingPreview();"/><label for="rapid">Rapid</label><input type="radio" id="blitz" name="game_type" value="7" oninput="updateRatingPreview();"/><label for="blitz">Blitz</label></td></tr><tr><td>My colour:</td><td><input type="radio" id="black" name="color" value="black" checked="checked" oninput="updateRatingPreview();"/><label for="black">Black</label><input type="radio" id="white" name="color" value="white" oninput="updateRatingPreview();"/><label for="white">White</label></td></tr><tr><td><label for="handicap">Handicap:</label></td><td><input type="text" name="handicap" id="handicap" oninput="updateRatingPreview();" value="0"/></td></tr><tr><td><label for="komi">Komi:</label></td><td><input type="text" name="komi" id="komi" value="6.5" oninput="updateRatingPreview();"/></td></tr><tr><td>Location:</td><td><input type="text" name="location"/></td></tr><tr><td>Comment:</td><td><input type="text" name="comment"/></td></tr><tr><td>SGF:</td><td><input type="file" name="sgf" accept=".sgf"/></td></tr><tr><td>My handicap adjusted rating:</td><td><span id="adjusted-rating"></span></td></tr><tr><td>Rating change preview:</td><td><span id="rating-preview" class="loser"></span></td></tr></table><input type="hidden" name="winner_user_id" value="{{opponentId}}"/><input type="submit" value="Report"/><br/></form>
+<script>
+var RATING_RANKS_PER_HANDICAP = 1.2;
+var RATING_RANKS_PER_KOMI = 0.1;
+var GAME_TYPE_RATING_MODIFIER = [];
+GAME_TYPE_RATING_MODIFIER[1] = 1;
+GAME_TYPE_RATING_MODIFIER[2] = 0.75;
+GAME_TYPE_RATING_MODIFIER[3] = 0.5;
+GAME_TYPE_RATING_MODIFIER[4] = 0.25;
+GAME_TYPE_RATING_MODIFIER[5] = 0.5;
+GAME_TYPE_RATING_MODIFIER[6] = 0.25;
+GAME_TYPE_RATING_MODIFIER[7] = 0.1;
+function beta(rating) { return -7 * Math.log(3300 - rating); }
+function calculateAdjustedRating(rating, extraHandicap, extraKomi)
+{
+  return rating + 100 * (extraHandicap * RATING_RANKS_PER_HANDICAP + extraKomi * RATING_RANKS_PER_KOMI);
+}
+// result 1 is win, and 0 is loss
+function calculateNewRating(rating, opponentRating, result, gameType, extraHandicap, extraKomi)
+{
+  let Se = 1.0 / (1.0 + Math.exp(beta(opponentRating) - beta(calculateAdjustedRating(rating, extraHandicap, extraKomi))));
+  let con = Math.pow(((3300 - rating) / 200), 1.6);
+  let bonus = Math.log(1 + Math.exp((2300 - rating) / 80)) / 5;
+  return rating + GAME_TYPE_RATING_MODIFIER[gameType] * (con * (result - Se) + bonus);
+}
+var form = document.getElementById('report-form');
+var myOldRating = parseFloat(form.dataset.myRating);
+var opponentOldRating = parseFloat(form.dataset.opponentRating);
+function showRating(rating) { return Math.round(rating * 10) / 10; }
+function showRatingChange(ratingChange) { return (ratingChange > 0 ? '+' : '') + Math.round(ratingChange * 10) / 10; }
+function currentGameType()
+{
+  if (document.getElementById('rapid').checked)
+    return 6;
+  if (document.getElementById('blitz').checked)
+    return 7;
+  return 5;
+}
+function myExtras()
+{
+  let myColorIsBlack = document.getElementById('black').checked;
+  return {komi: (myColorIsBlack ? -1 : 1) * (document.getElementById('komi').value - 6.5),
+          handicap: (myColorIsBlack ? 1 : -1) * document.getElementById('handicap').value};
+}
+function updateRatingPreview()
+{
+  let extras = myExtras();
+  let win = document.getElementById('win');
+  let result = win && win.checked ? 1 : 0;
+  let myNewRating = calculateNewRating(myOldRating, opponentOldRating, result, currentGameType(), extras.handicap, extras.komi);
+  let cell = document.getElementById('rating-preview');
+  cell.textContent = showRatingChange(myNewRating - myOldRating) + '  (' + showRating(myOldRating) + '→' + showRating(myNewRating) + ')';
+  cell.className = result == 0 ? 'loser' : 'winner';
+  document.getElementById('adjusted-rating').textContent = showRating(calculateAdjustedRating(myOldRating, extras.handicap, extras.komi));
+}
+updateRatingPreview();
+function tryToSubmit()
+{
+  let extras = myExtras();
+  let myOldAdjustedRating = calculateAdjustedRating(myOldRating, extras.handicap, extras.komi);
+  if (myOldRating > opponentOldRating && myOldAdjustedRating > myOldRating &&
+      !window.confirm("You are stronger than your opponent, yet you gave yourself handicap, are you sure?"))
+    return false;
+  if (myOldRating < opponentOldRating && myOldAdjustedRating < myOldRating &&
+      !window.confirm("You are weaker than your opponent, but you gave your opponent handicap, are you sure?"))
+    return false;
+  return true;
+}
+</script>
+)");
+constexpr html::HtmlTemplate winRadioTemplate(R"(<input type="radio" id="win" name="result" value="win" oninput="updateRatingPreview();"/><label for="win">Win</label>)");
+
+void reportPage(Page& page)
+{
+  if (!loggedIn(page))
+  {
+    page.body.append(pageMessageTemplate.render({{"message", "Log in to report a game"}}));
+    return;
+  }
+  String id = page.get("id");
+  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
+  if (found.empty())
+  {
+    page.body.append(html::SafeHtml::escape(String("User with id=") + id + " doesn't exist"));
+    return;
+  }
+  Row opponent(found, 0);
+  page.body.append(reportTemplate.render({{"myRating", userValue(page, "rating")},
+                                          {"opponentRating", opponent["rating"]},
+                                          {"role", canReportWin(page) ? "Opponent" : "Winner"},
+                                          {"opponent", playerLink(opponent, "")},
+                                          {"opponentRounded", format("{}", fixed(ratingValue(opponent["rating"]), 0))},
+                                          {"win", canReportWin(page) ? winRadioTemplate.render({}) : html::SafeHtml()},
+                                          {"opponentId", opponent["id"]}}));
+}
+
+// The form's fields and its one file, urlencoded or multipart.
+struct ReportForm
+{
+  Vector<url::UrlQueryParameter> fields;
+  Optional<String> sgf; // a file sent in the sgf field, when one was chosen
+};
+
+ReportForm readGameForm(const http::HttpRequest& request)
+{
+  ReportForm form;
+  form.fields = request.form();
+  if (request.contentType() == "multipart/form-data")
+    for (const http::HttpPart& part : request.multipart())
+      if (part.name == "sgf" && part.filename.has_value() && !part.filename->empty())
+        form.sgf = Optional<String>(part.data);
+  return form;
+}
+
+// PHP's is_numeric for a decimal number: digits, an optional sign, point and exponent.
+Optional<double> number(StringView text)
+{
+  StringView t = httpTrimSpaces(text);
+  if (t.empty() || t.size() > 40)
+    return Optional<double>();
+  bool digit = false;
+  for (ContainerSize i = 0; i < t.size(); ++i)
+  {
+    char c = t[i];
+    if (c >= '0' && c <= '9')
+      digit = true;
+    else if (!(c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E'))
+      return Optional<double>();
+  }
+  if (!digit)
+    return Optional<double>();
+  size_t used = 0;
+  double value = 0;
+  try
+  {
+    value = stod(String(t), &used);
+  }
+  catch (const Exception& e)
+  {
+    return Optional<double>();
+  }
+  if (used != t.size())
+    return Optional<double>();
+  return Optional<double>(value);
+}
+
+StringView httpTrimSpaces(StringView text)
+{
+  ContainerSize start = 0;
+  ContainerSize end = text.size();
+  while (start < end && (text[start] == ' ' || text[start] == '\t' || text[start] == '\n' || text[start] == '\r'))
+    ++start;
+  while (end > start && (text[end - 1] == ' ' || text[end - 1] == '\t' || text[end - 1] == '\n' || text[end - 1] == '\r'))
+    --end;
+  return text.substr(start, end - start);
+}
+
+// mariaDbQuote, but NULL for "" (PHP's escape() took "" for NULL).
+String quoteOrNull(StringView text) { return text.empty() ? String("NULL") : quote(text); }
+
+void reportAction(Page& page, http::HttpResponse& response)
+{
+  if (!loggedIn(page))
+    return redirectWithMessage(response, "/", "Can't report game when not logged in.");
+  if (page.request->method != "POST")
+    return redirectWithMessage(response, "/", "A game is reported with the report form.");
+  ReportForm form = readGameForm(*page.request);
+  String opponentId = formValue(form.fields, "winner_user_id");
+  String back = String("/report?id=") + url::urlEncode(opponentId);
+  mariadb::MariaDbResult opponents = page.query(String("SELECT * FROM user WHERE id=") + quote(opponentId));
+  if (opponents.empty())
+    return redirectWithMessage(response, "/", String("User with id=") + opponentId + " doesn't exist");
+  Row opponent(opponents, 0);
+  String userId = userValue(page, "id");
+  if (opponent["id"] == userId)
+    return redirectWithMessage(response, back, "A game is reported against someone else");
+  String gameType = formValue(form.fields, "game_type");
+  if (gameType != "5" && gameType != "6" && gameType != "7")
+    return redirectWithMessage(response, back, String("Invalid game type:") + gameType);
+  String handicapText = formValue(form.fields, "handicap");
+  Optional<double> handicap = number(handicapText);
+  if (!handicap.has_value() || *handicap != floor(*handicap))
+    return redirectWithMessage(response, back, "Handicap value must be a whole number");
+  if (*handicap > 9)
+    return redirectWithMessage(response, back, "Maximum handicap value is 9");
+  if (*handicap < 0)
+    return redirectWithMessage(response, back, "Handicap can't be negative");
+  String komiText = formValue(form.fields, "komi");
+  Optional<double> komi = number(komiText);
+  if (!komi.has_value())
+    return redirectWithMessage(response, back, "Komi value must be numeric");
+  String color = formValue(form.fields, "color");
+  if (color != "black" && color != "white")
+    return redirectWithMessage(response, back, String("Invalid color value:") + color);
+  bool opponentIsBlack = color == "white";
+  bool reportingWin = formValue(form.fields, "result") == "win";
+  if (reportingWin && !canReportWin(page))
+    return redirectWithMessage(response, back, "Only trusted users report their wins");
+
+  // The old ratings go back into the database as its own text, as PHP's did; the new ones as PHP
+  // printed its doubles.
+  String myOldText = userValue(page, "rating");
+  String opponentOldText = opponent["rating"];
+  double myOldRating = ratingValue(myOldText);
+  double opponentOldRating = ratingValue(opponentOldText);
+  double myHandicap = (opponentIsBlack ? -1 : 1) * *handicap;
+  double myExtraKomi = (opponentIsBlack ? 1 : -1) * (*komi - 6.5);
+  int type = (int)stoll(gameType);
+  double myNewRating = calculateNewRating(myOldRating, opponentOldRating, reportingWin ? 1.0 : 0.0, type, myHandicap, myExtraKomi);
+  double opponentNewRating = calculateNewRating(opponentOldRating, myOldRating, reportingWin ? 0.0 : 1.0, type, -myHandicap, -myExtraKomi);
+  String comment = formValue(form.fields, "comment");
+  String location = formValue(form.fields, "location");
+
+  page.db->begin();
+  page.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, location, winner_comment, loser_comment,"
+                    " winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating, sgf, winner_is_black, handicap, komi)"
+                    " VALUES(") +
+             (reportingWin ? userId : opponent["id"]) + "," + (reportingWin ? opponent["id"] : userId) + "," + gameType + "," +
+             quoteOrNull(location) + "," + quoteOrNull(reportingWin ? comment : String()) + "," +
+             quoteOrNull(reportingWin ? String() : comment) + "," +
+             quote(reportingWin ? myOldText : opponentOldText) + "," +
+             quote(phpNumber(reportingWin ? myNewRating : opponentNewRating)) + "," +
+             quote(reportingWin ? opponentOldText : myOldText) + "," +
+             quote(phpNumber(reportingWin ? opponentNewRating : myNewRating)) + "," +
+             (form.sgf.has_value() && !form.sgf->empty() ? quote(*form.sgf) : String("NULL")) + "," +
+             (opponentIsBlack != reportingWin ? "true" : "false") + "," + quote(handicapText) + "," + quote(komiText) + ")");
+  page.query(String("UPDATE user set rating=") + phpNumber(myNewRating) + " WHERE id=" + quote(userId));
+  page.query(String("UPDATE user set rating=") + phpNumber(opponentNewRating) + " WHERE id=" + quote(opponent["id"]));
+  page.db->commit();
+  redirectWithMessage(response, String("/player?id=") + userId, "Game added");
+}

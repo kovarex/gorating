@@ -14,10 +14,14 @@ page, against the same MariaDB database (its triggers and procedures stay as the
 - `src/Table.kpp`: table_viewer.php. `src/Layout.kpp`: the header, menu and footer.
 - `src/pages/`: one file per page. Ported: home, about, tournaments, tournament, players, player
   (and /username), game, the SGF download, login, settings; the
-  others answer 501.
+  others answer 501. Actions: report (a game).
 - `testdata/compare.sh`: fetches paths from the PHP site (port 8081) and this one (8082) and
   compares the HTML after masking the differences below; `PHP_JAR` and `KPP_JAR` name curl cookie
   files to compare as a logged-in user.
+- `testdata/scenario-reset.sh`, `testdata/scenario-compare.sh`: two copies of the made-up data
+  (`gorating_php`, `gorating_kpp`); after the same requests went to the PHP site on one and this
+  one on the other, the second compares every table a page writes (the time a row was written and
+  random secrets masked).
 - `testdata/generate.py`: made-up data for a local database (no real person in it).
 
 **Building.** `kpp` in this directory, with `libraries` a link to kpp's `libraries` directory

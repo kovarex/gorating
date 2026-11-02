@@ -1,0 +1,51 @@
+// The rating formula (src/rating_helper.php): EGD's, with a modifier per game type and the
+// handicap and komi turned into rating points.
+
+constexpr int gameTypeEgdA = 1;
+constexpr int gameTypeEgdB = 2;
+constexpr int gameTypeEgdC = 3;
+constexpr int gameTypeEgdD = 4;
+constexpr int gameTypeSerious = 5;
+constexpr int gameTypeRapid = 6;
+constexpr int gameTypeBlitz = 7;
+
+constexpr double ratingRanksPerHandicap = 1.2;
+constexpr double ratingRanksPerKomi = 0.1;
+
+double gameTypeRatingModifier(int gameType)
+{
+  switch (gameType)
+  {
+  case gameTypeEgdA: return 1;
+  case gameTypeEgdB: return 0.75;
+  case gameTypeEgdC: return 0.5;
+  case gameTypeEgdD: return 0.25;
+  case gameTypeSerious: return 0.5;
+  case gameTypeRapid: return 0.25;
+  case gameTypeBlitz: return 0.1;
+  }
+  throw GoratingError(format("no game type {}", gameType));
+}
+
+double ratingBeta(double rating) { return -7 * log(3300 - rating); }
+
+// The new rating after a game: result 1 a win, 0 a loss; extraHandicap and extraKomi are the
+// stones and komi this player got beyond an even game (negative when the opponent got them).
+double calculateNewRating(double rating, double opponentRating, double result, int gameType, double extraHandicap, double extraKomi)
+{
+  double adjustedRating = rating + 100 * (extraHandicap * ratingRanksPerHandicap + extraKomi * ratingRanksPerKomi);
+  // The probability of winning takes the adjusted rating; the constant and the bonus the real one.
+  double expected = 1.0 / (1.0 + exp(ratingBeta(opponentRating) - ratingBeta(adjustedRating)));
+  double con = pow((3300 - rating) / 200, 1.6);
+  double bonus = log(1 + exp((2300 - rating) / 80)) / 5;
+  return rating + gameTypeRatingModifier(gameType) * (con * (result - expected) + bonus);
+}
+
+// A number as PHP writes it into SQL (its `precision` of 14 significant digits), so the database
+// gets the values the PHP version stored.
+String phpNumber(double value)
+{
+  char buffer[64];
+  snprintf(buffer, 64, "%.14G", value);
+  return String(StringView(buffer));
+}
