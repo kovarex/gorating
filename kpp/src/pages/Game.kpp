@@ -1,0 +1,40 @@
+// One game (game.php).
+
+constexpr html::HtmlTemplate gameTemplate(R"(<table class="centered-data-table">
+<caption><a href="/edit_game?id={{id}}&amp;redirect={{redirect}}">Edit game</a></caption><tr><td>ID:</td><td>{{id}}</td></tr><tr><td>Winner:</td><td>{{winner}}</td></tr><tr><td>Loser:</td><td>{{loser}}</td></tr><tr><td>Location:</td><td>{{location}}</td></tr><tr><td>Winner comment:</td><td>{{winnerComment}}</td></tr><tr><td>Loser comment:</td><td>{{loserComment}}</td></tr><tr><td>Handicap:</td><td>{{handicap}}</td></tr><tr><td>Komi:</td><td>{{komi}}</td></tr><tr><td>Time:</td><td>{{time}}</td></tr><tr><td>SGF:</td><td>{{sgf}}</td></tr></table>
+)");
+
+// The message a page shows when it cannot: as PHP's `return "..."` from a page.
+constexpr html::HtmlTemplate pageMessageTemplate(R"(<div class="message-div"><h3><b>Message:</b></h3><br/>{{message}}</div>)");
+
+void gamePage(Page& page)
+{
+  String id = page.get("id");
+  mariadb::MariaDbResult result = page.query(
+      String("SELECT winner.id as winner_id, winner.name as winner_name, winner.username as winner_username,"
+             " winner.rating as winner_rating, loser.id as loser_id, loser.name as loser_name,"
+             " loser.username as loser_username, loser.rating as loser_rating, game.id as game_id,"
+             " game.location as game_location, game.winner_comment as game_winner_comment,"
+             " game.loser_comment as game_loser_comment, game.handicap as game_handicap, game.komi as game_komi,"
+             " game.timestamp as game_timestamp, length(game.sgf) > 0 as has_sgf"
+             " FROM game JOIN user AS winner ON game.winner_user_id=winner.id JOIN user AS loser ON game.loser_user_id=loser.id"
+             " WHERE game.id=") + quote(id));
+  if (result.empty())
+  {
+    page.body.append(pageMessageTemplate.render({{"message", "Game not found"}}));
+    return;
+  }
+  Row game(result, 0);
+  page.body.append(gameTemplate.render(
+      {{"id", game["game_id"]},
+       {"redirect", String("/game?id=") + game["game_id"]},
+       {"winner", playerLink(game, "winner")},
+       {"loser", playerLink(game, "loser")},
+       {"location", game["game_location"]},
+       {"winnerComment", game["game_winner_comment"]},
+       {"loserComment", game["game_loser_comment"]},
+       {"handicap", game["game_handicap"]},
+       {"komi", game["game_komi"]},
+       {"time", showDate(game["game_timestamp"], true)},
+       {"sgf", game["has_sgf"] == "1" ? sgfLink(game["game_id"]) : html::SafeHtml::escape("not present")}}));
+}

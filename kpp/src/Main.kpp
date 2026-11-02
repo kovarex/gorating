@@ -12,6 +12,12 @@ bool route(Page& page, StringView name)
     aboutPage(page);
   else if (name == "tournaments")
     tournamentsPage(page);
+  else if (name == "tournament")
+    tournamentPage(page);
+  else if (name == "players")
+    playersPage(page);
+  else if (name == "game")
+    gamePage(page);
   else
     return false;
   return true;

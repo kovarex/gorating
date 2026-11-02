@@ -1,0 +1,96 @@
+// The player list (players.php): a search by name or EGD pin, a country, registered players only.
+// PHP bugs fixed: "Only registered" was ignored once the form was sent (`=` binds tighter than
+// `or`); an 8-digit pin was compared with the whole search text instead of the pin; a search with
+// full-text operators ("<b>") was an SQL error; rows with equal values had no order between them,
+// so pages could repeat or skip a row.
+
+constexpr html::HtmlTemplate playersFormTemplate(R"(<div style="text-align:center;"><form><table class="centered-table"><tr><td><label for="search">Search (name, pin)</label></td><td><input type="text" name="search" value="{{search}}"/></td></tr><tr><td><label for="country_code">Country:</label></td><td>{{selector}}</td></tr><tr><td></td><td>{{registered}}<label for="is_registered">Only registered:</label></td></tr><tr><td colspan="2"><input type="submit" value="Submit"/></td></tr></table><input type="hidden" name="from_search" value="true"/></form></div>)");
+constexpr html::HtmlTemplate checkedTemplate(R"(<input type="checkbox" name="is_registered" id="is_registered" checked="checked"/>)");
+constexpr html::HtmlTemplate uncheckedTemplate(R"(<input type="checkbox" name="is_registered" id="is_registered"/>)");
+
+bool isEgdPin(StringView text)
+{
+  if (text.size() != 8)
+    return false;
+  for (char c : text)
+    if (c < '0' || c > '9')
+      return false;
+  return true;
+}
+
+void playersPage(Page& page)
+{
+  String search = page.get("search");
+  String country = page.get("country_code");
+  bool registeredOnly = page.get("from_search").empty() || !page.get("is_registered").empty();
+  page.body.append(playersFormTemplate.render({{"search", search},
+                                               {"selector", countrySelector(page, country)},
+                                               {"registered", (registeredOnly ? checkedTemplate : uncheckedTemplate).render({})}}));
+
+  String text;
+  ContainerSize at = 0;
+  while (at < search.size())
+  {
+    ContainerSize end = search.find(' ', at);
+    if (end == String::npos)
+      end = search.size();
+    String part;
+    // Without MariaDB's boolean full-text operators, which made a search like "<b>" an SQL error.
+    for (char c : StringView(search).substr(at, end - at))
+      if (StringView("+-<>()~*\"@").find(c) == StringView::npos)
+        part.append(c);
+    at = end + 1;
+    if (part.empty())
+      continue;
+    if (!text.empty())
+      text.append(" or ");
+    if (isEgdPin(part))
+      text.append(String("user.egd_pin=") + quote(part));
+    else
+      text.append(String("MATCH(user.name) AGAINST(") + quote(part + "*") + " IN BOOLEAN MODE)");
+  }
+  String where;
+  auto add = [&where](StringView condition) {
+    where.append(where.empty() ? " WHERE " : " and ");
+    where.append(condition);
+  };
+  if (!text.empty())
+    add(String("(") + text + ")");
+  if (!country.empty())
+    add(String("country.code=") + quote(country));
+  if (registeredOnly)
+    add("user.register_timestamp IS NOT NULL");
+
+  Table table(page, String("user LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id"
+                           " JOIN admin_level ON admin_level.id = user.admin_level_id"
+                           " JOIN country ON country.id = user.country_id") + where);
+  Sort primary;
+  primary.column = search.empty() ? "rating" : "name";
+  primary.ascending = !search.empty();
+  table.currentSort = Optional<Sort>(primary);
+  // Rows with the same value keep one order, so pages neither repeat nor skip one.
+  Sort last;
+  last.column = "id";
+  table.lastSort = Optional<Sort>(last);
+  table.addColumn("rating", "Rating", {{"user.rating", "rating"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showRating(row["rating"])); }, Align::right, false);
+  table.addColumn("name", "Name", {{"user.name", "name"}, {"user.id", "id"}, {"user.username", "username"}},
+                  [](const Row& row) { return playerLink(row, ""); });
+  table.addColumn("egd_pin", "EGD", {{"user.egd_pin", "egd_pin"}}, [](const Row& row) { return egdLink(row["egd_pin"]); });
+  table.addColumn("country_code", "Country", {{"country.code", "country_code"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["country_code"]); });
+  table.addColumn("admin_level_id", "Role", {{"admin_level.id", "admin_level_id"}, {"admin_level.name", "admin_level_name"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["admin_level_name"]); });
+  table.addColumn("user_register_timestamp", "Registered", {{"user.register_timestamp", "user_register_timestamp"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showDate(row["user_register_timestamp"], true)); });
+  for (StringView column : {"overall_game_count", "overall_win_count", "overall_loss_count", "game_count"})
+  {
+    String name(column);
+    StringView caption = column == "overall_game_count" ? "Games"
+                         : column == "overall_win_count" ? "Wins"
+                         : column == "overall_loss_count" ? "Losses" : "Friendly Games";
+    table.addColumn(name, caption, {{String("user.") + name, name}},
+                    [name](const Row& row) { return html::SafeHtml::escape(row[name]); }, Align::right, false);
+  }
+  page.body.append(table.render());
+}

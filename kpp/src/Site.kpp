@@ -93,12 +93,36 @@ String readableRank(int rank)
 
 double ratingValue(StringView text) { return text.empty() ? 0.0 : stod(String(text)); }
 
-// "Name 5k", from the prefix's name and rating columns (its egd_rating when rating is NULL).
-String playerNameWithRank(const Row& row, StringView prefix)
+// A player as links show one: the rank comes from rating, or egdRating when rating is NULL.
+struct PlayerRef
+{
+  String id;
+  String name;
+  String username;
+  Optional<String> rating;
+  Optional<String> egdRating;
+};
+
+// The player whose columns start with prefix ("black" reads black_id, black_name...).
+PlayerRef playerRef(const Row& row, StringView prefix)
 {
   String p = prefix.empty() ? String() : String(prefix) + "_";
-  String rating = row.has(p + "rating") && !row.isNull(p + "rating") ? row[p + "rating"] : row[p + "egd_rating"];
-  return row[p + "name"] + " " + readableRank(rankFromRating(ratingValue(rating)));
+  PlayerRef player;
+  player.id = row[p + "id"];
+  player.name = row[p + "name"];
+  player.username = row[p + "username"];
+  if (row.has(p + "rating") && !row.isNull(p + "rating"))
+    player.rating = Optional<String>(row[p + "rating"]);
+  if (row.has(p + "egd_rating") && !row.isNull(p + "egd_rating"))
+    player.egdRating = Optional<String>(row[p + "egd_rating"]);
+  return player;
+}
+
+// "Name 5k".
+String playerNameWithRank(const PlayerRef& player)
+{
+  String rating = player.rating.has_value() ? *player.rating : player.egdRating.has_value() ? *player.egdRating : String();
+  return player.name + " " + readableRank(rankFromRating(ratingValue(rating)));
 }
 
 constexpr html::HtmlTemplate linkTemplate(R"(<a href="{{href}}">{{text}}</a>)");
@@ -108,15 +132,33 @@ html::SafeHtml link(StringView href, StringView text)
   return linkTemplate.render({{"href", String(href)}, {"text", String(text)}});
 }
 
-// A link to the player whose columns start with prefix ("black" reads black_id, black_name...).
-html::SafeHtml playerLink(const Row& row, StringView prefix)
+html::SafeHtml playerLink(const PlayerRef& player)
 {
-  String p = prefix.empty() ? String() : String(prefix) + "_";
-  String id = row[p + "id"];
-  if (id.empty())
+  if (player.id.empty())
     return html::SafeHtml();
-  return link(playerPath(id, row[p + "username"]), playerNameWithRank(row, prefix));
+  return link(playerPath(player.id, player.username), playerNameWithRank(player));
 }
+
+html::SafeHtml playerLink(const Row& row, StringView prefix) { return playerLink(playerRef(row, prefix)); }
+
+constexpr html::HtmlTemplate egdLinkTemplate(R"(<a href="https://www.europeangodatabase.eu/EGD/Player_Card.php?&amp;key={{pin}}">{{pin}}</a>)");
+constexpr html::HtmlTemplate egdTournamentLinkTemplate(R"(<a href="https://www.europeangodatabase.eu/EGD/Tournament_Card.php?&amp;key={{key}}">{{key}}</a>)");
+
+html::SafeHtml egdLink(StringView pin)
+{
+  if (pin.empty())
+    return html::SafeHtml();
+  return egdLinkTemplate.render({{"pin", String(pin)}});
+}
+
+html::SafeHtml egdTournamentLink(StringView key) { return egdTournamentLinkTemplate.render({{"key", String(key)}}); }
+
+constexpr html::HtmlTemplate sgfLinkTemplate(R"(<a href="/sgf?id={{id}}">SGF</a>)");
+
+html::SafeHtml sgfLink(StringView gameId) { return sgfLinkTemplate.render({{"id", String(gameId)}}); }
+
+// A rating with the viewer's decimals (none until settings are ported), as %.Nf rounds.
+String showRating(StringView rating) { return format("{}", fixed(ratingValue(rating), 0)); }
 
 html::SafeHtml tournamentLink(StringView id, StringView name)
 {

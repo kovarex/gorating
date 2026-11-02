@@ -169,21 +169,38 @@ struct Table
     return out;
   }
 
-  // The current address with sort= and d= set (start= dropped: a new order starts at its top).
+  // The current address with sort= and d= set, the other parameters kept in their order (as
+  // table_viewer.php's generateAddress).
   String addressWith(StringView sort, StringView direction) const
   {
     Vector<url::UrlQueryParameter> parameters;
+    bool sortSet = false;
+    bool directionSet = false;
     for (const url::UrlQueryParameter& p : this->page->request->parameters)
-      if (!p.name.empty() && !p.value.empty() && p.name != "sort" && p.name != "d" && p.name != "start")
-        parameters.push_back(p);
-    url::UrlQueryParameter s;
-    s.name = "sort";
-    s.value = String(sort);
-    parameters.push_back(s);
-    url::UrlQueryParameter d;
-    d.name = "d";
-    d.value = String(direction);
-    parameters.push_back(d);
+    {
+      if (p.name.empty() || p.value.empty())
+        continue;
+      url::UrlQueryParameter copy = p;
+      if (copy.name == "sort")
+      {
+        if (sortSet)
+          continue;
+        copy.value = String(sort);
+        sortSet = true;
+      }
+      else if (copy.name == "d")
+      {
+        if (directionSet)
+          continue;
+        copy.value = String(direction);
+        directionSet = true;
+      }
+      parameters.push_back(copy);
+    }
+    if (!sortSet)
+      parameters.push_back(url::UrlQueryParameter{String("sort"), String(sort)});
+    if (!directionSet)
+      parameters.push_back(url::UrlQueryParameter{String("d"), String(direction)});
     return this->page->request->path + "?" + url::writeUrlQuery(parameters);
   }
 
@@ -206,8 +223,9 @@ struct Table
           captionContent.append(link(this->address("start", format("{}", previous)), "Previous"));
           captionContent.append(html::SafeHtml::trusted(" "));
         }
-        int64_t last = first + shown - 1;
-        captionContent.append(html::SafeHtml::escape(format("{}-{} of {}", first, last < first ? first : last, total)));
+        // PHP showed first + shown, one past the last row.
+        int64_t last = first + shown - 1 < total ? first + shown - 1 : total;
+        captionContent.append(html::SafeHtml::escape(format("{}-{} of {}", first, last, total)));
         if (first + shown <= total && shown == tablePageSize)
         {
           captionContent.append(html::SafeHtml::trusted(" "));

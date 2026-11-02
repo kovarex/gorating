@@ -1,6 +1,5 @@
 // The home page (home.php): the latest friendly games and the latest tournaments.
 
-constexpr html::HtmlTemplate sgfLinkTemplate(R"(<a href="/sgf?id={{id}}">SGF</a>)");
 constexpr html::HtmlTemplate h2Template(R"(<h2>{{text}}</h2>)");
 
 html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
@@ -49,7 +48,7 @@ html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
                   [](const Row& row) {
                     if (row["has_sgf"] != "1")
                       return html::SafeHtml();
-                    return sgfLinkTemplate.render({{"id", row["game_id"]}});
+                    return sgfLink(row["game_id"]);
                   });
   Sort last;
   last.column = "timestamp";
