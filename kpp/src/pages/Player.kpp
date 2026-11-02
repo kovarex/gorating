@@ -1,21 +1,62 @@
 // A player's page (player.php): name and ratings, then their games and rating changes in one
 // table, newest first. As a visitor sees it: the edit, report and delete parts come with sessions.
 
-constexpr html::HtmlTemplate playerHeadTemplate(R"(<div class="centered-div"><h1 style="display: inline;">{{name}}</h1></div><div id="edit-dialog" style="position:absolute;background: white;display:none;"><form action="/edit_player_name_action" method="post" class="data-form"><table><tr><td><label for="first_name">First name:</label></td><td><input type="text" name="first_name" value="{{first}}"/></td></tr><tr><td><label for="last_name">Last name:</label></td><td><input type="text" name="last_name" value="{{last}}"/></td></tr></table><input type="hidden" name="id" value="{{id}}"/><input type="submit" value="Submit"/></form></div><table class="centered-table"><tr><td>Rating:</td><td>{{rating}}</td></tr><tr><td>EGD Rating:</td><td>{{egdRating}}</td></tr>{{pin}}</table>)");
+constexpr html::HtmlTemplate playerHeadTemplate(R"(<div class="centered-div"><h1 style="display: inline;">{{name}}</h1>{{editButton}}</div><div id="edit-dialog" style="position:absolute;background: white;display:none;"><form action="/edit_player_name_action" method="post" class="data-form"><table><tr><td><label for="first_name">First name:</label></td><td><input type="text" name="first_name" value="{{first}}"/></td></tr><tr><td><label for="last_name">Last name:</label></td><td><input type="text" name="last_name" value="{{last}}"/></td></tr></table><input type="hidden" name="id" value="{{id}}"/><input type="submit" value="Submit"/></form></div>{{report}}<table class="centered-table"><tr><td>Rating:</td><td>{{rating}}</td></tr><tr><td>EGD Rating:</td><td>{{egdRating}}</td></tr>{{pin}}</table>)");
+constexpr html::HtmlTemplate editNameButtonTemplate(R"(<button type="button" onclick="showEditDialog(event);">Edit</button>)");
+constexpr html::HtmlTemplate reportLinkTemplate(R"(<div class="centered-div"><a class="report-loss-link" href="/report?id={{id}}">{{text}}</a></div>)");
+constexpr html::HtmlTemplate inviteLinkTemplate(R"(<div class="centered-div"><a class="report-loss-link" href="/invite_existing_user?user_id={{id}}">Invite</a></div>)");
+constexpr html::HtmlTemplate editGameLinkTemplate(R"(<a href="/edit_game?id={{id}}&amp;redirect={{redirect}}">Edit</a>)");
 constexpr html::HtmlTemplate pinRowTemplate(R"(<tr><td>EGD PIN:</td><td>{{link}}</td></tr>)");
 constexpr html::HtmlTemplate ratingChangeTemplate(R"(<span class="{{class}}">{{old}}&rarr;{{new}}</span>)");
-constexpr html::HtmlTemplate ratingChangeRowTemplate(R"(<tr><td colspan="1"></td><td style="text-align:center;">{{change}}</td><td style="text-align:center;">{{egdChange}}</td><td colspan="4">{{kind}} rating change issued by {{by}}</td><td>{{time}}</td><td colspan="5">{{comment}}</td></tr>)");
+constexpr html::HtmlTemplate ratingDeltaTemplate(R"(<span class="{{class}}">{{delta}}</span>)");
+constexpr html::HtmlTemplate ratingChangeRowTemplate(R"(<tr><td colspan="{{editColumns}}"></td>{{change}}{{egdChange}}<td colspan="4">{{kind}} rating change issued by {{by}}</td><td>{{time}}</td><td colspan="{{lastColumns}}">{{comment}}</td></tr>)");
+constexpr html::HtmlTemplate centerCellTemplate2(R"(<td style="text-align:center;">{{content}}</td>)");
+constexpr html::HtmlTemplate deltaCellTemplate(R"(<td style="text-align:right;border-right:none;">{{content}}</td>)");
+constexpr html::HtmlTemplate newRatingCellTemplate(R"(<td style="text-align:right;border-left:none;">{{content}}</td>)");
+constexpr html::HtmlTemplate emptyNewRatingCellTemplate(R"(<td style="border-left: none;"></td>)");
+
+// The viewer's rating change format (settings): 1 "1657&rarr;1667" in one cell (the default), 2
+// "+10" and "1667" in two. Set for each request.
+int ratingChangeFormat = 1;
 
 // "1500&rarr;1512" in green for a gain, red for a loss (src/rating_helper.php's showRatingChange
-// in its first format, the default).
+// in its first format).
 html::SafeHtml showRatingChange(StringView oldRating, StringView newRating)
 {
   bool gain = ratingValue(oldRating) < ratingValue(newRating);
   return ratingChangeTemplate.render({{"class", gain ? "winner" : "loser"}, {"old", showRating(oldRating)}, {"new", showRating(newRating)}});
 }
 
+// "+10" with the viewer's decimals, and more when they would show 0 (the second format).
+html::SafeHtml showRatingDelta(StringView oldRating, StringView newRating)
+{
+  double delta = ratingValue(newRating) - ratingValue(oldRating);
+  double size = delta < 0 ? -delta : delta;
+  int digits = ratingDigits;
+  if (size < 1 && digits < 1)
+    digits = 1;
+  if (size < 0.1 && digits < 2)
+    digits = 2;
+  if (size < 0.01 && digits < 3)
+    digits = 3;
+  return ratingDeltaTemplate.render({{"class", ratingValue(oldRating) < ratingValue(newRating) ? "winner" : "loser"},
+                                     {"delta", format("{}{}", StringView(delta > 0 ? "+" : ""), fixed(delta, digits))}});
+}
+
 // PHP's truthiness of a column: NULL, "" and "0" are false.
 bool truthy(StringView text) { return !text.empty() && text != "0"; }
+
+// The cells of one rating change in the viewer's format: one centred cell, or the change and the
+// new rating in two.
+html::SafeHtml ratingChangeCells(StringView oldRating, StringView newRating)
+{
+  bool present = truthy(oldRating);
+  if (ratingChangeFormat != 2)
+    return centerCellTemplate2.render({{"content", present ? showRatingChange(oldRating, newRating) : html::SafeHtml()}});
+  html::SafeHtml cells = deltaCellTemplate.render({{"content", present ? showRatingDelta(oldRating, newRating) : html::SafeHtml()}});
+  cells.append(present ? newRatingCellTemplate.render({{"content", showRating(newRating)}}) : emptyNewRatingCellTemplate.render({}));
+  return cells;
+}
 
 // At most 30 bytes, not cutting a UTF-8 character (PHP's substr cut one in two).
 String shortened(StringView text)
@@ -53,7 +94,19 @@ void playerPage(Page& page, StringView id)
   html::SafeHtml pin;
   if (!player["egd_pin"].empty())
     pin = pinRowTemplate.render({{"link", egdLink(player["egd_pin"])}});
+  String userId = userValue(page, "id");
+  // Another player's page: report a game against them, or invite them when they are not registered.
+  html::SafeHtml report;
+  if (loggedIn(page) && userId != player["id"])
+  {
+    if (!player["username"].empty())
+      report = reportLinkTemplate.render({{"id", player["id"]}, {"text", canReportWin(page) ? "Report loss or win" : "Report loss"}});
+    else
+      report = inviteLinkTemplate.render({{"id", player["id"]}});
+  }
   page.body.append(playerHeadTemplate.render({{"name", playerNameWithRank(playerRef(player, ""))},
+                                              {"editButton", canEditPlayerName(page) ? editNameButtonTemplate.render({}) : html::SafeHtml()},
+                                              {"report", report},
                                               {"first", player["first_name"]},
                                               {"last", player["last_name"]},
                                               {"id", player["id"]},
@@ -69,13 +122,19 @@ void playerPage(Page& page, StringView id)
   table.secondaryFrom = Optional<String>(String("rating_change JOIN rating_change_type ON rating_change.rating_change_type_id=rating_change_type.id"
                                                 " LEFT JOIN user as executed_by ON rating_change.executed_by_user_id=executed_by.id"
                                                 " WHERE rating_change.user_id=") + me);
-  table.specialRow = [](const Row& row) -> Optional<html::SafeHtml> {
+  // The edit column: an admin's on every page, a user's on their own (src/auth.php's canEditGame:
+  // a game of theirs, for a day after it). PHP widened the rating change rows for it whenever
+  // someone was logged in, column or not.
+  bool editColumn = loggedIn(page) && (canEditAnyGame(page) || userId == player["id"]);
+  table.specialRow = [editColumn](const Row& row) -> Optional<html::SafeHtml> {
     if (row["rating_change_type_id"].empty())
       return Optional<html::SafeHtml>();
     html::SafeHtml by = row["opponent_id"].empty() ? html::SafeHtml::escape("EGD") : playerLink(row, "opponent");
     return Optional<html::SafeHtml>(ratingChangeRowTemplate.render(
-        {{"change", truthy(row["old_rating"]) ? showRatingChange(row["old_rating"], row["new_rating"]) : html::SafeHtml()},
-         {"egdChange", truthy(row["old_egd_rating"]) ? showRatingChange(row["old_egd_rating"], row["new_egd_rating"]) : html::SafeHtml()},
+        {{"editColumns", editColumn ? 2 : 1},
+         {"change", ratingChangeCells(row["old_rating"], row["new_rating"])},
+         {"egdChange", ratingChangeCells(row["old_egd_rating"], row["new_egd_rating"])},
+         {"lastColumns", 5},
          {"kind", String(ratingChangeKind(row["rating_change_type_id"]))},
          {"by", by},
          {"time", showDate(row["timestamp"], true)},
@@ -92,32 +151,48 @@ void playerPage(Page& page, StringView id)
 
   String isWinner = String("winner.id = ") + me;
   Page* p = &page;
+  if (editColumn)
+  {
+    bool admin = canEditAnyGame(page);
+    String redirect = playerPath(player["id"], player["username"]);
+    String playerId = player["id"];
+    table.addColumn("", "", {{"TIMESTAMPDIFF(SECOND, game.timestamp, NOW())", "age_seconds"}},
+                    [admin, redirect, userId, playerId](const Row& row) {
+                      bool mine = userId == row["opponent_id"] || userId == playerId;
+                      bool recent = !row["age_seconds"].empty() && stoll(row["age_seconds"]) < 24 * 3600;
+                      if (!admin && !(mine && recent))
+                        return html::SafeHtml();
+                      return editGameLinkTemplate.render({{"id", row["game_id"]}, {"redirect", redirect}});
+                    });
+  }
   table.addColumn("result", "",
                   {{String("IF(game.jigo, 'JIGO', IF(") + isWinner + ", 'WIN', 'LOSS'))", "result"}, {"NULL", "rating_change_type_id"}},
                   [p](const Row& row) { return resultImage(*p, row["result"]); }, Align::center)
       .addSecondary({{"NULL", "result"}, {"rating_change_type_id", "rating_change_type_id"}});
-  table.addColumn("rating_change", "Rating",
-                  {{String("IF(") + isWinner + ", IFNULL(game.winner_new_rating, 0) - IFNULL(game.winner_old_rating, 0),"
-                                               " IFNULL(game.loser_new_rating, 0) - IFNULL(game.loser_old_rating, 0))", "rating_change"},
-                   {String("IF(") + isWinner + ", game.winner_old_rating, game.loser_old_rating)", "old_rating"},
-                   {String("IF(") + isWinner + ", game.winner_new_rating, game.loser_new_rating)", "new_rating"}},
-                  [](const Row& row) {
-                    return truthy(row["old_rating"]) ? showRatingChange(row["old_rating"], row["new_rating"]) : html::SafeHtml();
-                  }, Align::center)
-      .addSecondary({{"rating_change.new_rating - rating_change.old_rating", "rating_change"},
-                     {"rating_change.old_rating", "old_rating"},
-                     {"rating_change.new_rating", "new_rating"}});
-  table.addColumn("egd_rating_change", "EGD Rating",
-                  {{String("IF(") + isWinner + ", IFNULL(game.winner_new_egd_rating, 0) - IFNULL(game.winner_old_egd_rating, 0),"
-                                               " IFNULL(game.loser_new_egd_rating, 0) - IFNULL(game.loser_old_egd_rating, 0))", "egd_rating_change"},
-                   {String("IF(") + isWinner + ", game.winner_old_egd_rating, game.loser_old_egd_rating)", "old_egd_rating"},
-                   {String("IF(") + isWinner + ", game.winner_new_egd_rating, game.loser_new_egd_rating)", "new_egd_rating"}},
-                  [](const Row& row) {
-                    return truthy(row["old_egd_rating"]) ? showRatingChange(row["old_egd_rating"], row["new_egd_rating"]) : html::SafeHtml();
-                  }, Align::center)
-      .addSecondary({{"rating_change.new_egd_rating - rating_change.old_egd_rating", "egd_rating_change"},
-                     {"rating_change.old_egd_rating", "old_egd_rating"},
-                     {"rating_change.new_egd_rating", "new_egd_rating"}});
+  TableColumn& rating = table.addColumn(
+      "rating_change", "Rating",
+      {{String("IF(") + isWinner + ", IFNULL(game.winner_new_rating, 0) - IFNULL(game.winner_old_rating, 0),"
+                                   " IFNULL(game.loser_new_rating, 0) - IFNULL(game.loser_old_rating, 0))", "rating_change"},
+       {String("IF(") + isWinner + ", game.winner_old_rating, game.loser_old_rating)", "old_rating"},
+       {String("IF(") + isWinner + ", game.winner_new_rating, game.loser_new_rating)", "new_rating"}},
+      [](const Row& row) { return ratingChangeCells(row["old_rating"], row["new_rating"]); });
+  rating.writesCells = true;
+  rating.headerColspan = ratingChangeFormat == 2 ? 2 : 1;
+  rating.addSecondary({{"rating_change.new_rating - rating_change.old_rating", "rating_change"},
+                       {"rating_change.old_rating", "old_rating"},
+                       {"rating_change.new_rating", "new_rating"}});
+  TableColumn& egdRating = table.addColumn(
+      "egd_rating_change", "EGD Rating",
+      {{String("IF(") + isWinner + ", IFNULL(game.winner_new_egd_rating, 0) - IFNULL(game.winner_old_egd_rating, 0),"
+                                   " IFNULL(game.loser_new_egd_rating, 0) - IFNULL(game.loser_old_egd_rating, 0))", "egd_rating_change"},
+       {String("IF(") + isWinner + ", game.winner_old_egd_rating, game.loser_old_egd_rating)", "old_egd_rating"},
+       {String("IF(") + isWinner + ", game.winner_new_egd_rating, game.loser_new_egd_rating)", "new_egd_rating"}},
+      [](const Row& row) { return ratingChangeCells(row["old_egd_rating"], row["new_egd_rating"]); });
+  egdRating.writesCells = true;
+  egdRating.headerColspan = ratingChangeFormat == 2 ? 2 : 1;
+  egdRating.addSecondary({{"rating_change.new_egd_rating - rating_change.old_egd_rating", "egd_rating_change"},
+                          {"rating_change.old_egd_rating", "old_egd_rating"},
+                          {"rating_change.new_egd_rating", "new_egd_rating"}});
   table.addColumn("opponent_name", "Opponent",
                   {{String("IF(") + isWinner + ", loser.name, winner.name)", "opponent_name"},
                    {String("IF(") + isWinner + ", loser.username, winner.username)", "opponent_username"},

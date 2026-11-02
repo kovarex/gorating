@@ -27,6 +27,8 @@ bool route(Page& page, StringView name)
     playerPage(page, page.get("id"));
   else if (name == "login")
     loginPage(page);
+  else if (name == "settings")
+    settingsPage(page);
   else if (isPageName(name))
     return false;
   else if (!playerByUsername(page, name))
@@ -79,6 +81,7 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   String name = request.path.size() > 0 ? request.path.substr(1) : String();
   readSession(page);
   ratingDigits = significantDigits(page);
+  ratingChangeFormat = userValue(page, "setting_rating_change_format") == "2" ? 2 : 1;
   // The pages without the layout.
   if (name == "sgf")
   {
@@ -88,6 +91,11 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   if (name == "login_action")
   {
     loginAction(page, response);
+    return;
+  }
+  if (name == "settings_action")
+  {
+    settingsAction(page, response);
     return;
   }
   if (name == "logout")

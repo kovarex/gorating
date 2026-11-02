@@ -1,0 +1,47 @@
+// The user's display settings (settings.php, settings_action.php): rating decimals and the rating
+// change format. They live in the user's row, which every request reads, so they apply at once.
+
+constexpr html::HtmlTemplate settingsTemplate(R"(<form method="post" action="/settings_action"><table><tr><td><label for="significant_digits">Singificant digits to show in rating:</label></td><td><select id="significant_digits" name="significant_digits">{{digits}}</select></td></tr><tr><td><label for="rating_change_format">Rating change format:</label></td><td>{{format1}} <label for="format_1">1657&rarr;1667</label><br/>
+{{format2}} <label for="format_2">+12 1667</label><br/>
+</td></tr></table><input type="submit" value="submit"/></form>)");
+constexpr html::HtmlTemplate digitOptionTemplate(R"(<option value="{{value}}">{{value}}</option>)");
+constexpr html::HtmlTemplate selectedDigitOptionTemplate(R"(<option value="{{value}}" selected="selected">{{value}}</option>)");
+constexpr html::HtmlTemplate formatRadioTemplate(R"(<input type="radio" id="format_{{value}}" name="rating_change_format" value="{{value}}"/>)");
+constexpr html::HtmlTemplate checkedFormatRadioTemplate(R"(<input type="radio" id="format_{{value}}" name="rating_change_format" value="{{value}}" checked="checked"/>)");
+
+void settingsPage(Page& page)
+{
+  if (!loggedIn(page))
+  {
+    page.body.append(pageMessageTemplate.render({{"message", "Not logged in"}}));
+    return;
+  }
+  html::SafeHtml digits;
+  for (int i = 0; i <= 3; ++i)
+    digits.append((i == ratingDigits ? selectedDigitOptionTemplate : digitOptionTemplate).render({{"value", i}}));
+  page.body.append(settingsTemplate.render(
+      {{"digits", digits},
+       {"format1", (ratingChangeFormat != 2 ? checkedFormatRadioTemplate : formatRadioTemplate).render({{"value", 1}})},
+       {"format2", (ratingChangeFormat == 2 ? checkedFormatRadioTemplate : formatRadioTemplate).render({{"value", 2}})}}));
+}
+
+void settingsAction(Page& page, http::HttpResponse& response)
+{
+  if (!loggedIn(page))
+    return redirectWithMessage(response, "/", "Not logged in");
+  if (page.request->method != "POST")
+  {
+    response.redirect("/settings");
+    return;
+  }
+  Vector<url::UrlQueryParameter> form = page.request->form();
+  String digits = formValue(form, "significant_digits");
+  String format = formValue(form, "rating_change_format");
+  if (digits != "0" && digits != "1" && digits != "2" && digits != "3")
+    return redirectWithMessage(response, "/settings", "Significant digits are 0 to 3");
+  if (format != "1" && format != "2")
+    return redirectWithMessage(response, "/settings", "Invalid rating change format value");
+  page.query(String("UPDATE user SET setting_significant_digits_in_rating=") + digits +
+             ", setting_rating_change_format=" + format + " WHERE id=" + quote(userValue(page, "id")));
+  response.redirect("/");
+}

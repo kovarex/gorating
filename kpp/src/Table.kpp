@@ -18,6 +18,8 @@ struct TableColumn
   Function<html::SafeHtml(const Row&)> cell;
   Align align = Align::left;
   bool defaultAscending = true;
+  bool writesCells = false;          // cell gives the <td> elements itself (two, with headerColspan 2)
+  int headerColspan = 1;
   bool hasSecondary = false;         // with Table::secondaryFrom: what the second query selects
   Vector<SqlColumn> secondarySql;    // (else NULL for each of sql's columns)
 
@@ -42,6 +44,7 @@ constexpr html::HtmlTemplate tableTemplate(R"(<br/>
 {{caption}}<tr>{{header}}</tr>{{rows}}</table>)");
 constexpr html::HtmlTemplate captionTemplate(R"(<caption>{{content}}</caption>)");
 constexpr html::HtmlTemplate headerTemplate(R"(<th><span style="vertical-align: middle;">{{content}}</span></th>)");
+constexpr html::HtmlTemplate wideHeaderTemplate(R"(<th colspan="2"><span style="vertical-align: middle;">{{content}}</span></th>)");
 constexpr html::HtmlTemplate sortImageTemplate(R"(<img class="sorting-image" src="{{resources}}/img/arrow-{{direction}}.png"/>)");
 constexpr html::HtmlTemplate rowTemplate(R"(<tr>{{cells}}</tr>
 )");
@@ -191,7 +194,7 @@ struct Table
           content.append(sortImageTemplate.render({{"resources", this->page->config->resourceAddress},
                                                    {"direction", this->currentSort->ascending ? "up" : "down"}}));
       }
-      out.append(headerTemplate.render({{"content", content}}));
+      out.append((column.headerColspan == 2 ? wideHeaderTemplate : headerTemplate).render({{"content", content}}));
     }
     return out;
   }
@@ -285,6 +288,11 @@ struct Table
       for (const TableColumn& column : this->columns)
       {
         html::SafeHtml content = column.cell(row);
+        if (column.writesCells)
+        {
+          cells.append(content);
+          continue;
+        }
         const html::HtmlTemplate& t = column.align == Align::center ? centerCellTemplate
                                       : column.align == Align::right ? rightCellTemplate : cellTemplate;
         cells.append(t.render({{"content", content}}));

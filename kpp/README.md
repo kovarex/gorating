@@ -13,7 +13,7 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   checked against the existing bcrypt hashes, so everyone logs in once with the same password.
 - `src/Table.kpp`: table_viewer.php. `src/Layout.kpp`: the header, menu and footer.
 - `src/pages/`: one file per page. Ported: home, about, tournaments, tournament, players, player
-  (and /username), game, the SGF download; the
+  (and /username), game, the SGF download, login, settings; the
   others answer 501.
 - `testdata/compare.sh`: fetches paths from the PHP site (port 8081) and this one (8082) and
   compares the HTML after masking the differences below; `PHP_JAR` and `KPP_JAR` name curl cookie
