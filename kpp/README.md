@@ -35,6 +35,11 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   random secrets masked).
 - `testdata/generate.py`: made-up data for a local database (no real person in it).
 
+**Tests.** `kpp --test` here: src/tests/ checks the rating formula, ranks, handicaps, rating jumps
+and PHP's printing of numbers against what PHP's code gives (RatingVectors.kpp, written by
+`php testdata/generate_rating_tests.php`: 1,680 rating computations equal to the bit), the EGD
+reader, and PHP's is_numeric and loose equality.
+
 **Building.** `kpp` in this directory, with `libraries` a link to kpp's `libraries` directory
 (`mklink /J libraries <kpp checkout>\libraries`) until they are in kpp's registry.
 

@@ -47,5 +47,17 @@ String phpNumber(double value)
 {
   char buffer[64];
   snprintf(buffer, 64, "%.14G", value);
-  return String(StringView(buffer));
+  String text(StringView(buffer));
+  ContainerSize e = text.find('E');
+  if (e == String::npos)
+    return text;
+  // PHP's exponent form: "1.0E-7", not C's "1E-07".
+  String mantissa = text.substr(0, e);
+  if (mantissa.find('.') == String::npos)
+    mantissa.append(".0");
+  String sign(1, text[e + 1]);
+  String digits = text.substr(e + 2);
+  while (digits.size() > 1 && digits[0] == '0')
+    digits = digits.substr(1);
+  return mantissa + "E" + sign + digits;
 }
