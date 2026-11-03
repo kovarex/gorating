@@ -81,6 +81,14 @@ void playersPage(Page& page)
                   [](const Row& row) { return html::SafeHtml::escape(row["country_code"]); });
   table.addColumn("admin_level_id", "Role", {{"admin_level.id", "admin_level_id"}, {"admin_level.name", "admin_level_name"}},
                   [](const Row& row) { return html::SafeHtml::escape(row["admin_level_name"]); });
+  if (canSeeInviters(page))
+    table.addColumn("inviter_name", "Invited By",
+                    {{"inviter.id", "inviter_id"}, {"inviter.name", "inviter_name"}, {"inviter.username", "inviter_username"},
+                     {"inviter.rating", "inviter_rating"}},
+                    [](const Row& row) { return playerLink(row, "inviter"); });
+  if (canSeeEmails(page))
+    table.addColumn("user_email", "Email", {{"user.email", "user_email"}},
+                    [](const Row& row) { return html::SafeHtml::escape(row["user_email"]); });
   table.addColumn("user_register_timestamp", "Registered", {{"user.register_timestamp", "user_register_timestamp"}},
                   [](const Row& row) { return html::SafeHtml::escape(showDate(row["user_register_timestamp"], true)); });
   for (StringView column : {"overall_game_count", "overall_win_count", "overall_loss_count", "game_count"})
