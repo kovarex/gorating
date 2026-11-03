@@ -67,7 +67,13 @@ with (PHP: 0), a tournament's games from the ratings before it whatever order th
 its rounds in (PHP chained them), and a deleted tournament game does not count when the tournament
 is processed again; a tournament EGD adds or corrects after later games were computed starts a
 recomputation of its players' later games, which the hourly update_tournament_list moves on (PHP's
-moved only when a game was deleted or edited).
+moved only when a game was deleted or edited). Deleting and restoring a game is a POST form with a
+confirmation (PHP: a script opened a GET address); the edit form is shown only to whoever may save
+it (PHP showed it to everyone and refused the save); a column that cannot be sorted (edit, delete,
+restore) has no sort link, and a list's links keep only the filters that are set; PHP's HTML
+mistakes (`selected="select"`, a `</form>` inside a label, `</br>`) and the invites page's typos are
+fixed; a page refused for lack of rights shows its message in the message box, and a report page
+without a player says so where PHP printed warnings.
 
 **Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). It waits for kpp to
 build FreeBSD programs (exceptions and the FreeBSD sysroot, kpp's docs/design.md "Targets and

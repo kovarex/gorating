@@ -94,6 +94,11 @@ void tournamentPage(Page& page)
       html::SafeHtml content;
       if (cell.present)
       {
+        if (canEditAnyGame(page))
+        {
+          content.append(editGameLinkTemplate.render({{"id", cell.gameId}, {"redirect", String("/tournament?id=") + id}}));
+          content.append(html::SafeHtml::trusted(" "));
+        }
         content.append(resultImage(page, cell.result));
         content.append(html::SafeHtml::trusted(" "));
         content.append(playerLink(cell.opponent));

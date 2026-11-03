@@ -216,7 +216,7 @@ bool processRatingIteration(Page& page)
   String gameTimestamp = row["game_timestamp"];
   int gameType = (int)stoll(row["game_type_id"]);
   Optional<String> tournament = found.at(0, "game_egd_tournament_id");
-  String when = String("STR_TO_DATE(") + quote(gameTimestamp) + ",'%Y-%m-%d %H:%i:%s')";
+  String gameTime = String("STR_TO_DATE(") + quote(gameTimestamp) + ",'%Y-%m-%d %H:%i:%s')";
   if (phpTrue(tournament))
   {
     // Each side as processTournament computes it; the player's update value is their rating after
@@ -230,7 +230,7 @@ bool processRatingIteration(Page& page)
       String userId = prefix == "winner" ? winnerId : loserId;
       TournamentSide side = tournamentSide(page, userId, gameId, *tournament, gameTimestamp);
       set.append(p + "_old_rating=" + side.oldRating + "," + p + "_new_rating=" + side.newRating + ",");
-      page.query(String("CALL add_or_force_update_user_rating_update_value(") + userId + "," + side.end + "," + when + ")");
+      page.query(String("CALL add_or_force_update_user_rating_update_value(") + userId + "," + side.end + "," + gameTime + ")");
     }
     page.query(String("UPDATE game SET ") + set + " rating_update_version=" + version + " WHERE game.id=" + gameId);
     return false;
@@ -263,9 +263,9 @@ bool processRatingIteration(Page& page)
   }
   page.query(String("UPDATE game SET ") + set + " rating_update_version=" + version + " WHERE game.id=" + gameId);
   if (winnerNew.has_value())
-    page.query(String("CALL add_or_force_update_user_rating_update_value(") + winnerId + "," + *winnerNew + "," + when + ")");
+    page.query(String("CALL add_or_force_update_user_rating_update_value(") + winnerId + "," + *winnerNew + "," + gameTime + ")");
   if (loserNew.has_value())
-    page.query(String("CALL add_or_force_update_user_rating_update_value(") + loserId + "," + *loserNew + "," + when + ")");
+    page.query(String("CALL add_or_force_update_user_rating_update_value(") + loserId + "," + *loserNew + "," + gameTime + ")");
   return false;
 }
 
