@@ -28,6 +28,8 @@ SELECT 'egd_tournament_result', r.* FROM egd_tournament_result r ORDER BY id;
 SELECT 'egd_tournament_to_process', q.* FROM egd_tournament_to_process q ORDER BY id;
 SELECT 'rating_update_value', r.* FROM rating_update_value r ORDER BY user_id;
 SELECT 'user_game_count_to_update', u.* FROM user_game_count_to_update u ORDER BY user_id;
+SELECT 'rating_discrepancy', game_id, user_id, kind, stored_old, stored_new, computed_old, computed_new, corrected
+       FROM rating_discrepancy ORDER BY game_id, user_id, kind;
 EOF
 }
 dump gorating_php > /tmp/db-php.txt

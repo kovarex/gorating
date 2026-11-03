@@ -1,5 +1,5 @@
 // The admins' pages: deleted games with a way back (deleted_games.php), the change log
-// (changes.php), and a mod's edit of a player's name (edit_player_name_action.php).
+// (changes.php), the rating discrepancies (new), and a mod's edit of a player's name (edit_player_name_action.php).
 
 constexpr html::HtmlTemplate restoreButtonTemplate(R"(<form method="post" action="/restore_game_action" onsubmit="return confirm('Are you sure to restore the game?');" style="display:inline;"><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="redirect" value="{{redirect}}"/><input type="submit" value="Restore"/></form>)");
 constexpr html::HtmlTemplate deleteButtonTemplate(R"(<form method="post" action="/delete_game_action" onsubmit="return confirm('Are you sure to delete the game?');" style="display:inline;"><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="redirect" value="{{redirect}}"/><input type="submit" value="X"/></form>)");
@@ -122,6 +122,50 @@ void changesPage(Page& page)
   }
   table.addColumn("timestamp", "Date", {{"change.timestamp", "timestamp"}},
                   [](const Row& row) { return html::SafeHtml::escape(showDate(row["timestamp"], true)); });
+  page.body.append(table.render());
+}
+
+// What processing tournaments again found different from the stored games (rating_discrepancy,
+// jobs/Tournaments.kpp's noteRatingDiscrepancy); new in the kpp version.
+void ratingDiscrepanciesPage(Page& page)
+{
+  if (!canAccessChanges(page))
+  {
+    page.body.append(pageMessageTemplate.render({{"message", "No rights."}}));
+    return;
+  }
+  Table table(page, "rating_discrepancy JOIN user ON rating_discrepancy.user_id=user.id");
+  Sort primary;
+  primary.column = "last_seen";
+  primary.ascending = false;
+  table.currentSort = Optional<Sort>(primary);
+  Sort last;
+  last.column = "discrepancy_id";
+  last.ascending = false;
+  table.lastSort = Optional<Sort>(last);
+  table.addColumn("game", "Game", {{"rating_discrepancy.game_id", "game_id"}, {"rating_discrepancy.id", "discrepancy_id"}},
+                  [](const Row& row) { return gameLinkTemplate.render({{"id", row["game_id"]}}); });
+  table.addColumn("user", "Player",
+                  {{"user.name", "user_name"}, {"user.id", "user_id"}, {"user.username", "user_username"}, {"user.rating", "user_rating"}},
+                  [](const Row& row) { return playerLink(row, "user"); });
+  table.addColumn("kind", "Kind", {{"rating_discrepancy.kind", "kind"}}, [](const Row& row) {
+    return html::SafeHtml::escape(row["kind"] == "egd" ? "EGD's ratings changed" : row["kind"] == "own" ? "gorating's ratings differ"
+                                                                                                         : "game added by EGD");
+  });
+  for (StringView column : {"stored_old", "stored_new", "computed_old", "computed_new"})
+  {
+    String c(column);
+    table.addColumn(c, column == "stored_old" ? "Stored before" : column == "stored_new" ? "Stored after"
+                       : column == "computed_old" ? "Now before" : "Now after",
+                    {{String("rating_discrepancy.") + c, c}}, [c](const Row& row) { return html::SafeHtml::escape(row[c]); },
+                    Align::center);
+  }
+  table.addColumn("corrected", "Corrected", {{"rating_discrepancy.corrected", "corrected"}},
+                  [](const Row& row) { return html::SafeHtml::escape(row["corrected"] == "1" ? "yes" : "no"); }, Align::center);
+  table.addColumn("first_seen", "First seen", {{"rating_discrepancy.first_seen", "first_seen"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showDate(row["first_seen"], true)); });
+  table.addColumn("last_seen", "Last seen", {{"rating_discrepancy.last_seen", "last_seen"}},
+                  [](const Row& row) { return html::SafeHtml::escape(showDate(row["last_seen"], true)); });
   page.body.append(table.render());
 }
 

@@ -3,9 +3,9 @@
 // reset_password*.php, src/register_helper.php).
 //
 // Fixed on the way: the secrets came from rand() (predictable) and now come from the operating
-// system; a reset link's hour never ran out (the check was inverted); the reset form said whether
-// an address has an account; mails had names in them unescaped. The secrets are still 31 bits,
-// the size of their columns.
+// system, 128 bits instead of 31 (migrations/001 widened their columns); a reset link's hour never
+// ran out (the check was inverted); the reset form said whether an address has an account; mails
+// had names in them unescaped.
 
 String siteAddress(const Page& page)
 {
@@ -126,9 +126,9 @@ void inviteAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/invites", "The rating is a number");
   if (!page.query(String("SELECT id FROM user WHERE email=") + quote(email)).empty())
     return redirectWithMessage(response, "/invites", "Player with this email is already registered");
-  String secret = format("{}", secureRandomSecret());
+  String secret = secureRandomSecret();
   page.query(String("INSERT INTO invite(from_user_id, first_name, last_name, email, secret, rating) VALUES (") +
-             quote(userValue(page, "id")) + "," + quote(first) + "," + quote(last) + "," + quote(email) + "," + secret + "," +
+             quote(userValue(page, "id")) + "," + quote(first) + "," + quote(last) + "," + quote(email) + "," + quote(secret) + "," +
              quoteOrNull(rating) + ")");
   String id = *page.db->scalar("SELECT LAST_INSERT_ID()");
   sendMail(*page.config, email, "Friendly go rating invitation",
@@ -194,9 +194,9 @@ void inviteExistingUserAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/invites", "That is not an email address");
   if (!page.query(String("SELECT id FROM user WHERE email=") + quote(email)).empty())
     return redirectWithMessage(response, "/invites", "Player with this email is already registered");
-  String secret = format("{}", secureRandomSecret());
+  String secret = secureRandomSecret();
   page.query(String("INSERT INTO invite(from_user_id, user_id, email, secret) VALUES (") + quote(userValue(page, "id")) + "," +
-             quote(userId) + "," + quote(email) + "," + secret + ")");
+             quote(userId) + "," + quote(email) + "," + quote(secret) + ")");
   String id = *page.db->scalar("SELECT LAST_INSERT_ID()");
   sendMail(*page.config, email, "Friendly go rating invitation",
            inviteExistingMailTemplate.render({{"player", siteAddress(page) + playerPath(user["id"], user["username"])},
@@ -392,8 +392,8 @@ void resetPasswordAction(Page& page, http::HttpResponse& response)
   Row user(found, 0);
   if (!user["since"].empty() && stoll(user["since"]) < resetInterval)
     return redirectWithMessage(response, "/", answer);
-  String secret = format("{}", secureRandomSecret());
-  page.query(String("UPDATE user SET reset_password_secret=") + secret + ", reset_password_timestamp=now() WHERE id=" + quote(user["id"]));
+  String secret = secureRandomSecret();
+  page.query(String("UPDATE user SET reset_password_secret=") + quote(secret) + ", reset_password_timestamp=now() WHERE id=" + quote(user["id"]));
   sendMail(*page.config, email, "gorating.com password reset",
            resetMailTemplate.render({{"link", siteAddress(page) + "/reset_password_confirm?id=" + user["id"] + "&secret=" + secret}}));
   redirectWithMessage(response, "/", answer);

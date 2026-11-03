@@ -47,6 +47,8 @@ bool route(Page& page, StringView name)
     deletedGamesPage(page);
   else if (name == "changes")
     changesPage(page);
+  else if (name == "rating_discrepancies")
+    ratingDiscrepanciesPage(page);
   else if (isPageName(name))
     return false;
   else if (!playerByUsername(page, name))

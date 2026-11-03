@@ -1,9 +1,10 @@
 #!/bin/bash
 # Fetches each path (one per line on stdin) from PHP (8081) and kpp (8082) and compares the HTML
 # after masking the differences made on purpose: escaping, absolute links, quoted attributes, an
-# empty value attribute, the generation time.
+# empty value attribute, the generation time, the admins' menu item of the rating discrepancies.
 norm() {
   sed -e 's/Page generated in [0-9.]* seconds//' \
+      -e '\#<a href="/rating_discrepancies">Rating discrepancies</a>$#d' \
       -e 's/href="\//href="/g' \
       -e 's/action="\/login"/action="login"/' \
       -e 's/&amp;/\&/g' -e "s/&#39;/'/g" -e 's/&quot;/"/g' -e 's/&lt;/</g' -e 's/&gt;/>/g' \

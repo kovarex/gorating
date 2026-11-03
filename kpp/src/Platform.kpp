@@ -22,14 +22,18 @@ String secureRandomBytes(int n)
   return out;
 }
 
-// A secret for an invite or a password reset: the columns hold an int, so 31 random bits.
-int64_t secureRandomSecret()
+// A secret for an invite or a password reset (or a unique file name): 128 random bits as 32
+// hexadecimal digits (migrations/001 widened the columns).
+String secureRandomSecret()
 {
-  String bytes = secureRandomBytes(4);
-  uint32_t value = 0;
-  for (int i = 0; i < 4; ++i)
-    value = (value << 8) | (uint8_t)bytes[i];
-  return (int64_t)(value & 0x7fffffffu);
+  String bytes = secureRandomBytes(16);
+  String out;
+  for (char c : bytes)
+  {
+    out.push_back("0123456789abcdef"[(uint8_t)c >> 4]);
+    out.push_back("0123456789abcdef"[(uint8_t)c & 15]);
+  }
+  return out;
 }
 
 // Runs command with text on its standard input; its exit code.

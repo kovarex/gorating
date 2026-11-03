@@ -58,6 +58,8 @@ html::SafeHtml menu(const Page& page)
     out.append(menuItemTemplate.render({{"href", "/invites"}, {"text", "Invites"}}));
   if (canAccessChanges(page))
     out.append(menuItemTemplate.render({{"href", "/changes"}, {"text", "Changes"}}));
+  if (canAccessChanges(page))
+    out.append(menuItemTemplate.render({{"href", "/rating_discrepancies"}, {"text", "Rating discrepancies"}}));
   if (canAccessDeletedGames(page))
     out.append(menuItemTemplate.render({{"href", "/deleted_games"}, {"text", "Deleted games"}}));
   out.append(menuItemTemplate.render({{"href", "/about"}, {"text", "About"}}));

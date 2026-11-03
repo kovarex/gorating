@@ -23,6 +23,9 @@ Until then the site runs on one's own machine only (README.md).
 - A database for it in the MariaDB process: a new database `gorating_test` and a user with rights
   on it only. Load a copy of production into it (`mariadb-dump --single-transaction --routines
   --triggers --hex-blob`, as for the local copy), never the production database itself.
+- The kpp version's changes to the database, once, on that copy: each file of `migrations/` in
+  order (`mariadb gorating_test < migrations/001-secrets-and-rating-discrepancies.sql`). The PHP
+  site works on the changed database too (tested locally).
 
 ## 2. The files (kovarex, over SSH)
 
@@ -68,12 +71,15 @@ The site uses no other files and writes none: sessions are signed cookies, mail 
 3. Report a game against a test account, edit it, delete it and restore it (an admin), and check
    the ratings on both players' pages.
 4. An invite to one's own address: the mail arrives, its link registers.
-5. Apache's error log (`/home/logs/error_log`) has the program's messages for any 500.
+5. As an admin, the menu's "Rating discrepancies" (empty until a tournament is processed again;
+   check_rating_changes does that).
+6. Apache's error log (`/home/logs/error_log`) has the program's messages for any 500.
 
 ## 4. The switch (kovarex decides when)
 
 - The cron job (NFS panel, Scheduled Tasks) that calls `update_tournament_list` hourly gets
   `?secret=<jobSecret>` added to its address: the kpp version's jobs need it (PHP's were open).
-- Then: the same files on the gorating.com site, its config pointing at the production database,
+- Then: `migrations/` on the production database (PHP keeps working on it, so this can come
+  first), the same files on the gorating.com site, its config pointing at the production database,
   and the PHP files moved aside (kept, so going back is renaming them).
 - Everyone logs in once: PHP's sessions do not carry over (kovarex agreed, 2026-11-02).

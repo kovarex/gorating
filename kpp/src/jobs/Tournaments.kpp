@@ -2,12 +2,14 @@
 // a tournament's GoR page gives its facts and each player's block of games; each game is stored
 // once (the first of its two players seen inserts it, the second fills in its side), with EGD's
 // ratings and, for players registered before the tournament, gorating's own. Processing a
-// tournament again (rating checks do) corrects what differs.
+// tournament again (rating checks do) corrects a game whose EGD ratings changed and notes every
+// difference it finds in rating_discrepancy (noteRatingDiscrepancy).
 //
 // Ported as PHP computes it, so the database gets the same values: the comparisons run both on the
 // same saved pages (testdata/scenario-*.sh). On purpose: an opponent's whole name is kept (PHP kept
-// two words). Kept until kovarex decides: a reprocessed game is corrected only when its EGD ratings
-// differ; PHP meant to compare its gorating ratings too, but compared an undefined variable.
+// two words); the differences are noted (kovarex, 2026-11-03: a game whose gorating ratings differ
+// while its EGD ones do not is an error to notice and decide about later, so it is left as it is;
+// PHP meant to correct it but compared an undefined variable).
 
 // A cell's text as PHP compared it.
 String egdCell(const HtmlDocument& doc, const Vector<int>& cells, ContainerSize index)
@@ -44,6 +46,53 @@ const String* processedGame(const Vector<ProcessedGame>& processed, StringView p
 
 // Whether a and b differ by more than PHP's tolerance (PHP: abs($a - $b) <= 0.0001).
 bool egdDiffers(StringView a, double b) { return !(ratingValue(a) - b <= 0.0001 && b - ratingValue(a) <= 0.0001); }
+
+// Whether a stored rating (none for NULL) and a computed one (none when gorating's is not kept) differ.
+bool ratingDiffers(const Optional<String>& stored, const Optional<PhpNumber>& computed)
+{
+  if (!stored.has_value() || !computed.has_value())
+    return stored.has_value() != computed.has_value();
+  return egdDiffers(*stored, computed->value);
+}
+
+String sqlOrNull(const Optional<PhpNumber>& n) { return n.has_value() ? n->sql() : String("NULL"); }
+
+// What processing a tournament again found: kind is 'egd' (EGD's ratings changed), 'own' (gorating's
+// computed again differ) or 'added' (a game EGD did not have before). Found again, the row gets the
+// latest values (migrations/001).
+void noteRatingDiscrepancy(Page& page, StringView gameId, StringView userId, StringView kind, const Optional<String>& storedOld,
+                           const Optional<String>& storedNew, const Optional<PhpNumber>& computedOld,
+                           const Optional<PhpNumber>& computedNew, bool corrected)
+{
+  page.query(String("INSERT INTO rating_discrepancy(game_id, user_id, kind, stored_old, stored_new, computed_old, computed_new, corrected)"
+                    " VALUES(") +
+             quote(gameId) + "," + quote(userId) + "," + quote(kind) + "," + mariadb::mariaDbQuoteOrNull(storedOld) + "," +
+             mariadb::mariaDbQuoteOrNull(storedNew) + "," + sqlOrNull(computedOld) + "," + sqlOrNull(computedNew) + "," +
+             (corrected ? "true" : "false") +
+             ") ON DUPLICATE KEY UPDATE stored_old=VALUES(stored_old), stored_new=VALUES(stored_new), computed_old=VALUES(computed_old),"
+             " computed_new=VALUES(computed_new), corrected=VALUES(corrected), last_seen=CURRENT_TIMESTAMP");
+}
+
+// A player's side of a game already stored, when its tournament is processed again (stored: its
+// old, new, old_egd and new_egd ratings): corrected when EGD's ratings changed, as PHP did; every
+// difference noted.
+void checkStoredGame(Page& page, const mariadb::MariaDbResult& stored, StringView gameId, StringView userId, StringView prefix,
+                     const PhpNumber& oldGor, const PhpNumber& newGor, const Optional<PhpNumber>& oldOwn,
+                     const Optional<PhpNumber>& newOwn, StringView ownRatings)
+{
+  Row row(stored, 0);
+  bool egdChanged = egdDiffers(row["old_egd"], oldGor.value) || egdDiffers(row["new_egd"], newGor.value);
+  if (egdChanged)
+  {
+    page.query(String("UPDATE game SET ") + String(prefix) + "old_egd_rating=" + oldGor.sql() + ", " + String(prefix) +
+               "new_egd_rating=" + newGor.sql() + String(ownRatings) + " WHERE id=" + String(gameId));
+    noteRatingDiscrepancy(page, gameId, userId, "egd", stored.at(0, "old_egd"), stored.at(0, "new_egd"), Optional<PhpNumber>(oldGor),
+                          Optional<PhpNumber>(newGor), true);
+  }
+  if (ratingDiffers(stored.at(0, "old"), oldOwn) || ratingDiffers(stored.at(0, "new"), newOwn))
+    noteRatingDiscrepancy(page, gameId, userId, "own", stored.at(0, "old"), stored.at(0, "new"), oldOwn, newOwn,
+                          egdChanged && newOwn.has_value());
+}
 
 // Processes the tournament of key, or the first one queued in egd_tournament_to_process when key is
 // empty. False when there was none queued; a page or a database that does not fit throws, and the
@@ -263,13 +312,10 @@ bool processTournament(Page& page, String key)
             page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + "," + prefix + "new_egd_rating=" +
                        newGor.sql() + ownRatings + " WHERE id=" + id);
           else
-          {
-            mariadb::MariaDbResult stored = page.query(String("SELECT ") + prefix + "old_egd_rating as old_egd," + prefix +
-                                                       "new_egd_rating as new_egd FROM game WHERE id=" + id);
-            if (egdDiffers(Row(stored, 0)["old_egd"], currentGor.value) || egdDiffers(Row(stored, 0)["new_egd"], newGor.value))
-              page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + ", " + prefix + "new_egd_rating=" +
-                         newGor.sql() + ownRatings + " WHERE id=" + id);
-          }
+            checkStoredGame(page,
+                            page.query(String("SELECT ") + prefix + "old_rating as old, " + prefix + "new_rating as new, " + prefix +
+                                       "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd FROM game WHERE id=" + id),
+                            id, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings);
           gameId = id;
         }
         else
@@ -291,16 +337,16 @@ bool processTournament(Page& page, String key)
                        (winnerIsBlack ? "true" : "false") + "," + quoteOrNull(handicap) + "," + quote(phpNumber(komi)) + "," +
                        quote(tournamentId) + "," + quote(round) + "," + (jigo ? "true" : "false") + ")");
             gameId = *page.db->scalar("SELECT LAST_INSERT_ID()");
+            if (existed)
+              noteRatingDiscrepancy(page, gameId, userId, "added", Optional<String>(), Optional<String>(), Optional<PhpNumber>(currentGor),
+                                    Optional<PhpNumber>(newGor), true);
           }
           else
           {
             if (stored.size() > 1)
               throw GoratingError("Processing existing tournament, but there are more games with the parameters.");
-            Row game(stored, 0);
-            gameId = game["id"];
-            if (egdDiffers(game["old_egd"], currentGor.value) || egdDiffers(game["new_egd"], newGor.value))
-              page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + ", " + prefix + "new_egd_rating=" +
-                         newGor.sql() + ownRatings + " WHERE id=" + gameId);
+            gameId = Row(stored, 0)["id"];
+            checkStoredGame(page, stored, gameId, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings);
           }
         }
         currentGor = newGor;

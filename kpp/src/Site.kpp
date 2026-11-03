@@ -73,7 +73,7 @@ bool isPageName(StringView name)
                           "settings_action", "update_tournament_list", "check_rating_changes", "login", "player",
                           "players", "invites", "tournaments", "tournament", "register", "report", "about",
                           "get_all_egd_players", "deleted_games", "invite_existing_user", "edit_game", "reset_password",
-                          "reset_password_confirm", "settings", "changes", "game"})
+                          "reset_password_confirm", "settings", "changes", "game", "rating_discrepancies"})
     if (name == page)
       return true;
   return false;

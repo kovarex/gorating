@@ -24,6 +24,12 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   `jobSecret` (PHP's were open to anyone). They fetch EGD's pages through scrape.do with the
   configuration's `scrapeDoToken`, as PHP did (EGD's front end answers 403 to a plain client).
   `src/egd/`: the reader of EGD's pages.
+- `migrations/`: the kpp version's changes to the database, run once in order (DEPLOY.md): the
+  invite and password reset secrets are 128 bits (PHP's columns held an int), and
+  `rating_discrepancy` notes what processing a tournament again finds different from a stored
+  game: EGD's ratings changed (the game is corrected, as PHP did), gorating's own computed again
+  differ (left as it is: kovarex, 2026-11-03, an error to notice and decide about later), or a game
+  EGD added. Admins see them under "Rating discrepancies".
 - `src/Mail.kpp`: mail through the configuration's `mailCommand` (sendmail on the server) or into
   its `mailDirectory` (locally). `src/Platform.kpp`: the operating system's secure random source.
 - `testdata/compare.sh`: fetches paths from the PHP site (port 8081) and this one (8082) and
@@ -46,7 +52,9 @@ reader, and PHP's is_numeric and loose equality.
 **Differences from the PHP version, on purpose:** every text is escaped (names, comments,
 messages); player links are absolute (`/kovarex`), and a username that is also a page's name links
 to `/player?id=`; a table's range on its last page is right; a rating before a game counts no
-deleted game (kovarex, 2026-11-02); an EGD opponent's whole name is kept (PHP kept two words).
+deleted game (kovarex, 2026-11-02); an EGD opponent's whole name is kept (PHP kept two words);
+a column sorted by a value other than its name shows its arrow, and rows with equal values keep
+one order; invite and reset secrets are 32 hexadecimal digits; the rating discrepancies are new.
 
 **Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). It waits for kpp to
 build FreeBSD programs (exceptions and the FreeBSD sysroot, kpp's docs/design.md "Targets and
@@ -54,7 +62,5 @@ hosts").
 
 ## Not yet
 
-
-- For kovarex to decide: whether reprocessing a tournament corrects a game whose gorating ratings
-  differ when its EGD ones do not (PHP meant to, but compared an undefined variable); invite and
-  reset secrets are 31 bits because their columns are int.
+- Fetching EGD's pages on FreeBSD: kpp's httpclient library has only its Windows implementation
+  (WinHTTP) so far; the deployment waits for it and for kpp's FreeBSD target (DEPLOY.md).
