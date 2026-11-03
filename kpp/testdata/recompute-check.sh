@@ -62,3 +62,19 @@ echo "processed again: $(q "SELECT COUNT(*) FROM rating_discrepancy" || echo non
 q "CALL start_rating_update($(q "SELECT MIN(id) FROM user"), 1500, $(q "SELECT MIN(id) FROM user"), 1500, '2026-10-30 00:00:00')"
 q "CALL start_rating_update($(q "SELECT MIN(id) FROM user"), 1500, $(q "SELECT MIN(id) FROM user"), 1500, '2027-01-01 00:00:00')"
 echo "two changes: update starts at $(q "SELECT value FROM variable WHERE name='rating_update_timestamp'")"
+# A tournament added after a later game was computed: the later game is recomputed from it.
+q "UPDATE variable SET value='0' WHERE name='rating_update_in_progress'; DELETE FROM rating_update_value"
+read A B <<< "$(q "SELECT r1.user_id, r2.user_id FROM egd_tournament_result r1 JOIN egd_tournament_result r2 ON r2.egd_tournament_id=r1.egd_tournament_id
+  JOIN user u1 ON u1.id=r1.user_id JOIN user u2 ON u2.id=r2.user_id WHERE r1.egd_tournament_id=$T AND r1.user_id < r2.user_id
+  AND u1.register_rating IS NOT NULL AND u2.register_rating IS NOT NULL LIMIT 1")"
+q "INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating)
+   VALUES($A, $B, 5, (SELECT timestamp + INTERVAL 1 DAY FROM egd_tournament WHERE id=$T), 1500, 1510, 1500, 1490)"
+F=$(q "SELECT MAX(id) FROM game")
+q "DELETE FROM egd_tournament_result WHERE egd_tournament_id=$T; DELETE FROM egd_tournament WHERE id=$T"
+job process_tournament > /dev/null
+T=$(q "SELECT id FROM egd_tournament WHERE egd_key='$KEY'")
+echo "tournament added before game $F: update in progress $(q "SELECT value FROM variable WHERE name='rating_update_in_progress'")"
+for i in 1 2 3 4; do job update_rating > /dev/null; done
+last() { q "SELECT IF(winner_user_id=$1, winner_new_rating, loser_new_rating) FROM game WHERE egd_tournament_id=$T AND deleted=0 AND (winner_user_id=$1 OR loser_user_id=$1) ORDER BY egd_tournament_round DESC LIMIT 1"; }
+echo "game $F starts from $(q "SELECT winner_old_rating, loser_old_rating FROM game WHERE id=$F" | tr '\t' ' '), the tournament left $(last $A) $(last $B)"
+echo "their ratings: $(q "SELECT rating FROM user WHERE id IN ($A, $B) ORDER BY id" | tr '\n' ' ')game $F left $(q "SELECT winner_new_rating, loser_new_rating FROM game WHERE id=$F" | tr '\t' ' ')"

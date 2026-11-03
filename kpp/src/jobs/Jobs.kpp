@@ -121,6 +121,13 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   {
     int queued = queueTournaments(page, tournamentListKeys(fetchEgd(*page.config, String(egdAddress) + "EGD_2_0/downloads/tlist.html")));
     response.body = format("Queued {} tournaments.\n", queued) + processTournamentBatch(page);
+    // The cron calls only this job: it also moves a rating update on, 50 games a transaction, for up
+    // to 20 seconds (PHP's moved only when a game was deleted or edited, or update_rating called).
+    int64_t until = unixNow() + 20;
+    String progress = processRating(page, 50);
+    while (progress.starts_with("Rating update:") && unixNow() < until)
+      progress = processRating(page, 50);
+    response.body.append(progress + "\n");
   }
   else if (name == "check_new_tournaments")
   {

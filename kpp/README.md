@@ -65,7 +65,9 @@ recomputing ratings computes a game as it was computed in the first place (kovar
 a jigo is half a win, a player with no rating before starts from the one the game was computed
 with (PHP: 0), a tournament's games from the ratings before it whatever order the update reaches
 its rounds in (PHP chained them), and a deleted tournament game does not count when the tournament
-is processed again.
+is processed again; a tournament EGD adds or corrects after later games were computed starts a
+recomputation of its players' later games, which the hourly update_tournament_list moves on (PHP's
+moved only when a game was deleted or edited).
 
 **Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). It waits for kpp to
 build FreeBSD programs (exceptions and the FreeBSD sysroot, kpp's docs/design.md "Targets and

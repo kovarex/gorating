@@ -193,7 +193,11 @@ bool processRatingIteration(Page& page)
       ") as tmp GROUP BY game_id ORDER BY game_timestamp, game_egd_tournament_id, game_egd_tournament_round LIMIT 1");
   if (found.empty())
   {
-    page.query("UPDATE user JOIN rating_update_value ON rating_update_value.user_id=user.id SET user.rating=rating_update_value.rating");
+    // Each player's rating from their latest game, as processing a tournament sets it (PHP copied
+    // the update's value, which a player without gorating ratings has only to be visited by it).
+    mariadb::MariaDbResult users = page.query("SELECT user_id FROM rating_update_value ORDER BY user_id");
+    for (ContainerSize i = 0; i < users.size(); ++i)
+      updateFinalRating(page, Row(users, i)["user_id"]);
     page.query("DELETE FROM rating_update_value");
     page.query("update variable SET value='0' WHERE name='rating_update_in_progress'");
     return true;

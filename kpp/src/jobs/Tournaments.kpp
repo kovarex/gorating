@@ -77,7 +77,8 @@ void noteRatingDiscrepancy(Page& page, StringView gameId, StringView userId, Str
 // old, new, old_egd and new_egd ratings and deleted): corrected when EGD's ratings changed, as PHP
 // did; every difference noted. A deleted game does not count (kovarex, 2026-11-02): its gorating
 // ratings are neither checked nor written, and true says the player's rating stays as before it.
-bool checkStoredGame(Page& page, const mariadb::MariaDbResult& stored, StringView gameId, StringView userId, StringView prefix,
+// written becomes true when the game was written.
+bool checkStoredGame(Page& page, bool& written, const mariadb::MariaDbResult& stored, StringView gameId, StringView userId, StringView prefix,
                      const PhpNumber& oldGor, const PhpNumber& newGor, const Optional<PhpNumber>& oldOwn,
                      const Optional<PhpNumber>& newOwn, StringView ownRatings)
 {
@@ -86,6 +87,7 @@ bool checkStoredGame(Page& page, const mariadb::MariaDbResult& stored, StringVie
   bool egdChanged = egdDiffers(row["old_egd"], oldGor.value) || egdDiffers(row["new_egd"], newGor.value);
   if (egdChanged)
   {
+    written = true;
     page.query(String("UPDATE game SET ") + String(prefix) + "old_egd_rating=" + oldGor.sql() + ", " + String(prefix) +
                "new_egd_rating=" + newGor.sql() + (deleted ? String() : String(ownRatings)) + " WHERE id=" + String(gameId));
     noteRatingDiscrepancy(page, gameId, userId, "egd", stored.at(0, "old_egd"), stored.at(0, "new_egd"), Optional<PhpNumber>(oldGor),
@@ -179,6 +181,10 @@ bool processTournament(Page& page, String key)
     int placement = 1;
     Vector<ProcessedGame> processed;
     Vector<String> usersToUpdate;
+    // Each player's rating before the tournament (gorating's, else EGD's), and whether a game was
+    // written: for the update of their later games below.
+    Vector<Pair<String, String>> starts;
+    bool written = false;
     for (int div : doc.elements(0, "div"))
     {
       if (!doc.hasAttribute(div, "class", "thisdiv"))
@@ -229,6 +235,7 @@ bool processTournament(Page& page, String key)
         }
       }
       ++placement;
+      starts.push_back(Pair<String, String>(userId, userStartRating.has_value() ? *userStartRating : gorText));
 
       for (int row : doc.elements(tables[1], "tr"))
       {
@@ -314,7 +321,7 @@ bool processTournament(Page& page, String key)
           if (!existed)
             page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + "," + prefix + "new_egd_rating=" +
                        newGor.sql() + ownRatings + " WHERE id=" + id);
-          else if (checkStoredGame(page,
+          else if (checkStoredGame(page, written,
                                    page.query(String("SELECT ") + prefix + "old_rating as old, " + prefix + "new_rating as new, " + prefix +
                                               "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd, deleted FROM game WHERE id=" + id),
                                    id, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings))
@@ -340,6 +347,7 @@ bool processTournament(Page& page, String key)
                        (winnerIsBlack ? "true" : "false") + "," + quoteOrNull(handicap) + "," + quote(phpNumber(komi)) + "," +
                        quote(tournamentId) + "," + quote(round) + "," + (jigo ? "true" : "false") + ")");
             gameId = *page.db->scalar("SELECT LAST_INSERT_ID()");
+            written = true;
             if (existed)
               noteRatingDiscrepancy(page, gameId, userId, "added", Optional<String>(), Optional<String>(), Optional<PhpNumber>(currentGor),
                                     Optional<PhpNumber>(newGor), true);
@@ -349,7 +357,7 @@ bool processTournament(Page& page, String key)
             if (stored.size() > 1)
               throw GoratingError("Processing existing tournament, but there are more games with the parameters.");
             gameId = Row(stored, 0)["id"];
-            if (checkStoredGame(page, stored, gameId, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings))
+            if (checkStoredGame(page, written, stored, gameId, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings))
               userRating = oldUserRating;
           }
         }
@@ -365,6 +373,17 @@ bool processTournament(Page& page, String key)
     }
     for (const String& id : usersToUpdate)
       updateFinalRating(page, id);
+    // A tournament EGD adds or corrects after its players' later games were computed: those games
+    // are recomputed (kovarex, 2026-11-03: ratings have to match), by the rating update a deleted
+    // or edited game starts, from each player's rating before the tournament.
+    if (written)
+      for (const Pair<String, String>& start : starts)
+        if (!page.query(String("SELECT id FROM game WHERE deleted = false and timestamp >= ") + quote(timestamp) +
+                        " and (egd_tournament_id is null or egd_tournament_id != " + quote(tournamentId) + ") and (winner_user_id=" +
+                        quote(start.first) + " or loser_user_id=" + quote(start.first) + ") LIMIT 1")
+                 .empty())
+          page.query(String("CALL start_rating_update(") + start.first + "," + start.second + "," + start.first + "," + start.second +
+                     ",STR_TO_DATE(" + quote(timestamp) + ",'%Y-%m-%d %H:%i:%s'))");
     page.db->commit();
   }
   catch (const Exception& e)
