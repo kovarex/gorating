@@ -74,24 +74,27 @@ void noteRatingDiscrepancy(Page& page, StringView gameId, StringView userId, Str
 }
 
 // A player's side of a game already stored, when its tournament is processed again (stored: its
-// old, new, old_egd and new_egd ratings): corrected when EGD's ratings changed, as PHP did; every
-// difference noted.
-void checkStoredGame(Page& page, const mariadb::MariaDbResult& stored, StringView gameId, StringView userId, StringView prefix,
+// old, new, old_egd and new_egd ratings and deleted): corrected when EGD's ratings changed, as PHP
+// did; every difference noted. A deleted game does not count (kovarex, 2026-11-02): its gorating
+// ratings are neither checked nor written, and true says the player's rating stays as before it.
+bool checkStoredGame(Page& page, const mariadb::MariaDbResult& stored, StringView gameId, StringView userId, StringView prefix,
                      const PhpNumber& oldGor, const PhpNumber& newGor, const Optional<PhpNumber>& oldOwn,
                      const Optional<PhpNumber>& newOwn, StringView ownRatings)
 {
   Row row(stored, 0);
+  bool deleted = phpTrue(stored.at(0, "deleted"));
   bool egdChanged = egdDiffers(row["old_egd"], oldGor.value) || egdDiffers(row["new_egd"], newGor.value);
   if (egdChanged)
   {
     page.query(String("UPDATE game SET ") + String(prefix) + "old_egd_rating=" + oldGor.sql() + ", " + String(prefix) +
-               "new_egd_rating=" + newGor.sql() + String(ownRatings) + " WHERE id=" + String(gameId));
+               "new_egd_rating=" + newGor.sql() + (deleted ? String() : String(ownRatings)) + " WHERE id=" + String(gameId));
     noteRatingDiscrepancy(page, gameId, userId, "egd", stored.at(0, "old_egd"), stored.at(0, "new_egd"), Optional<PhpNumber>(oldGor),
                           Optional<PhpNumber>(newGor), true);
   }
-  if (ratingDiffers(stored.at(0, "old"), oldOwn) || ratingDiffers(stored.at(0, "new"), newOwn))
+  if (!deleted && (ratingDiffers(stored.at(0, "old"), oldOwn) || ratingDiffers(stored.at(0, "new"), newOwn)))
     noteRatingDiscrepancy(page, gameId, userId, "own", stored.at(0, "old"), stored.at(0, "new"), oldOwn, newOwn,
                           egdChanged && newOwn.has_value());
+  return deleted;
 }
 
 // Processes the tournament of key, or the first one queued in egd_tournament_to_process when key is
@@ -311,11 +314,11 @@ bool processTournament(Page& page, String key)
           if (!existed)
             page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + "," + prefix + "new_egd_rating=" +
                        newGor.sql() + ownRatings + " WHERE id=" + id);
-          else
-            checkStoredGame(page,
-                            page.query(String("SELECT ") + prefix + "old_rating as old, " + prefix + "new_rating as new, " + prefix +
-                                       "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd FROM game WHERE id=" + id),
-                            id, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings);
+          else if (checkStoredGame(page,
+                                   page.query(String("SELECT ") + prefix + "old_rating as old, " + prefix + "new_rating as new, " + prefix +
+                                              "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd, deleted FROM game WHERE id=" + id),
+                                   id, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings))
+            userRating = oldUserRating;
           gameId = id;
         }
         else
@@ -323,7 +326,7 @@ bool processTournament(Page& page, String key)
           mariadb::MariaDbResult stored;
           if (existed)
             stored = page.query(String("SELECT id, ") + prefix + "old_rating as old, " + prefix + "new_rating as new, " + prefix +
-                                "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd FROM game WHERE egd_tournament_id=" +
+                                "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd, deleted FROM game WHERE egd_tournament_id=" +
                                 quote(tournamentId) + " and egd_tournament_round=" + quote(round) + " and winner_user_id=" + quote(winnerId));
           if (!existed || stored.empty())
           {
@@ -346,7 +349,8 @@ bool processTournament(Page& page, String key)
             if (stored.size() > 1)
               throw GoratingError("Processing existing tournament, but there are more games with the parameters.");
             gameId = Row(stored, 0)["id"];
-            checkStoredGame(page, stored, gameId, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings);
+            if (checkStoredGame(page, stored, gameId, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings))
+              userRating = oldUserRating;
           }
         }
         currentGor = newGor;

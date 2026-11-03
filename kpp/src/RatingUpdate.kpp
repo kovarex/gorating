@@ -6,10 +6,18 @@
 // update has not seen yet, recomputes its two ratings and moves the players' values on; the last
 // one copies the values into user.rating.
 //
-// Ported as PHP computes it, so the database gets the same values: a rating read from the database
-// goes back as its text, a computed one as PHP printed its doubles (phpNumber). One difference on
-// purpose (kovarex, 2026-11-02: "deleted games are deleted, they don't count"): a player's rating
-// before a game is read from their latest earlier game that is not deleted; PHP read deleted ones too.
+// Ported from PHP, so the database gets the same values: a rating read from the database goes back
+// as its text, a computed one as PHP printed its doubles (phpNumber). Differences on purpose:
+// - a player's rating before a game is read from their latest earlier game that is not deleted; PHP
+//   read deleted ones too (kovarex, 2026-11-02: "deleted games are deleted, they don't count");
+// - a game is recomputed as it was computed in the first place (kovarex, 2026-11-03), where PHP's
+//   recomputation differed: a jigo is half a win for both players (PHP: a win and a loss), and a
+//   player with no rating before the game starts from the rating the game was computed with (in a
+//   tournament, EGD's before it, as processTournament takes the opponent's; else the game's old
+//   rating, the report's), where PHP took 0; a tournament's game is computed from the ratings before
+//   the tournament, as processTournament does (tournamentSide), where PHP chained the update's
+//   values, which went wrong when the update reached a later round first (the rounds share one
+//   time). A tournament processed again notes any difference left (rating_discrepancy).
 
 // A column's PHP truthiness: NULL, "" and "0" are false.
 bool phpTrue(const Optional<String>& value) { return value.has_value() && !value->empty() && *value != "0"; }
@@ -68,6 +76,85 @@ String ratingToUse(const Optional<String>& rating, const Optional<String>& ratin
   return ratingTimestamp.has_value() && *ratingTimestamp <= gameTimestamp ? *rating : *gameRating;
 }
 
+// The rating a player's side of a game is computed from: their rating before it, not counting its
+// tournament; with none, the one the game was first computed with (a tournament's: EGD's rating of
+// them before it, their first round's old EGD rating, as processTournament takes an opponent's from
+// the page; a reported game's: its old rating for them). As the database has it, text.
+String ratingForCalculation(Page& page, StringView userId, StringView gameTimestamp, const Optional<String>& tournament,
+                            const Optional<String>& gameOldRating)
+{
+  Optional<String> before = fetchUserRatingBefore(page, userId, Optional<String>(String(gameTimestamp)), tournament);
+  if (before.has_value() && !before->empty())
+    return *before;
+  if (phpTrue(tournament))
+  {
+    String id(userId);
+    Optional<String> egd = page.db->scalar(
+        String("SELECT IF(winner_user_id=") + id + ", winner_old_egd_rating, loser_old_egd_rating) FROM game WHERE egd_tournament_id=" +
+        quote(*tournament) + " and (winner_user_id=" + quote(id) + " or loser_user_id=" + quote(id) +
+        ") ORDER BY egd_tournament_round LIMIT 1");
+    if (egd.has_value() && !egd->empty())
+      return *egd;
+  }
+  if (gameOldRating.has_value() && !gameOldRating->empty())
+    return *gameOldRating;
+  throw GoratingError(format("no rating to recompute user {}'s game from", userId));
+}
+
+struct TournamentSide
+{
+  String oldRating; // before the game
+  String newRating; // after it
+  String end;       // after the player's last game in the tournament
+};
+
+// A player's side of a game of a tournament, as processTournament computes it: from their rating
+// before the tournament, each of their games in it that is not deleted, in round order, adds what
+// the formula gives against the opponent's rating before the tournament. The rounds share one time,
+// so an update can reach them in any order: nothing here depends on it.
+TournamentSide tournamentSide(Page& page, StringView userId, StringView gameId, StringView tournament, StringView gameTimestamp)
+{
+  String id(userId);
+  Optional<String> tournamentId(String(tournament));
+  mariadb::MariaDbResult games = page.query(
+      String("SELECT id, winner_user_id, loser_user_id, winner_old_rating, loser_old_rating, game_type_id, handicap, komi, winner_is_black,"
+             " jigo FROM game WHERE deleted = false and egd_tournament_id=") +
+      quote(tournament) + " and (winner_user_id=" + quote(id) + " or loser_user_id=" + quote(id) + ") ORDER BY egd_tournament_round");
+  String startText = ratingForCalculation(page, userId, gameTimestamp, tournamentId, Optional<String>());
+  double start = ratingValue(startText);
+  double running = start;
+  String runningText = startText;
+  TournamentSide side;
+  bool found = false;
+  for (ContainerSize i = 0; i < games.size(); ++i)
+  {
+    Row game(games, i);
+    bool won = game["winner_user_id"] == id;
+    String opponent = won ? game["loser_user_id"] : game["winner_user_id"];
+    double opponentStart = ratingValue(ratingForCalculation(page, opponent, gameTimestamp, tournamentId,
+                                                            games.at(i, won ? "loser_old_rating" : "winner_old_rating")));
+    bool black = won == phpTrue(games.at(i, "winner_is_black"));
+    double handicap = ratingValue(game["handicap"]);
+    double result = phpTrue(games.at(i, "jigo")) ? 0.5 : (won ? 1.0 : 0.0);
+    double delta = calculateNewRating(start, opponentStart, result, (int)stoll(game["game_type_id"]), black ? handicap : -handicap,
+                                      (black ? -1 : 1) * (ratingValue(game["komi"]) - 6.5)) -
+                   start;
+    String before = runningText;
+    running = running + delta;
+    runningText = phpNumber(running);
+    if (game["id"] == gameId)
+    {
+      side.oldRating = before;
+      side.newRating = runningText;
+      found = true;
+    }
+  }
+  if (!found)
+    throw GoratingError(format("game {} is not among user {}'s games of its tournament", gameId, userId));
+  side.end = runningText;
+  return side;
+}
+
 String variable(Page& page, StringView name)
 {
   Optional<String> value = page.db->scalar(String("SELECT value from variable WHERE name=") + quote(name));
@@ -86,20 +173,22 @@ bool processRatingIteration(Page& page)
       String("SELECT game_id, winner_user_id, loser_user_id, MAX(winner_rating) as winner_rating,"
              " MAX(winner_rating_timestamp) as winner_rating_timestamp, game_winner_rating, MAX(loser_rating) as loser_rating,"
              " MAX(loser_rating_timestamp) as loser_rating_timestamp, game_loser_rating, game_timestamp, game_type_id,"
-             " game_handicap, game_komi, game_winner_is_black, game_egd_tournament_id FROM ("
+             " game_handicap, game_komi, game_winner_is_black, game_egd_tournament_id, game_jigo FROM ("
              "SELECT game.id as game_id, game.winner_user_id as winner_user_id, rating_update_value.rating as winner_rating,"
              " rating_update_value.timestamp as winner_rating_timestamp, game.winner_old_rating as game_winner_rating,"
              " game.loser_user_id as loser_user_id, NULL as loser_rating, NULL as loser_rating_timestamp,"
              " game.loser_old_rating as game_loser_rating, game.timestamp as game_timestamp, game.game_type_id as game_type_id,"
              " game.handicap as game_handicap, game.komi as game_komi, game.winner_is_black as game_winner_is_black,"
-             " game.egd_tournament_id as game_egd_tournament_id, game.egd_tournament_round as game_egd_tournament_round") +
+             " game.egd_tournament_id as game_egd_tournament_id, game.egd_tournament_round as game_egd_tournament_round,"
+             " game.jigo as game_jigo") +
       part + "winner_user_id" + common +
       " UNION SELECT game.id as game_id, game.winner_user_id as winner_user_id, NULL as winner_rating,"
       " NULL as winner_rating_timestamp, game.winner_old_rating as game_winner_rating, game.loser_user_id as loser_user_id,"
       " rating_update_value.rating as loser_rating, rating_update_value.timestamp as loser_rating_timestamp,"
       " game.loser_old_rating as game_loser_rating, game.timestamp as game_timestamp, game.game_type_id as game_type_id,"
       " game.handicap as game_handicap, game.komi as game_komi, game.winner_is_black as game_winner_is_black,"
-      " game.egd_tournament_id as game_egd_tournament_id, game.egd_tournament_round as game_egd_tournament_round" +
+      " game.egd_tournament_id as game_egd_tournament_id, game.egd_tournament_round as game_egd_tournament_round,"
+      " game.jigo as game_jigo" +
       part + "loser_user_id" + common +
       ") as tmp GROUP BY game_id ORDER BY game_timestamp, game_egd_tournament_id, game_egd_tournament_round LIMIT 1");
   if (found.empty())
@@ -123,8 +212,28 @@ bool processRatingIteration(Page& page)
   String gameTimestamp = row["game_timestamp"];
   int gameType = (int)stoll(row["game_type_id"]);
   Optional<String> tournament = found.at(0, "game_egd_tournament_id");
-  double winnerForCalculation = ratingValue(fetchUserRatingBefore(page, winnerId, Optional<String>(gameTimestamp), tournament).value_or(String()));
-  double loserForCalculation = ratingValue(fetchUserRatingBefore(page, loserId, Optional<String>(gameTimestamp), tournament).value_or(String()));
+  String when = String("STR_TO_DATE(") + quote(gameTimestamp) + ",'%Y-%m-%d %H:%i:%s')";
+  if (phpTrue(tournament))
+  {
+    // Each side as processTournament computes it; the player's update value is their rating after
+    // the tournament, which their later games start from.
+    String set;
+    for (StringView prefix : {"winner", "loser"})
+    {
+      String p(prefix);
+      if (!phpTrue(prefix == "winner" ? gameWinnerRating : gameLoserRating))
+        continue;
+      String userId = prefix == "winner" ? winnerId : loserId;
+      TournamentSide side = tournamentSide(page, userId, gameId, *tournament, gameTimestamp);
+      set.append(p + "_old_rating=" + side.oldRating + "," + p + "_new_rating=" + side.newRating + ",");
+      page.query(String("CALL add_or_force_update_user_rating_update_value(") + userId + "," + side.end + "," + when + ")");
+    }
+    page.query(String("UPDATE game SET ") + set + " rating_update_version=" + version + " WHERE game.id=" + gameId);
+    return false;
+  }
+  double winnerForCalculation = ratingValue(ratingForCalculation(page, winnerId, gameTimestamp, tournament, gameWinnerRating));
+  double loserForCalculation = ratingValue(ratingForCalculation(page, loserId, gameTimestamp, tournament, gameLoserRating));
+  bool jigo = phpTrue(found.at(0, "game_jigo"));
   bool winnerIsBlack = phpTrue(found.at(0, "game_winner_is_black"));
   double winnerExtraHandicap = (winnerIsBlack ? 1 : -1) * ratingValue(row["game_handicap"]);
   double winnerExtraKomi = (winnerIsBlack ? -1 : 1) * (ratingValue(row["game_komi"]) - 6.5);
@@ -135,7 +244,7 @@ bool processRatingIteration(Page& page)
   if (phpTrue(gameWinnerRating))
   {
     String old = ratingToUse(found.at(0, "winner_rating"), found.at(0, "winner_rating_timestamp"), gameWinnerRating, gameTimestamp);
-    double delta = calculateNewRating(winnerForCalculation, loserForCalculation, 1.0, gameType, winnerExtraHandicap, winnerExtraKomi) -
+    double delta = calculateNewRating(winnerForCalculation, loserForCalculation, jigo ? 0.5 : 1.0, gameType, winnerExtraHandicap, winnerExtraKomi) -
                    winnerForCalculation;
     winnerNew = Optional<String>(phpNumber(ratingValue(old) + delta));
     set.append(String("winner_old_rating=") + old + ",winner_new_rating=" + *winnerNew + ",");
@@ -143,13 +252,12 @@ bool processRatingIteration(Page& page)
   if (phpTrue(gameLoserRating))
   {
     String old = ratingToUse(found.at(0, "loser_rating"), found.at(0, "loser_rating_timestamp"), gameLoserRating, gameTimestamp);
-    double delta = calculateNewRating(loserForCalculation, winnerForCalculation, 0.0, gameType, -winnerExtraHandicap, -winnerExtraKomi) -
+    double delta = calculateNewRating(loserForCalculation, winnerForCalculation, jigo ? 0.5 : 0.0, gameType, -winnerExtraHandicap, -winnerExtraKomi) -
                    loserForCalculation;
     loserNew = Optional<String>(phpNumber(ratingValue(old) + delta));
     set.append(String("loser_old_rating=") + old + ",loser_new_rating=" + *loserNew + ",");
   }
   page.query(String("UPDATE game SET ") + set + " rating_update_version=" + version + " WHERE game.id=" + gameId);
-  String when = String("STR_TO_DATE(") + quote(gameTimestamp) + ",'%Y-%m-%d %H:%i:%s')";
   if (winnerNew.has_value())
     page.query(String("CALL add_or_force_update_user_rating_update_value(") + winnerId + "," + *winnerNew + "," + when + ")");
   if (loserNew.has_value())

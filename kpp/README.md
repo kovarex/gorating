@@ -29,7 +29,10 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   `rating_discrepancy` notes what processing a tournament again finds different from a stored
   game: EGD's ratings changed (the game is corrected, as PHP did), gorating's own computed again
   differ (left as it is: kovarex, 2026-11-03, an error to notice and decide about later), or a game
-  EGD added. Admins see them under "Rating discrepancies".
+  EGD added. Admins see them under "Rating discrepancies". `migrations/002` fixes
+  start_rating_update, which the triggers call when a game is deleted, restored or edited: a
+  change during an update moved its start later, and a game whose winner has no gorating rating
+  started none.
 - `src/Mail.kpp`: mail through the configuration's `mailCommand` (sendmail on the server) or into
   its `mailDirectory` (locally). `src/Platform.kpp`: the operating system's secure random source.
 - `testdata/compare.sh`: fetches paths from the PHP site (port 8081) and this one (8082) and
@@ -39,6 +42,9 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   (`gorating_php`, `gorating_kpp`); after the same requests went to the PHP site on one and this
   one on the other, the second compares every table a page writes (the time a row was written and
   random secrets masked).
+- `testdata/recompute-check.sh`: checks that recomputing ratings gives what processing a
+  tournament gave (a saved tournament, a recompute from its start, a deleted game, processing it
+  again) and the update's start; PHP's recomputation fails it.
 - `testdata/generate.py`: made-up data for a local database (no real person in it).
 
 **Tests.** `kpp --test` here: src/tests/ checks the rating formula, ranks, handicaps, rating jumps
@@ -54,7 +60,12 @@ messages); player links are absolute (`/kovarex`), and a username that is also a
 to `/player?id=`; a table's range on its last page is right; a rating before a game counts no
 deleted game (kovarex, 2026-11-02); an EGD opponent's whole name is kept (PHP kept two words);
 a column sorted by a value other than its name shows its arrow, and rows with equal values keep
-one order; invite and reset secrets are 32 hexadecimal digits; the rating discrepancies are new.
+one order; invite and reset secrets are 32 hexadecimal digits; the rating discrepancies are new;
+recomputing ratings computes a game as it was computed in the first place (kovarex, 2026-11-03):
+a jigo is half a win, a player with no rating before starts from the one the game was computed
+with (PHP: 0), a tournament's games from the ratings before it whatever order the update reaches
+its rounds in (PHP chained them), and a deleted tournament game does not count when the tournament
+is processed again.
 
 **Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). It waits for kpp to
 build FreeBSD programs (exceptions and the FreeBSD sysroot, kpp's docs/design.md "Targets and
