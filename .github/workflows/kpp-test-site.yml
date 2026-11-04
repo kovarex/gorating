@@ -34,7 +34,7 @@ jobs:
           $tag = gh release view --repo kovarex/kpp --json tagName -q .tagName
           if ($LASTEXITCODE -ne 0 -or -not $tag) { throw 'no kpp release' }
           gh release download $tag --repo kovarex/kpp --pattern "kpp-*.zip" --dir kpp-release
-          if ($LASTEXITCODE -ne 0) { throw "kpp $tag: no zip" }
+          if ($LASTEXITCODE -ne 0) { throw "kpp ${tag}: no zip" }
           Expand-Archive (Get-ChildItem kpp-release\*.zip)[0].FullName kpp-release
           $exe = (Get-ChildItem -Recurse kpp-release -Filter kpp.exe)[0].FullName
           git clone --quiet --depth 1 --branch $tag https://github.com/kovarex/kpp kpp-source
