@@ -90,6 +90,23 @@ html::SafeHtml queryStatistics(const Page& page)
   return out;
 }
 
+// A message's text, escaped, each line on its own (a rating update's "Rating changes" are a line
+// each, as PHP's table had a row each).
+html::SafeHtml messageLines(StringView message)
+{
+  html::SafeHtml out;
+  ContainerSize at = 0;
+  for (;;)
+  {
+    ContainerSize end = message.find('\n', at);
+    out.append(html::SafeHtml::escape(message.substr(at, end == StringView::npos ? StringView::npos : end - at)));
+    if (end == StringView::npos)
+      return out;
+    out.append(html::SafeHtml::trusted("<br/>"));
+    at = end + 1;
+  }
+}
+
 String layout(const Page& page, const html::SafeHtml& content, double seconds)
 {
   String message = page.get("message");
@@ -101,7 +118,7 @@ String layout(const Page& page, const html::SafeHtml& content, double seconds)
                                           : loggedOutTemplate.render({})},
                {"statistics", queryStatistics(page)},
                {"menu", menu(page)},
-               {"message", message.empty() ? html::SafeHtml() : messageTemplate.render({{"message", message}})},
+               {"message", message.empty() ? html::SafeHtml() : messageTemplate.render({{"message", messageLines(message)}})},
                {"content", content},
                {"generated", String(" - Page generated in ") + secondsText(seconds) + " seconds"}})
       .html;

@@ -162,7 +162,7 @@ String variable(Page& page, StringView name)
 }
 
 // One iteration: true when the update is finished.
-bool processRatingIteration(Page& page)
+bool processRatingIteration(Page& page, String& finishedReport)
 {
   String version = variable(page, "rating_update_version");
   String since = variable(page, "rating_update_timestamp");
@@ -195,9 +195,18 @@ bool processRatingIteration(Page& page)
   {
     // Each player's rating from their latest game, as processing a tournament sets it (PHP copied
     // the update's value, which a player without gorating ratings has only to be visited by it).
-    mariadb::MariaDbResult users = page.query("SELECT user_id FROM rating_update_value ORDER BY user_id");
+    // The rating each player had and has (PHP's reportRatingFinishedResults: its "Rating changes"
+    // table, in the message of the request that finishes the update).
+    mariadb::MariaDbResult users = page.query("SELECT user.id AS id, user.name AS name, user.rating AS rating FROM rating_update_value"
+                                              " JOIN user ON user.id = rating_update_value.user_id ORDER BY user.name, user.id");
+    finishedReport = "Rating changes:";
     for (ContainerSize i = 0; i < users.size(); ++i)
-      updateFinalRating(page, Row(users, i)["user_id"]);
+    {
+      Row user(users, i);
+      updateFinalRating(page, user["id"]);
+      Optional<String> now = page.db->scalar(String("SELECT rating FROM user WHERE id=") + quote(user["id"]));
+      finishedReport.append(String("\n") + user["name"] + ": " + showRating(user["rating"]) + "→" + showRating(now.value_or(String())));
+    }
     page.query("DELETE FROM rating_update_value");
     page.query("update variable SET value='0' WHERE name='rating_update_in_progress'");
     return true;
@@ -281,13 +290,14 @@ String processRating(Page& page, int iterations)
   }
   int processed = 0;
   bool finished = false;
+  String report;
   for (int i = 0; i < iterations && !finished; ++i)
   {
-    finished = processRatingIteration(page);
+    finished = processRatingIteration(page, report);
     if (!finished)
       ++processed;
   }
   page.db->commit();
-  return finished ? format("Rating update finished after {} games.", processed)
+  return finished ? format("Rating update finished after {} games.\n", processed) + report
                   : format("Rating update: {} games processed, more to go.", processed);
 }

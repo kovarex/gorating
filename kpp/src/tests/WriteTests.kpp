@@ -93,7 +93,15 @@ test "a game reported, edited, deleted and restored"
 
   // Deleted: the two players' ratings are as before the game; restored: as edited.
   check(locationOf(postForm(config, "player11", "/delete_game_action", String("id=") + game)).find("No%20rights") != String::npos);
-  postForm(config, "player2", "/delete_game_action", String("id=") + game);
+  http::HttpResponse deletedResponse = postForm(config, "player2", "/delete_game_action", String("id=") + game);
+  // The update finishes in that request: its message lists each player's rating before and after
+  // (PHP's "Rating changes" table), a line each on the page it goes to.
+  String where = locationOf(deletedResponse);
+  check(where.find("deleted.%0ARating%20update%20finished%20after%20") != String::npos);
+  check(where.find("Rating%20changes%3A%0A") != String::npos && where.find("Marek%20Wei%C3%9F%3A%20") != String::npos);
+  String shown = siteRequest(config, "player2", "GET", where).body;
+  check(shown.find("<br/>Rating changes:<br/>") != String::npos && shown.find("Marek Weiß: ") != String::npos);
+  check(shown.find("→") != String::npos);
   finishRatingUpdate(config);
   check(goratingDbValue(config, String("SELECT deleted FROM game WHERE id=") + game) == "1");
   check(nearly(userRating(config, "player11"), meBefore) && nearly(userRating(config, "player2"), opponentBefore));

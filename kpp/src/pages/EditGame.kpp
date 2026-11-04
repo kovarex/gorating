@@ -253,9 +253,10 @@ void editGameAction(Page& page, http::HttpResponse& response)
     addChange(page, changeGameSgf, id, Optional<String>(game["sgf"]), Optional<String>());
   }
   page.db->commit();
-  String message = String("Game id=") + id + ": ";
+  // A line each, as PHP's message had (its <br/>).
+  String message = String("Game id=") + id + ":";
   for (const String& change : changes)
-    message.append(change + " ");
-  message.append(processRating(page, 50));
+    message.append(String("\n") + change);
+  message.append(String("\n") + processRating(page, 50));
   redirectWithMessage(response, redirect, message);
 }
