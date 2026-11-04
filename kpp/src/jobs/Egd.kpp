@@ -1,4 +1,5 @@
-// The European Go Database's pages (src/egd_api.php): fetching them and reading a player's card.
+// The European Go Database's pages (src/egd_api.php): fetching them, and a player's card into the
+// database (EgdPages.kpp reads the pages).
 //
 // fetchEgd takes a page from the configuration's egdPageDirectory when it names one (saved pages,
 // named by egdPageName: the comparisons with PHP read the same files); else through scrape.do when
@@ -132,29 +133,8 @@ struct EgdPlayerInfo
 EgdPlayerInfo egdPlayerInfo(Page& page, StringView pin)
 {
   String url = String(egdAddress) + "Player_Card.php?&key=" + String(pin);
-  HtmlDocument doc = readHtml(fetchEgd(*page.config, url));
-  Optional<String> rating;
-  Optional<EgdCountry> country;
-  for (int input : doc.elements(0, "input"))
-  {
-    const String* name = doc.attribute(input, "name");
-    const String* value = doc.attribute(input, "value");
-    if (name == nullptr || value == nullptr)
-      continue;
-    if (*name == "gor")
-    {
-      ContainerSize space = value->find(' ');
-      String gor = space == String::npos ? *value : value->substr(0, space);
-      if (!phpIsNumeric(gor))
-        throw GoratingError(format("The provided rating from egd ({}) doesn't seem to be a number.", gor));
-      rating = Optional<String>(gor);
-    }
-    else if (*name == "country")
-      country = Optional<EgdCountry>(egdCountry(page, *value));
-  }
-  if (!rating.has_value() || rating->empty() || !country.has_value())
-    throw GoratingError(format("Couldn't determine the rating from the EGD page. Link:{}", url));
-  return EgdPlayerInfo{*rating, *country};
+  EgdPlayerCard card = readEgdPlayerCard(readHtml(fetchEgd(*page.config, url)), url);
+  return EgdPlayerInfo{card.rating, egdCountry(page, card.country)};
 }
 
 // The user with this EGD pin, made from their card when there is none yet (addEGDPlayerIfNotPresent).

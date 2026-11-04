@@ -11,14 +11,6 @@
 // while its EGD ones do not is an error to notice and decide about later, so it is left as it is;
 // PHP meant to correct it but compared an undefined variable).
 
-// A cell's text as PHP compared it.
-String egdCell(const HtmlDocument& doc, const Vector<int>& cells, ContainerSize index)
-{
-  if (index >= cells.size())
-    throw GoratingError(format("a game row with {} cells, not {} or more", (int64_t)cells.size(), (int64_t)index + 1));
-  return doc.text(cells[index]);
-}
-
 // "31-10-2026" (EGD's tournament_date) as "2026-10-31 00:00:00" (PHP: strtotime, then date()).
 String egdTimestamp(StringView date)
 {
@@ -112,54 +104,14 @@ bool processTournament(Page& page, String key)
     key = Row(queued, 0)["egd_key"];
   }
   mariadb::MariaDbResult existing = page.query(String("SELECT * FROM egd_tournament WHERE egd_key =") + quote(key));
-  HtmlDocument doc = readHtml(fetchEgd(*page.config, String(egdAddress) + "Tournament_ShowGoR.php?key=" + key));
-
-  Optional<EgdCountry> country;
-  int gameType = 0;
-  String date;
-  Optional<String> city;
-  String roundCount;
-  String playerCount;
-  for (int input : doc.elements(0, "input"))
-  {
-    const String* name = doc.attribute(input, "name");
-    if (name == nullptr || name->empty() || *name == "0")
-      continue;
-    const String* attribute = doc.attribute(input, "value");
-    String value = attribute == nullptr ? String() : *attribute;
-    if (*name == "nation")
-      country = Optional<EgdCountry>(egdCountry(page, value));
-    else if (*name == "class")
-      gameType = egdGameType(value);
-    else if (*name == "tournament_date")
-      date = value;
-    else if (*name == "city")
-      city = Optional<String>(value);
-    else if (*name == "rounds" && phpIsNumeric(value))
-      roundCount = value;
-    else if (*name == "total_player")
-      playerCount = value;
-  }
-  Optional<String> tournamentName;
-  for (int span : doc.elements(0, "span"))
-    if (doc.hasAttribute(span, "class", "plain5"))
-    {
-      tournamentName = Optional<String>(doc.text(span));
-      break;
-    }
-  if (!country.has_value())
-    throw GoratingError(format("Tournament country info couldn't be determined. key={}", key));
-  if (gameType == 0)
-    throw GoratingError(format("Game type info couldn't be determined. key={}", key));
-  if (date.empty())
-    throw GoratingError(format("Tournament date couldn't be determined. key={}", key));
-  if (!city.has_value())
-    throw GoratingError(format("Tournament city couldn't be determined. key={}", key));
-  if (playerCount.empty() || playerCount == "0")
-    throw GoratingError(format("Player count couldn't be determined. key={}", key));
-  if (roundCount.empty() || roundCount == "0")
-    throw GoratingError(format("Round count couldn't be determined. key={}", key));
-  String timestamp = egdTimestamp(date);
+  EgdTournamentPage egd = readEgdTournamentPage(readHtml(fetchEgd(*page.config, String(egdAddress) + "Tournament_ShowGoR.php?key=" + key)), key);
+  Optional<EgdCountry> country = Optional<EgdCountry>(egdCountry(page, egd.nation));
+  int gameType = egd.gameType;
+  Optional<String> city = Optional<String>(egd.city);
+  Optional<String> tournamentName = egd.name;
+  String playerCount = egd.playerCount;
+  String roundCount = egd.roundCount;
+  String timestamp = egdTimestamp(egd.date);
 
   page.db->begin();
   try
@@ -185,37 +137,12 @@ bool processTournament(Page& page, String key)
     // written: for the update of their later games below.
     Vector<Pair<String, String>> starts;
     bool written = false;
-    for (int div : doc.elements(0, "div"))
+    for (const EgdTournamentPlayer& player : egd.players)
     {
-      if (!doc.hasAttribute(div, "class", "thisdiv"))
-        continue;
-      Vector<int> bold = doc.elements(div, "b");
-      Vector<int> links = doc.elements(div, "a");
-      Vector<int> tables = doc.elements(div, "table");
-      if (bold.size() < 2 || links.empty() || tables.size() < 2)
-        throw GoratingError(format("a player's block of tournament {} lacks its rating, link or games", key));
-      String gorText = doc.text(bold[1]);
-      if (!phpIsNumeric(gorText))
-        throw GoratingError(format("The value of gor before tournament: \"{} is not a number.", gorText));
+      String gorText = player.gor;
       PhpNumber currentGor = PhpNumber::read(gorText);
-      Vector<String> pieces;
-      String link = doc.text(links[0]);
-      for (ContainerSize at = 0;;)
-      {
-        ContainerSize space = link.find(' ', at);
-        pieces.push_back(link.substr(at, space == String::npos ? String::npos : space - at));
-        if (space == String::npos)
-          break;
-        at = space + 1;
-      }
-      String playerPin = pieces[0];
-      if (!phpIsNumeric(playerPin) || pieces.size() < 4)
-        throw GoratingError(format("Pin {} isn't numeric", playerPin));
-      String firstName = pieces[2];
-      String lastName = pieces[3];
-      for (ContainerSize i = 4; i < pieces.size(); ++i)
-        lastName.append(String(" ") + pieces[i]);
-      String userId = addEgdPlayerIfNotPresent(page, playerPin, firstName, lastName);
+      String playerPin = player.pin;
+      String userId = addEgdPlayerIfNotPresent(page, playerPin, player.firstName, player.lastName);
       mariadb::MariaDbResult userResult = page.query(String("SELECT * from user WHERE user.id=") + quote(userId));
       Row user(userResult, 0);
       if (!existed)
@@ -237,56 +164,22 @@ bool processTournament(Page& page, String key)
       ++placement;
       starts.push_back(Pair<String, String>(userId, userStartRating.has_value() ? *userStartRating : gorText));
 
-      for (int row : doc.elements(tables[1], "tr"))
+      for (const EgdTournamentGame& row : player.games)
       {
-        Vector<int> cells = doc.elements(row, "td");
-        if (cells.empty())
-          continue;
-        String round = egdCell(doc, cells, 0);
-        if (!phpIsNumeric(round))
-          throw GoratingError(format("Round should be numeric, but is \"{}\"", round));
-        String gorChangeText = egdCell(doc, cells, 1);
-        if (!phpIsNumeric(gorChangeText))
-          throw GoratingError(format("gor change isn't numeric: \"{}\"", gorChangeText));
-        PhpNumber gorChange = PhpNumber::read(gorChangeText);
-        String color = egdCell(doc, cells, 3);
-        if (color.empty())
-          color = "b"; // some old tournaments don't have the colour
-        if (color != "w" && color != "b")
-          throw GoratingError(format("Color value unexpected:\"{}\"", color));
-        String handicapText = egdCell(doc, cells, 4);
-        String handicap = handicapText.substr(0, handicapText.find(' '));
+        String round = row.round;
+        PhpNumber gorChange = PhpNumber::read(row.gorChange);
+        String color = row.color;
+        String handicap = row.handicap;
         double handicapValue = ratingValue(handicap);
         double komi = handicapValue == 0 ? 6.5 : 0.5;
-        String result = egdCell(doc, cells, 5);
-        bool jigo = result == "Jigo";
-        if (result != "Win" && result != "Loss" && result != "Jigo")
-          throw GoratingError(format("Result text has unexpected value:\"{}\"", result));
-        String opponentPin = egdCell(doc, cells, 6);
-        if (!phpIsNumeric(opponentPin))
-          throw GoratingError(format("Opponent pin {} isn't numeric.", opponentPin));
+        bool jigo = row.result == "Jigo";
+        String opponentPin = row.opponentPin;
         // A jigo is stored with the player seen first as its winner.
-        bool userWon = jigo ? processedGame(processed, opponentPin, playerPin, round) == nullptr : result == "Win";
-        String opponentName = egdCell(doc, cells, 7);
-        ContainerSize space = opponentName.find(' ');
-        // The first word is the first name, the rest the last name, as for the players' own blocks
-        // (PHP kept only the second word: kovarex, 2026-11-02, "could be fixed").
-        String opponentFirst = space == String::npos ? opponentName : opponentName.substr(0, space);
-        String opponentLast = space == String::npos ? String() : opponentName.substr(space + 1);
-        if (opponentLast.empty())
-        {
-          opponentLast = opponentFirst;
-          opponentFirst = " "; // some people have just a space as a first name
-        }
-        String opponentId = addEgdPlayerIfNotPresent(page, opponentPin, opponentFirst, opponentLast);
-        String opponentGorText = egdCell(doc, cells, 9);
-        if (!phpIsNumeric(opponentGorText))
-          throw GoratingError("Opponent gor not numeric.");
-        String opponentGorChangeText = egdCell(doc, cells, 10);
-        if (!phpIsNumeric(opponentGorChangeText))
-          throw GoratingError("Opponent gor Change is not numeric.");
+        bool userWon = jigo ? processedGame(processed, opponentPin, playerPin, round) == nullptr : row.result == "Win";
+        String opponentId = addEgdPlayerIfNotPresent(page, opponentPin, row.opponentFirstName, row.opponentLastName);
+        String opponentGorText = row.opponentGor;
         PhpNumber opponentGor = PhpNumber::read(opponentGorText);
-        PhpNumber opponentGorChange = PhpNumber::read(opponentGorChangeText);
+        PhpNumber opponentGorChange = PhpNumber::read(row.opponentGorChange);
 
         String winnerId = userWon ? userId : opponentId;
         String loserId = userWon ? opponentId : userId;

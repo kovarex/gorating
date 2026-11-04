@@ -1,0 +1,75 @@
+// Logging in without a database (Session.kpp): the signed session cookie, PHP's password hashes,
+// the secrets of invites and resets, and what each admin level may do.
+
+test "a session cookie is valid only as it was signed"
+{
+  GoratingConfig config = testConfig();
+  int64_t now = 1800000000;
+  String value = sessionCookieValue(config, "42", now + 3600, "$2y$10$hash");
+  Optional<SessionCookie> cookie = parseSessionCookie(value);
+  require(cookie.has_value());
+  check(cookie->id == "42" && cookie->expires == now + 3600 && cookie->signature.size() == 64);
+  check(sessionValid(config, *cookie, "$2y$10$hash", now));
+  // Expired, another password (a changed password ends every session), another secret.
+  check(!sessionValid(config, *cookie, "$2y$10$hash", now + 3601));
+  check(!sessionValid(config, *cookie, "$2y$10$other", now));
+  GoratingConfig other = testConfig();
+  other.sessionSecret = "another secret of thirty-two characters!";
+  check(!sessionValid(other, *cookie, "$2y$10$hash", now));
+  // A changed id or expiry keeps its signature, which no longer fits.
+  SessionCookie forged = *cookie;
+  forged.id = "1";
+  check(!sessionValid(config, forged, "$2y$10$hash", now));
+  forged = *cookie;
+  forged.expires = now + 999999;
+  check(!sessionValid(config, forged, "$2y$10$hash", now));
+  forged = *cookie;
+  forged.signature = String(64, '0');
+  check(!sessionValid(config, forged, "$2y$10$hash", now));
+}
+
+test "a malformed session cookie is no session"
+{
+  for (StringView bad : {"", "42", "42.1800000000", "x.1800000000.ab", "42.soon.ab", ".1800000000.ab", "42..ab", "-1.1800000000.ab",
+                         "12345678901.1800000000.ab", "42.1234567890123.ab"})
+    check(!parseSessionCookie(bad).has_value());
+  check(parseSessionCookie("42.1800000000.").has_value() && parseSessionCookie("42.1800000000.")->signature.empty());
+}
+
+test "passwords, as PHP hashes them"
+{
+  // PHP 8.3's $2y$ hash of "t" (libraries/bcrypt's vectors, which give it as 74 in hex), and this
+  // version's own.
+  check(bcrypt::bcryptVerify("t", "$2y$04$mQ9lwv4E3IOIqWCXNMRvkOLv/7AObtPhOTvr3JlbG0//vBKi9iAWS"));
+  check(!bcrypt::bcryptVerify("u", "$2y$04$mQ9lwv4E3IOIqWCXNMRvkOLv/7AObtPhOTvr3JlbG0//vBKi9iAWS"));
+  String hash = passwordHash("correct horse");
+  check(hash.starts_with("$2y$10$") && hash.size() == 60);
+  check(bcrypt::bcryptVerify("correct horse", hash) && !bcrypt::bcryptVerify("correct horsf", hash));
+  check(passwordHash("correct horse") != hash); // a new salt each time
+}
+
+test "secrets for invites and password resets"
+{
+  String a = secureRandomSecret();
+  String b = secureRandomSecret();
+  check(a.size() == 32 && b.size() == 32 && a != b);
+  for (char c : a)
+    check((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'));
+}
+
+test "what each admin level may do"
+{
+  TestPage visitor(0);
+  TestPage user(adminLevelUser);
+  TestPage trusted(adminLevelTrustedUser);
+  TestPage mod(adminLevelMod);
+  TestPage admin(adminLevelAdmin);
+  TestPage owner(adminLevelOwner);
+  check(!loggedIn(visitor.page) && loggedIn(user.page));
+  check(!canInvite(visitor.page) && canInvite(user.page));
+  check(!canReportWin(user.page) && canReportWin(trusted.page));
+  check(!canSeeEmails(trusted.page) && canSeeEmails(mod.page) && canSeeInviters(mod.page) && canEditPlayerName(mod.page));
+  check(!canDeleteAnyGame(mod.page) && canDeleteAnyGame(admin.page) && canEditAnyGame(admin.page) && canAccessChanges(admin.page));
+  check(!canShowStatistics(admin.page) && canShowStatistics(owner.page));
+  check(userValue(user.page, "username") == "tester");
+}

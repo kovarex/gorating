@@ -1,0 +1,70 @@
+// Reading the forms (Report.kpp, EditGame.kpp, DeleteGame.kpp, Session.kpp) without a database:
+// numbers as PHP's is_numeric takes them, timestamps, redirect targets, the fields and the SGF file.
+
+test "numbers and timestamps in a form"
+{
+  for (StringView good : {"6.5", " 7 ", "-1e2", "+0.5", "1E3", "0"})
+    check(number(good).has_value());
+  check(*number("6.5") == 6.5 && *number(" 7 ") == 7 && *number("-1e2") == -100);
+  for (StringView bad : {"", " ", "abc", "1,5", ".", "1e", "0x10", "1.2.3", "--1", "1 2", "12345678901234567890123456789012345678901"})
+    check(!number(bad).has_value());
+  check(isTimestamp("2026-11-04 15:30:00"));
+  for (StringView bad : {"2026-11-04", "2026-11-04T15:30:00", "2026-11-04 15:30", "2026/11/04 15:30:00", "2026-11-04 15:30:0x", ""})
+    check(!isTimestamp(bad));
+  check(httpTrimSpaces(" \t a b \r\n") == "a b" && httpTrimSpaces("   ").empty());
+}
+
+test "a redirect stays on this site"
+{
+  check(localRedirect("/player?id=5", "/") == "/player?id=5");
+  for (StringView elsewhere : {"//evil.example", "/\\evil.example", "https://evil.example/", "evil", ""})
+    check(localRedirect(elsewhere, "/game?id=1") == "/game?id=1");
+  http::HttpResponse response;
+  redirectWithMessage(response, "/game?id=1", "Saved & <done>");
+  const String* location = nullptr;
+  for (const http::HttpHeader& h : response.headers)
+    if (h.name == "Location")
+      location = &h.value;
+  require(location != nullptr);
+  check(response.status == 303 && *location == "/game?id=1&message=Saved%20%26%20%3Cdone%3E");
+}
+
+http::HttpRequest postRequest(StringView contentType, StringView body)
+{
+  http::HttpRequest request;
+  request.method = "POST";
+  request.target = "/report_action";
+  request.path = "/report_action";
+  request.headers.push_back(http::HttpHeader{String("content-type"), String(contentType)});
+  request.body = String(body);
+  return request;
+}
+
+test "a game's form, urlencoded or with its SGF"
+{
+  ReportForm plain = readGameForm(postRequest("application/x-www-form-urlencoded", "opponent=12&komi=6.5&comment=a%20%26%20b"));
+  check(formValue(plain.fields, "opponent") == "12" && formValue(plain.fields, "komi") == "6.5" && formValue(plain.fields, "comment") == "a & b");
+  check(formValue(plain.fields, "missing").empty() && !plain.sgf.has_value());
+
+  String body = "--XyZ\r\nContent-Disposition: form-data; name=\"komi\"\r\n\r\n0.5\r\n"
+                "--XyZ\r\nContent-Disposition: form-data; name=\"sgf\"; filename=\"game.sgf\"\r\nContent-Type: application/x-go-sgf\r\n\r\n(;GM[1]SZ[19])\r\n"
+                "--XyZ--\r\n";
+  ReportForm withFile = readGameForm(postRequest("multipart/form-data; boundary=XyZ", body));
+  check(formValue(withFile.fields, "komi") == "0.5");
+  check(withFile.sgf.has_value() && *withFile.sgf == "(;GM[1]SZ[19])");
+  String noFile = "--XyZ\r\nContent-Disposition: form-data; name=\"sgf\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n\r\n--XyZ--\r\n";
+  check(!readGameForm(postRequest("multipart/form-data; boundary=XyZ", noFile)).sgf.has_value());
+
+  // A field that is not UTF-8 is the request's error, 400.
+  ReportForm notUtf8 = readGameForm(postRequest("application/x-www-form-urlencoded", "comment=%FF%FE"));
+  int status = 0;
+  try
+  {
+    formValue(notUtf8.fields, "comment");
+  }
+  catch (const http::HttpError& e)
+  {
+    status = e.status;
+  }
+  check(status == 400);
+}

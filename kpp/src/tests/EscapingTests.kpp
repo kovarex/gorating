@@ -1,0 +1,45 @@
+// Text from players, EGD and forms on the pages (Site.kpp's links, the templates): escaped where it
+// goes, as text, in an attribute or in an address. The PHP version wrote most of it as it was.
+
+const char* hostileName = "<b>Bold</b> & \"Tom\" O'Neil";
+
+test "a player's name and username in a link"
+{
+  mariadb::MariaDbResult row = testRow({"id", "name", "username", "rating"}, {some("5"), some(hostileName), some("tom"), some("2100")});
+  String html = playerLink(Row(row, 0), "").html;
+  check(html.find("<b>") == String::npos && html.find("&lt;b&gt;Bold&lt;/b&gt; &amp;") != String::npos);
+  check(html.starts_with("<a href=\"/tom\">") && html.ends_with(" 1D</a>"));
+  // A username that is a page's name links by id; none, by id too; a quote stays in its attribute.
+  check(playerPath("5", "players") == "/player?id=5" && playerPath("5", "") == "/player?id=5" && playerPath("5", "tom") == "/tom");
+  mariadb::MariaDbResult quoted = testRow({"id", "name", "username"}, {some("6"), some("x"), some("a\"onmouseover=\"alert(1)")});
+  String attribute = playerLink(Row(quoted, 0), "").html;
+  check(attribute.find("\"onmouseover") == String::npos);
+  // Without a gorating rating, the rank comes from EGD's.
+  mariadb::MariaDbResult egdOnly = testRow({"black_id", "black_name", "black_username", "black_rating", "black_egd_rating"},
+                                          {some("7"), some("Eve"), Optional<String>(), Optional<String>(), some("1550")});
+  check(playerLink(Row(egdOnly, 0), "black").html == "<a href=\"/player?id=7\">Eve 5k</a>");
+  check(playerLink(PlayerRef()).html.empty());
+}
+
+test "tournament names, EGD links, messages"
+{
+  check(tournamentLink("3", "<script>alert(1)</script>").html == "<a href=\"/tournament?id=3\">&lt;script&gt;alert(1)&lt;/script&gt;</a>");
+  check(tournamentLink("3", "").html == "<a href=\"/tournament?id=3\">[no name]</a>");
+  check(egdLink("").html.empty());
+  check(egdLink("10000001").html ==
+        "<a href=\"https://www.europeangodatabase.eu/EGD/Player_Card.php?&amp;key=10000001\">10000001</a>");
+  String message = pageMessageTemplate.render({{"message", "Can't report <a game> & more"}}).html;
+  check(message.find("<a game>") == String::npos && message.find("&lt;a game&gt; &amp; more") != String::npos);
+}
+
+test "ranks, handicaps, dates and results as the pages show them"
+{
+  check(readableRank(rankFromRating(2050)) == "1D" && readableRank(rankFromRating(2049.9)) == "1k");
+  check(readableRank(rankFromRating(-2000)) == "30k" && readableRank(rankFromRating(2750)) == "8D");
+  check(showHandicap("0", "6.5") == "Even" && showHandicap("0", "7.5") == "Even" && showHandicap("0", "0.5") == "komi 0.5");
+  check(showHandicap("3", "0.5") == "3h " && showHandicap("3", "5.5") == "3h komi 5.5");
+  check(showDate("2026-11-02 13:45:07", true) == "02. 11. 2026 13:45" && showDate("2026-11-02 13:45:07", false) == "02. 11. 2026");
+  check(showDate("", true).empty());
+  TestPage visitor(0);
+  check(resultImage(visitor.page, "WIN").html == "<img class=\"result-image\" src=\"/img/win.png\"/>");
+}

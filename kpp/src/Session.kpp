@@ -29,36 +29,55 @@ String sessionCookieValue(const GoratingConfig& config, StringView id, int64_t e
   return format("{}.{}.{}", id, expires, sessionSignature(config, id, expires, passwordHash));
 }
 
+// A session cookie's parts; nothing when it is malformed (the id and the expiry are digits, at most 10
+// and 12 of them).
+struct SessionCookie
+{
+  String id;
+  int64_t expires = 0;
+  String signature;
+};
+
+Optional<SessionCookie> parseSessionCookie(StringView value)
+{
+  ContainerSize dot1 = value.find('.');
+  ContainerSize dot2 = dot1 == StringView::npos ? StringView::npos : value.find('.', dot1 + 1);
+  if (dot2 == StringView::npos)
+    return Optional<SessionCookie>();
+  StringView id = value.substr(0, dot1);
+  StringView expiresText = value.substr(dot1 + 1, dot2 - dot1 - 1);
+  if (id.empty() || expiresText.empty() || id.size() > 10 || expiresText.size() > 12)
+    return Optional<SessionCookie>();
+  for (char c : id)
+    if (c < '0' || c > '9')
+      return Optional<SessionCookie>();
+  for (char c : expiresText)
+    if (c < '0' || c > '9')
+      return Optional<SessionCookie>();
+  return Optional<SessionCookie>(SessionCookie{String(id), stoll(String(expiresText)), String(value.substr(dot2 + 1))});
+}
+
+// Whether the cookie is a session of the user whose password hash this is, at the time now: not
+// expired, and signed with the configuration's secret over that hash.
+bool sessionValid(const GoratingConfig& config, const SessionCookie& cookie, StringView passwordHash, int64_t now)
+{
+  if (cookie.expires < now)
+    return false;
+  return sha256::Sha256::constantTimeEqual(sessionSignature(config, cookie.id, cookie.expires, passwordHash), cookie.signature);
+}
+
 // The logged-in user's row, read into page; nothing when the cookie is missing, malformed, expired
 // or signed with another secret or password.
 void readSession(Page& page)
 {
-  Optional<String> cookie = page.request->cookie(sessionCookie);
-  if (!cookie.has_value())
+  Optional<String> value = page.request->cookie(sessionCookie);
+  if (!value.has_value())
     return;
-  StringView value = *cookie;
-  ContainerSize dot1 = value.find('.');
-  ContainerSize dot2 = dot1 == StringView::npos ? StringView::npos : value.find('.', dot1 + 1);
-  if (dot2 == StringView::npos)
+  Optional<SessionCookie> cookie = parseSessionCookie(*value);
+  if (!cookie.has_value() || cookie->expires < unixNow())
     return;
-  StringView id = value.substr(0, dot1);
-  StringView expiresText = value.substr(dot1 + 1, dot2 - dot1 - 1);
-  if (id.empty() || expiresText.empty() || id.size() > 10 || expiresText.size() > 12)
-    return;
-  for (char c : id)
-    if (c < '0' || c > '9')
-      return;
-  for (char c : expiresText)
-    if (c < '0' || c > '9')
-      return;
-  int64_t expires = stoll(String(expiresText));
-  if (expires < unixNow())
-    return;
-  mariadb::MariaDbResult user = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
-  if (user.empty() || !user.at(0, "password").has_value())
-    return;
-  String expected = sessionSignature(*page.config, id, expires, *user.at(0, "password"));
-  if (!sha256::Sha256::constantTimeEqual(expected, value.substr(dot2 + 1)))
+  mariadb::MariaDbResult user = page.query(String("SELECT * FROM user WHERE id=") + quote(cookie->id));
+  if (user.empty() || !user.at(0, "password").has_value() || !sessionValid(*page.config, *cookie, *user.at(0, "password"), unixNow()))
     return;
   page.user = Optional<mariadb::MariaDbResult>(move(user));
 }

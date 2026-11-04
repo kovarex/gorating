@@ -1,0 +1,226 @@
+// What gorating reads from EGD's pages, without the database: a tournament's GoR page
+// (Tournament_ShowGoR.php), a player's card (Player_Card.php) and the tournament search
+// (Find_Tournament.php). Each checks what PHP checked, with its messages; the jobs then look up and
+// store what these give (Tournaments.kpp, Egd.kpp, Jobs.kpp). src/tests/EgdTests.kpp reads made-up
+// pages written in EGD's markup.
+
+// A cell's text as PHP compared it.
+String egdCell(const HtmlDocument& doc, const Vector<int>& cells, ContainerSize index)
+{
+  if (index >= cells.size())
+    throw GoratingError(format("a game row with {} cells, not {} or more", (int64_t)cells.size(), (int64_t)index + 1));
+  return doc.text(cells[index]);
+}
+
+// One row of a player's games, as the page has it (the texts PHP read).
+struct EgdTournamentGame
+{
+  String round;             // numeric
+  String gorChange;         // the player's, numeric
+  String color;             // "w" or "b" (an old tournament without colours: "b")
+  String handicap;          // the handicap cell's first word: "0" of "0 explicit"
+  String result;            // "Win", "Loss" or "Jigo"
+  String opponentPin;       // numeric
+  String opponentFirstName; // the name's first word, or " " when it has one word (then the last name)
+  String opponentLastName;  // the rest
+  String opponentGor;       // numeric
+  String opponentGorChange; // numeric
+};
+
+// A player's block: their GoR before the tournament, their link's pin and name, their games.
+struct EgdTournamentPlayer
+{
+  String gor;       // numeric
+  String pin;       // numeric
+  String firstName; // the link's third word ("PIN - First Last")
+  String lastName;  // its fourth and the rest
+  Vector<EgdTournamentGame> games;
+};
+
+struct EgdTournamentPage
+{
+  String nation;      // "Germany (DE)"
+  int gameType = 0;   // egdGameType of its class
+  String date;        // DD-MM-YYYY
+  String city;
+  String roundCount;
+  String playerCount;
+  Optional<String> name;
+  Vector<EgdTournamentPlayer> players; // in the page's order: by placement
+};
+
+// A tournament's GoR page; a page without what processTournament needs throws PHP's message.
+EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
+{
+  EgdTournamentPage page;
+  Optional<String> nation;
+  Optional<String> city;
+  for (int input : doc.elements(0, "input"))
+  {
+    const String* name = doc.attribute(input, "name");
+    if (name == nullptr || name->empty() || *name == "0")
+      continue;
+    const String* attribute = doc.attribute(input, "value");
+    String value = attribute == nullptr ? String() : *attribute;
+    if (*name == "nation")
+      nation = Optional<String>(value);
+    else if (*name == "class")
+      page.gameType = egdGameType(value);
+    else if (*name == "tournament_date")
+      page.date = value;
+    else if (*name == "city")
+      city = Optional<String>(value);
+    else if (*name == "rounds" && phpIsNumeric(value))
+      page.roundCount = value;
+    else if (*name == "total_player")
+      page.playerCount = value;
+  }
+  for (int span : doc.elements(0, "span"))
+    if (doc.hasAttribute(span, "class", "plain5"))
+    {
+      page.name = Optional<String>(doc.text(span));
+      break;
+    }
+  if (!nation.has_value())
+    throw GoratingError(format("Tournament country info couldn't be determined. key={}", key));
+  if (page.gameType == 0)
+    throw GoratingError(format("Game type info couldn't be determined. key={}", key));
+  if (page.date.empty())
+    throw GoratingError(format("Tournament date couldn't be determined. key={}", key));
+  if (!city.has_value())
+    throw GoratingError(format("Tournament city couldn't be determined. key={}", key));
+  if (page.playerCount.empty() || page.playerCount == "0")
+    throw GoratingError(format("Player count couldn't be determined. key={}", key));
+  if (page.roundCount.empty() || page.roundCount == "0")
+    throw GoratingError(format("Round count couldn't be determined. key={}", key));
+  page.nation = *nation;
+  page.city = *city;
+
+  for (int div : doc.elements(0, "div"))
+  {
+    if (!doc.hasAttribute(div, "class", "thisdiv"))
+      continue;
+    Vector<int> bold = doc.elements(div, "b");
+    Vector<int> links = doc.elements(div, "a");
+    Vector<int> tables = doc.elements(div, "table");
+    if (bold.size() < 2 || links.empty() || tables.size() < 2)
+      throw GoratingError(format("a player's block of tournament {} lacks its rating, link or games", key));
+    EgdTournamentPlayer& player = page.players.emplace_back();
+    player.gor = doc.text(bold[1]);
+    if (!phpIsNumeric(player.gor))
+      throw GoratingError(format("The value of gor before tournament: \"{} is not a number.", player.gor));
+    Vector<String> pieces;
+    String link = doc.text(links[0]);
+    for (ContainerSize at = 0;;)
+    {
+      ContainerSize space = link.find(' ', at);
+      pieces.push_back(link.substr(at, space == String::npos ? String::npos : space - at));
+      if (space == String::npos)
+        break;
+      at = space + 1;
+    }
+    player.pin = pieces[0];
+    if (!phpIsNumeric(player.pin) || pieces.size() < 4)
+      throw GoratingError(format("Pin {} isn't numeric", player.pin));
+    player.firstName = pieces[2];
+    player.lastName = pieces[3];
+    for (ContainerSize i = 4; i < pieces.size(); ++i)
+      player.lastName.append(String(" ") + pieces[i]);
+
+    for (int row : doc.elements(tables[1], "tr"))
+    {
+      Vector<int> cells = doc.elements(row, "td");
+      if (cells.empty())
+        continue;
+      EgdTournamentGame& game = player.games.emplace_back();
+      game.round = egdCell(doc, cells, 0);
+      if (!phpIsNumeric(game.round))
+        throw GoratingError(format("Round should be numeric, but is \"{}\"", game.round));
+      game.gorChange = egdCell(doc, cells, 1);
+      if (!phpIsNumeric(game.gorChange))
+        throw GoratingError(format("gor change isn't numeric: \"{}\"", game.gorChange));
+      game.color = egdCell(doc, cells, 3);
+      if (game.color.empty())
+        game.color = "b"; // some old tournaments don't have the colour
+      if (game.color != "w" && game.color != "b")
+        throw GoratingError(format("Color value unexpected:\"{}\"", game.color));
+      String handicapText = egdCell(doc, cells, 4);
+      game.handicap = handicapText.substr(0, handicapText.find(' '));
+      game.result = egdCell(doc, cells, 5);
+      if (game.result != "Win" && game.result != "Loss" && game.result != "Jigo")
+        throw GoratingError(format("Result text has unexpected value:\"{}\"", game.result));
+      game.opponentPin = egdCell(doc, cells, 6);
+      if (!phpIsNumeric(game.opponentPin))
+        throw GoratingError(format("Opponent pin {} isn't numeric.", game.opponentPin));
+      String opponentName = egdCell(doc, cells, 7);
+      ContainerSize space = opponentName.find(' ');
+      // The first word is the first name, the rest the last name, as for the players' own blocks
+      // (PHP kept only the second word: kovarex, 2026-11-02, "could be fixed").
+      game.opponentFirstName = space == String::npos ? opponentName : opponentName.substr(0, space);
+      game.opponentLastName = space == String::npos ? String() : opponentName.substr(space + 1);
+      if (game.opponentLastName.empty())
+      {
+        game.opponentLastName = game.opponentFirstName;
+        game.opponentFirstName = " "; // some people have just a space as a first name
+      }
+      game.opponentGor = egdCell(doc, cells, 9);
+      if (!phpIsNumeric(game.opponentGor))
+        throw GoratingError("Opponent gor not numeric.");
+      game.opponentGorChange = egdCell(doc, cells, 10);
+      if (!phpIsNumeric(game.opponentGorChange))
+        throw GoratingError("Opponent gor Change is not numeric.");
+    }
+  }
+  return page;
+}
+
+// A player's card: their GoR (the gor input's first word) and country ("Germany (DE)").
+struct EgdPlayerCard
+{
+  String rating;
+  String country;
+};
+
+EgdPlayerCard readEgdPlayerCard(const HtmlDocument& doc, StringView url)
+{
+  Optional<String> rating;
+  Optional<String> country;
+  for (int input : doc.elements(0, "input"))
+  {
+    const String* name = doc.attribute(input, "name");
+    const String* value = doc.attribute(input, "value");
+    if (name == nullptr || value == nullptr)
+      continue;
+    if (*name == "gor")
+    {
+      ContainerSize space = value->find(' ');
+      String gor = space == String::npos ? *value : value->substr(0, space);
+      if (!phpIsNumeric(gor))
+        throw GoratingError(format("The provided rating from egd ({}) doesn't seem to be a number.", gor));
+      rating = Optional<String>(gor);
+    }
+    else if (*name == "country")
+      country = Optional<String>(*value);
+  }
+  if (!rating.has_value() || rating->empty() || !country.has_value())
+    throw GoratingError(format("Couldn't determine the rating from the EGD page. Link:{}", url));
+  return EgdPlayerCard{*rating, *country};
+}
+
+// The tournament search's keys, newest first: the first cell of each row of its results table.
+Vector<String> readEgdTournamentSearch(const HtmlDocument& doc)
+{
+  for (int table : doc.elements(0, "table"))
+    if (doc.hasAttribute(table, "bordercolor", "#396B95"))
+    {
+      Vector<String> keys;
+      for (int row : doc.elements(table, "tr"))
+      {
+        Vector<int> cells = doc.elements(row, "td");
+        if (!cells.empty())
+          keys.push_back(doc.text(cells[0]));
+      }
+      return keys;
+    }
+  throw GoratingError("Didn't find a single entry that would look like a tournament.");
+}

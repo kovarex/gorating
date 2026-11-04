@@ -1,0 +1,145 @@
+// EGD's pages read without the network (jobs/EgdPages.kpp): made-up tournaments, players and cards
+// written in the markup of EGD's pages (Tournament_ShowGoR.php, Player_Card.php, Find_Tournament.php;
+// the names and pins are made up). testdata/egd-compare.sh checks the reader against PHP's on saved
+// real pages, which stay out of the repository.
+
+// A row of a player's games, as EGD's table has it.
+String egdGameRow(StringView round, StringView gorChange, StringView color, StringView handicap, StringView result, StringView opponentPin,
+                  StringView opponentName, StringView opponentGor, StringView opponentGorChange)
+{
+  return format("<tr><td class=\"text\">{}</td><td><b>{}</b></td><td><i>-7.955</i></td><td class=\"text\">{}</td><td class=\"text\" >{}</td>"
+                "<td class=\"text\">{}</td><td class=\"text\">{}</td><td class=\"text\">{}</td><td class=\"text\">3d</td><td>{}</td><td>{}</td></tr>\n",
+                round, gorChange, color, handicap, result, opponentPin, opponentName, opponentGor, opponentGorChange);
+}
+
+// A player's block: place, the link "PIN - <b>Name</b>", GoR before, the games' table.
+String egdPlayerBlock(int place, StringView pin, StringView name, StringView gor, StringView rows)
+{
+  return format("<div class=\"thisdiv\"><br>Place {}: <a href=\"/EGD/Player_Card.php?key={}\">{} - <b>{}</b></a> (rank declared: 4d)<br>"
+                "GoR before tournament: <b>{}</b><br><br><table width=100%><tr><td><a href=\"/EGD/Player_Card.php?key={}\"><img src=\"x.png\" alt=\"\" ></a></td>"
+                "<td><table class=\"stdtable thistable\">\n<thead><tr><th rowspan=2 align=center>Rnd</th><th colspan=3>{}</th><th rowspan=2>Handicap</th>"
+                "<th rowspan=2>Result</th><th colspan=5>Opponent</th></tr><tr><th>GoR change</th><th>GoR change in case<br>of altern. result</th>"
+                "<th>Color</th><th>PIN</th><th>Name</th><th>Rank decl.</th><th>GoR</th><th>GoR change</th></tr></thead>\n<tbody>\n{}</tbody></table>\n"
+                "<br>GoR after tournament: <font color=\"green\"><b>2433.993 (+6.705)</b></font></td></tr></table></div><br>",
+                place, pin, pin, name, gor, pin, pin, rows);
+}
+
+// The page's facts (each input as EGD writes it; one left out when skip names it) and the blocks.
+String egdTournamentPage(StringView blocks, StringView skip = "", StringView nation = "Germany (DE)", StringView kind = "A (1x)")
+{
+  String inputs;
+  for (Pair<StringView, String> input : {Pair<StringView, String>{"tournament_date", String("31-10-2026")}, Pair<StringView, String>{"city", String("Musterstadt")},
+                                         Pair<StringView, String>{"nation", String(nation)}, Pair<StringView, String>{"class", String(kind)},
+                                         Pair<StringView, String>{"rounds", String("3")}, Pair<StringView, String>{"total_player", String("4")},
+                                         Pair<StringView, String>{"rounds", String("9 (no handicap)")}})
+    if (input.first != skip)
+      inputs.append(format("<input name=\"{}\" type=\"text\" size=\"12\" readonly=\"true\" class=\"plain3_light\" value=\"{}\">\n", input.first, input.second));
+  // (EGD's script writes table tags in strings, which the reader must not take for the page's.)
+  return format("<html><head><title>Tournament</title></head><body>\n<script language=\"JavaScript\">\n<!--\n"
+                "win.document.writeln(\"<TABLE><TR><TD>\");\n//-->\n</script>\n<form>{}"
+                "<input type=\"button\" id=\"togglebutton\" onclick=\"toggledetails();\" value=\"Show details\" /></form>\n"
+                "<div align=\"center\"><span class=\"plain5\">Made-up Cup 2026<br></span><span class=\"plain7\">.: T261031Z :.<br><br /></span></div>\n{}\n</body></html>",
+                inputs, blocks);
+}
+
+String madeUpBlocks()
+{
+  return egdPlayerBlock(1, "10000001", "Anna Nováková", "2427.288",
+                        egdGameRow("1", "2.607", "w", "0 explicit", "Win", "10000002", "Bo Lee", "2273.736", "-3.157") +
+                        egdGameRow("2", "0.5", "", "2 explicit", "Jigo", "10000003", "Mononym", "2174.068", "-1.932")) +
+         egdPlayerBlock(2, "10000002", "Jan van der Berg", "2273.736",
+                        egdGameRow("1", "-3.157", "b", "0 explicit", "Loss", "10000001", "Anna Nováková", "2427.288", "2.607"));
+}
+
+test "a tournament's page"
+{
+  EgdTournamentPage page = readEgdTournamentPage(readHtml(egdTournamentPage(madeUpBlocks())), "T261031Z");
+  check(page.nation == "Germany (DE)" && page.gameType == gameTypeEgdA && page.date == "31-10-2026" && page.city == "Musterstadt");
+  check(page.roundCount == "3" && page.playerCount == "4" && page.name.has_value() && *page.name == "Made-up Cup 2026");
+  require(page.players.size() == 2);
+  const EgdTournamentPlayer& anna = page.players[0];
+  check(anna.pin == "10000001" && anna.firstName == "Anna" && anna.lastName == "Nováková" && anna.gor == "2427.288");
+  require(anna.games.size() == 2);
+  const EgdTournamentGame& won = anna.games[0];
+  check(won.round == "1" && won.gorChange == "2.607" && won.color == "w" && won.handicap == "0" && won.result == "Win");
+  check(won.opponentPin == "10000002" && won.opponentFirstName == "Bo" && won.opponentLastName == "Lee");
+  check(won.opponentGor == "2273.736" && won.opponentGorChange == "-3.157");
+  const EgdTournamentGame& jigo = anna.games[1];
+  // An old tournament's missing colour is black; a one-word name is the last name, its first " ".
+  check(jigo.color == "b" && jigo.handicap == "2" && jigo.result == "Jigo");
+  check(jigo.opponentFirstName == " " && jigo.opponentLastName == "Mononym");
+  // A player's own name: the third word first, the rest last.
+  check(page.players[1].firstName == "Jan" && page.players[1].lastName == "van der Berg");
+  check(page.players[1].games.size() == 1 && page.players[1].games[0].result == "Loss");
+}
+
+String tournamentPageError(StringView html)
+{
+  return goratingErrorOf([&]() { readEgdTournamentPage(readHtml(html), "T261031Z"); });
+}
+
+test "a tournament's page that lacks something"
+{
+  check(tournamentPageError(egdTournamentPage(madeUpBlocks(), "nation")) == "Tournament country info couldn't be determined. key=T261031Z");
+  check(tournamentPageError(egdTournamentPage(madeUpBlocks(), "tournament_date")) == "Tournament date couldn't be determined. key=T261031Z");
+  check(tournamentPageError(egdTournamentPage(madeUpBlocks(), "city")) == "Tournament city couldn't be determined. key=T261031Z");
+  check(tournamentPageError(egdTournamentPage(madeUpBlocks(), "total_player")) == "Player count couldn't be determined. key=T261031Z");
+  check(tournamentPageError(egdTournamentPage(madeUpBlocks(), "class")) == "Game type info couldn't be determined. key=T261031Z");
+  check(tournamentPageError(egdTournamentPage(madeUpBlocks(), "", "Germany (DE)", "X (1x)")) ==
+        "Couldn't determine egd tournament class from the string:X (1x)");
+  String row = egdGameRow("1", "2.607", "w", "0 explicit", "Win", "10000002", "Bo Lee", "2273.736", "-3.157");
+  auto with = [&](StringView from, StringView to)
+  {
+    String changed = row;
+    ContainerSize at = changed.find(from);
+    changed = changed.substr(0, at) + to + changed.substr(at + from.size());
+    return egdTournamentPage(egdPlayerBlock(1, "10000001", "Anna Nováková", "2427.288", changed));
+  };
+  check(tournamentPageError(with(">w<", ">x<")) == "Color value unexpected:\"x\"");
+  check(tournamentPageError(with(">Win<", ">Won<")) == "Result text has unexpected value:\"Won\"");
+  check(tournamentPageError(with(">1<", ">one<")) == "Round should be numeric, but is \"one\"");
+  check(tournamentPageError(with("<b>2.607</b>", "<b>+-</b>")) == "gor change isn't numeric: \"+-\"");
+  check(tournamentPageError(with(">2273.736<", ">?<")) == "Opponent gor not numeric.");
+  check(tournamentPageError(egdTournamentPage(egdPlayerBlock(1, "10000001", "Anna Nováková", "n/a", row))) ==
+        "The value of gor before tournament: \"n/a is not a number.");
+  check(tournamentPageError(egdTournamentPage(egdPlayerBlock(1, "1000000X", "Anna Nováková", "2427.288", row))) == "Pin 1000000X isn't numeric");
+  // A row of too few cells names its count.
+  check(tournamentPageError(egdTournamentPage(egdPlayerBlock(1, "10000001", "Anna Nováková", "2427.288", "<tr><td>1</td><td>2</td></tr>"))) ==
+        "a game row with 2 cells, not 4 or more");
+}
+
+test "a player's card and the tournament search"
+{
+  String card = "<html><body><form><input name=\"name\" value=\"Anna\"><input name=\"gor\" value=\"2100.5 (x)\">"
+                "<input name=\"country\" value=\"Czech Republic (CZ)\"><input type=\"submit\"></form></body></html>";
+  EgdPlayerCard read = readEgdPlayerCard(readHtml(card), "card");
+  check(read.rating == "2100.5" && read.country == "Czech Republic (CZ)");
+  check(goratingErrorOf([&]() { readEgdPlayerCard(readHtml("<input name=\"gor\" value=\"1\">"), "card"); }) ==
+        "Couldn't determine the rating from the EGD page. Link:card");
+  check(goratingErrorOf([&]() { readEgdPlayerCard(readHtml("<input name=\"gor\" value=\"abc\">"), "card"); }) ==
+        "The provided rating from egd (abc) doesn't seem to be a number.");
+
+  String search = "<table bordercolor=#000000><tr><td>not this</td></tr></table><TABLE bordercolor=#396B95><tr><th>Code</th></tr>"
+                  "<tr><td>T261031Z</td><td>Made-up Cup</td></tr><tr><td>T261024Y</td><td>Other</td></tr></TABLE>";
+  Vector<String> keys = readEgdTournamentSearch(readHtml(search));
+  check(keys.size() == 2 && keys[0] == "T261031Z" && keys[1] == "T261024Y");
+  check(goratingErrorOf([&]() { readEgdTournamentSearch(readHtml("<table><tr><td>T1</td></tr></table>")); }) ==
+        "Didn't find a single entry that would look like a tournament.");
+
+  Vector<String> listed = tournamentListKeys(" T261031Z  A  5 Made-up Cup\r\n header line\n T261024Y  B  3 Other\n");
+  check(listed.size() == 2 && listed[0] == "T261031Z" && listed[1] == "T261024Y");
+}
+
+test "dates, classes, keys and saved pages"
+{
+  check(egdTimestamp("31-10-2026") == "2026-10-31 00:00:00");
+  check(goratingErrorOf([]() { egdTimestamp("2026-10-31"); }) == "Tournament date \"2026-10-31\" is not DD-MM-YYYY");
+  check(egdGameType("A (1x)") == gameTypeEgdA && egdGameType("B") == gameTypeEgdB && egdGameType("C (x)") == gameTypeEgdC && egdGameType("D") == gameTypeEgdD);
+  check(isTournamentKey("T261031A") && isTournamentKey("W123") && isTournamentKey("E1234567890") == false && !isTournamentKey("X261031A"));
+  check(!isTournamentKey("T12"));
+  // The name a saved page has: this one is T261031A's GoR page as egdPageDirectory holds it.
+  check(egdPageName("https://www.europeangodatabase.eu/EGD/Tournament_ShowGoR.php?key=T261031A", "") ==
+        "9496b93e843191764377a6ded1621378c38e6bddeda078f586bd2f604d9335f1.html");
+  check(scrapeDoAddress("t&k", "https://www.europeangodatabase.eu/EGD/x.php?a=1&b=2") ==
+        "https://api.scrape.do/?url=https%3A%2F%2Fwww.europeangodatabase.eu%2FEGD%2Fx.php%3Fa%3D1%26b%3D2&token=t%26k");
+}

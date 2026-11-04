@@ -86,20 +86,7 @@ constexpr StringView latestTournamentsForm = "ricerca=1&orderBy=orderBy%3DTourna
 
 Vector<String> latestTournamentKeys(Page& page)
 {
-  HtmlDocument doc = readHtml(fetchEgd(*page.config, String(egdAddress) + "Find_Tournament.php", latestTournamentsForm));
-  for (int table : doc.elements(0, "table"))
-    if (doc.hasAttribute(table, "bordercolor", "#396B95"))
-    {
-      Vector<String> keys;
-      for (int row : doc.elements(table, "tr"))
-      {
-        Vector<int> cells = doc.elements(row, "td");
-        if (!cells.empty())
-          keys.push_back(doc.text(cells[0]));
-      }
-      return keys;
-    }
-  throw GoratingError("Didn't find a single entry that would look like a tournament.");
+  return readEgdTournamentSearch(readHtml(fetchEgd(*page.config, String(egdAddress) + "Find_Tournament.php", latestTournamentsForm)));
 }
 
 // The jobs' addresses; false for any other.

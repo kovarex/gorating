@@ -1,0 +1,49 @@
+// What the tests share: a result of one row with named columns, and a page with no database for a
+// visitor or a user of one admin level (Session.kpp's AdminLevel).
+
+mariadb::MariaDbResult testRow(const Vector<String>& columns, const Vector<Optional<String>>& values)
+{
+  mariadb::MariaDbResult result;
+  result.columns = columns;
+  result.rows.push_back(values);
+  return result;
+}
+
+Optional<String> some(StringView text) { return Optional<String>(String(text)); }
+
+GoratingConfig testConfig()
+{
+  GoratingConfig config;
+  config.sessionSecret = "0123456789abcdef0123456789abcdef-test-only";
+  return config;
+}
+
+// A page for a request with no database: page.user is the user's row when level is not 0.
+struct TestPage
+{
+  GoratingConfig config = testConfig();
+  http::HttpRequest request;
+  Page page;
+
+  explicit TestPage(int level)
+  {
+    this->page.config = &this->config;
+    this->page.request = &this->request;
+    if (level != 0)
+      this->page.user = Optional<mariadb::MariaDbResult>(testRow({"id", "username", "admin_level_id"}, {some("7"), some("tester"), some(format("{}", level))}));
+  }
+};
+
+// The message of the GoratingError the call throws, or "" when it throws none.
+template <typename F> String goratingErrorOf(F call)
+{
+  try
+  {
+    call();
+  }
+  catch (const GoratingError& e)
+  {
+    return String(StringView(e.what()));
+  }
+  return String();
+}
