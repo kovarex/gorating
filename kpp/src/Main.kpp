@@ -67,20 +67,24 @@ String contentTypeOf(StringView path)
   return "application/octet-stream";
 }
 
-// With resourceAddress "", style2.css, common.js and img/*.png come from staticDirectory.
+// With resourceAddress "" and a staticDirectory (a local run; on the server Apache serves the files
+// itself): the bundled CSS and JS from staticDirectory's kpp/build/assets (assets/build.sh), and
+// img/*.png from staticDirectory.
 bool serveStatic(const http::HttpRequest& request, http::HttpResponse& response)
 {
   if (!goratingConfig.resourceAddress.empty() || goratingConfig.staticDirectory.empty())
     return false;
   StringView path = request.path;
-  bool known = path == "/style2.css" || path == "/common.js";
-  if (path.starts_with("/img/") && path.ends_with(".png") && path.find("..") == StringView::npos &&
-      path.find('/', 5) == StringView::npos)
-    known = true;
-  if (!known)
+  String file;
+  if (path == String("/") + config::siteCss || path == String("/") + config::siteJs)
+    file = goratingConfig.staticDirectory + "/kpp/build/assets" + String(path);
+  else if (path.starts_with("/img/") && path.ends_with(".png") && path.find("..") == StringView::npos &&
+           path.find('/', 5) == StringView::npos)
+    file = goratingConfig.staticDirectory + String(path);
+  else
     return false;
   response.setHeader("Content-Type", contentTypeOf(path));
-  response.body = goratingReadFile(goratingConfig.staticDirectory + String(path));
+  response.body = goratingReadFile(file);
   return true;
 }
 

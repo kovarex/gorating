@@ -4,6 +4,10 @@ void build(Project& project)
   Executable& site = project.executable("gorating", {"src"});
   for (StringView name : {"http", "html", "mariadb", "bcrypt", "sha256", "base64", "url", "json", "markdown", "httpclient"})
     site.use(name);
+  // The bundled CSS and JS the pages link (assets/build.sh): CI's release build names them by their
+  // contents (--config siteCss=site.<hash>.css ...); these are a local build's and the tests'.
+  site.config("siteCss", "site.css");
+  site.config("siteJs", "site.js");
   // What the EGD reader reads from a saved page, to compare with testdata/egd_extract.php's (PHP).
   Executable& extract = project.executable("egdextract", {"src/egd", "testdata/egdextract"});
   extract.use("markdown");

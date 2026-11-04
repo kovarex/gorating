@@ -1,0 +1,4 @@
+/* The kpp version's style sheet: assets/build.sh bundles this file and everything it imports into
+   one, minified and named by its contents (site.<hash>.css). Until the switch from PHP the rules stay
+   in the repository root's style2.css, which the PHP version serves; a new file is one more @import. */
+@import "../../style2.css";

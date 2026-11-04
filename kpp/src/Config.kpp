@@ -2,7 +2,8 @@
 // named by GORATING_CONFIG, else gorating-config.json in the working directory. Its form:
 //   {"database": {"host": "127.0.0.1", "port": 3306, "user": "...", "password": "...", "name": "..."},
 //    "resourceAddress": "https://...", "sessionSecret": "<32+ random characters>", "secureCookies": true}
-// resourceAddress is where style2.css, common.js and img/ are; "" serves them from this program.
+// resourceAddress is where the bundled CSS and JS (assets/build.sh) and img/ are; "" is the site's
+// own root (Apache serves them there; a local run serves them from staticDirectory).
 
 struct GoratingConfig
 {

@@ -46,6 +46,13 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   tournament gave (a saved tournament, a recompute from its start, a deleted game, processing it
   again) and the update's start; PHP's recomputation fails it.
 - `testdata/generate.py`: made-up data for a local database (no real person in it).
+- `assets/`: the CSS and JS. `sh assets/build.sh` bundles `site.css` and `site.js` with what they
+  import into one file each with esbuild (pinned, through npx: Node.js), minified and named by their
+  contents (`site.<hash>.css`), and prints the `--config siteCss=... --config siteJs=...` that a
+  build linking those names takes (CI's release build); without them the pages link `site.css` and
+  `site.js`, which `sh assets/build.sh --plain` writes into build/assets for a local run
+  (`gorating --port 8082` with resourceAddress "" serves them from there). Until the switch from
+  PHP, site.css imports the root's style2.css, which PHP serves.
 - `deploy/`: the test site's .htaccess and an example configuration, which the test site's package
   holds beside the FreeBSD program (DEPLOY.md; DEPLOY-CHECKLIST.md, the short list, and how to build
   the program oneself).

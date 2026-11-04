@@ -4,3 +4,8 @@ SetEnv GORATING_CONFIG /home/protected/gorating-config.json
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ /gorating.cgi [L]
+# The bundled CSS and JS are named by their contents (kpp/assets/build.sh): new contents, a new name,
+# so a browser keeps one for a year without asking again.
+<FilesMatch "^site\.[A-Z0-9]+\.(css|js)$">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>

@@ -44,12 +44,24 @@ jobs:
           & $env:KPP --no-server --test
           if ($LASTEXITCODE -ne 0) { throw "kpp --test: exit $LASTEXITCODE" }
 
+      # The CSS and JS bundled, minified and named by their contents (kpp/assets/build.sh, esbuild
+      # pinned); the release program links those names.
+      - name: The CSS and JS
+        shell: bash
+        working-directory: kpp
+        run: |
+          set -e
+          options=$(sh assets/build.sh ../freebsd/assets | tail -n 1)
+          echo "$options"
+          echo "SITE_ASSETS=$options" >> "$GITHUB_ENV"
+
       - name: The FreeBSD program and its tests
         shell: powershell
         working-directory: kpp
         run: |
           $ErrorActionPreference = 'Continue'
-          & $env:KPP --no-server --release --target freebsd gorating
+          $assets = $env:SITE_ASSETS -split ' '
+          & $env:KPP --no-server --release --target freebsd @assets gorating
           if ($LASTEXITCODE -ne 0) { throw "kpp --release --target freebsd: exit $LASTEXITCODE" }
           $out = & $env:KPP --no-server --target freebsd --no-run --test gorating 2>&1 | ForEach-Object { "$_" }
           $out
@@ -121,6 +133,9 @@ jobs:
           for page in _about _players; do
             grep -q '^Status: 200' freebsd/cgi$page.txt && grep -q '</html>' freebsd/cgi$page.txt || { echo "the CGI's $page did not answer 200 with a page:"; head -c 2000 freebsd/cgi$page.txt; exit 1; }
           done
+          for file in $(cd freebsd/assets && ls); do
+            grep -q "/$file\"" freebsd/cgi_about.txt || { echo "the pages do not link $file, which the package holds"; exit 1; }
+          done
 
   # The site's package: what kpp/DEPLOY.md puts on the server, laid out as there.
   package:
@@ -144,7 +159,7 @@ jobs:
           p=gorating-site
           mkdir -p $p/public $p/migrations
           cp freebsd/gorating $p/public/gorating.cgi && chmod 755 $p/public/gorating.cgi
-          cp kpp/deploy/.htaccess style2.css common.js $p/public/
+          cp kpp/deploy/.htaccess freebsd/assets/site.*.css freebsd/assets/site.*.js $p/public/
           cp -R img $p/public/img
           cp kpp/migrations/*.sql $p/migrations/
           cp kpp/deploy/gorating-config.example.json kpp/DEPLOY.md kpp/DEPLOY-CHECKLIST.md $p/

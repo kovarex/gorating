@@ -8,7 +8,8 @@ database. DEPLOY.md has the reasons behind each step.
 ```
 public/gorating.cgi        the program: a static FreeBSD 14.3 x86-64 executable
 public/.htaccess           sends every request that is not a file to the program (CGI)
-public/style2.css, common.js, img/   the PHP version's, unchanged
+public/site.<hash>.css, site.<hash>.js   the CSS and JS bundled (kpp/assets/build.sh), kept a year
+public/img/                the PHP version's, unchanged
 protected/gorating-config.example.json   the configuration to fill in (placeholders only)
 migrations/001-*.sql, 002-*.sql          the database changes, in order
 DEPLOY.md, DEPLOY-CHECKLIST.md, BUILD.txt   the runbook, this list, what it was built from
@@ -53,7 +54,7 @@ In the MariaDB process (NFS panel > MySQL Processes; its host name is on that pa
 | `database.port` | 3306 |
 | `database.user`, `database.password` | `gorating_test` and its password (step 2) |
 | `database.name` | `gorating_test` |
-| `resourceAddress` | `""` (Apache serves style2.css, common.js and img/ itself) |
+| `resourceAddress` | `""` (Apache serves the CSS, the JS and img/ itself) |
 | `sessionSecret` | 64 random hex characters: `openssl rand -hex 32` (at least 32 characters) |
 | `secureCookies` | `true` (the site is HTTPS) |
 | `siteAddress` | `https://gorating-test.nfshost.com` (links in mails) |
@@ -137,5 +138,8 @@ kpp --release --target freebsd --sysroot ..\..\kpp-source\compiler\build\sysroot
 
 The program is `build\release\gorating.exe` (a FreeBSD executable, whatever its name says):
 upload it as `gorating.cgi`. The rest of the package is in the repository: `kpp/deploy/`
-(.htaccess, the example configuration), `kpp/migrations/`, and the PHP checkout's style2.css,
-common.js and img/ in the repository's root.
+(.htaccess, the example configuration), `kpp/migrations/`, and img/ in the repository's root.
+The CSS and JS come from `sh assets/build.sh` in kpp/ (Node.js), run before the build: it
+writes build/assets/site.<hash>.css and .js and prints the options the build needs to link them
+(`--config siteCss=... --config siteJs=...`, added to the kpp command above); upload both files
+next to gorating.cgi.

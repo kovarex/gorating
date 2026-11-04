@@ -35,7 +35,9 @@ kpp/deploy's files. DEPLOY-CHECKLIST.md is the short list of these steps.
 public/gorating.cgi       the program: a static FreeBSD 14.3 executable, kpp --release --target freebsd
 public/.htaccess          kpp/deploy/.htaccess: every request that is not a static file goes to the
                           program, as Apache sent them to start.php
-public/style2.css, common.js, img/   the PHP checkout's, unchanged
+public/site.<hash>.css, site.<hash>.js   kpp/assets bundled and minified (assets/build.sh), named by
+                          their contents: a browser keeps them a year (.htaccess)
+public/img/               the PHP checkout's, unchanged
 protected/gorating-config.example.json   kpp/deploy's: fill it in as gorating-config.json
 migrations/               the database changes (step 1)
 DEPLOY.md, BUILD.txt      this runbook; the commits it was built from and the program's SHA-256
