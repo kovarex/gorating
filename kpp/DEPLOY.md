@@ -7,14 +7,12 @@ the switch at the end, which kovarex decides.
 
 ## What has to exist first (in kpp, not here)
 
-NFS runs FreeBSD. kpp builds this program for FreeBSD once two stages of kpp's targets plan
-(kpp's docs/design.md, "Targets and hosts") are done:
-- **stage 3, exceptions on FreeBSD and Linux:** the site reports every error by throwing (a form's
-  bad field, a database error); without unwinding, an error ends the process;
-- **stage 6, FreeBSD:** its sysroot (the base system's headers and libraries, for the C imports of
-  sockets and the link) and a program built here that runs there.
-
-Until then the site runs on one's own machine only (README.md).
+NFS runs FreeBSD. What kpp needed to build this program for it is in (kpp's master, 2026-11-04):
+exceptions on FreeBSD (stage 3 of kpp's docs/design.md, "Targets and hosts"), the standard library's POSIX
+layer (stage 4), the FreeBSD 14.3 sysroot (stage 6; kpp's tools\sysroot\freebsd.ps1 makes it), and
+httpclient's FreeBSD client (OpenSSL from FreeBSD's base system, linked statically). `kpp --release
+--target freebsd` builds a static FreeBSD 14.3 executable. It has not run on FreeBSD yet: the
+first run is CI's FreeBSD VM with a MariaDB of the made-up data (README.md, "Not yet").
 
 ## 1. A test site (kovarex, NFS panel)
 
@@ -30,7 +28,7 @@ Until then the site runs on one's own machine only (README.md).
 ## 2. The files (kovarex, over SSH)
 
 ```
-/home/public/gorating.cgi        the program, built with: kpp --release --target freebsd
+/home/public/gorating.cgi        the program: build/release/gorating.exe of kpp --release --target freebsd
 /home/public/.htaccess           below
 /home/public/style2.css, common.js, img/   the PHP checkout's, unchanged
 /home/protected/gorating-config.json        below; readable by the web server only

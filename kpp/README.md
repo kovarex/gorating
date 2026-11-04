@@ -75,11 +75,12 @@ mistakes (`selected="select"`, a `</form>` inside a label, `</br>`) and the invi
 fixed; a page refused for lack of rights shows its message in the message box, and a report page
 without a player says so where PHP printed warnings.
 
-**Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). It waits for kpp to
-build FreeBSD programs (exceptions and the FreeBSD sysroot, kpp's docs/design.md "Targets and
-hosts").
+**Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). `kpp --release --target
+freebsd` builds the FreeBSD program (2026-11-04: kpp's exceptions, POSIX layer and FreeBSD sysroot,
+and httpclient's FreeBSD client, are in).
 
 ## Not yet
 
-- Fetching EGD's pages on FreeBSD: kpp's httpclient library has only its Windows implementation
-  (WinHTTP) so far; the deployment waits for it and for kpp's FreeBSD target (DEPLOY.md).
+- A run on FreeBSD: the program builds for FreeBSD 14.3 and links, but has not run there. The plan:
+  CI's FreeBSD VM, with a MariaDB loaded with the made-up data (testdata/generate.py), the same page
+  comparison as on Windows.
