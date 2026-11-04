@@ -40,3 +40,79 @@ test "the jobs: who may run them, and the tournament list"
   // Run again, the list queues nothing new.
   check(siteRequest(config, "owner", "GET", "/update_tournament_list").body.starts_with("Queued 0 tournaments.\n"));
 }
+
+// A made-up tournament of one player's games, as EGD's processing writes them: key, its time, and
+// each round's EGD rating before and after for the player (winner) against opponent.
+void madeUpEgdGames(const GoratingConfig& config, StringView player, StringView opponent, StringView key, StringView time,
+                    const Vector<Pair<String, String>>& rounds)
+{
+  mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
+  String gameType = db.query("SELECT game_type_id FROM egd_tournament ORDER BY id LIMIT 1").text(0, "game_type_id");
+  db.query(String("INSERT INTO egd_tournament(egd_key, name, player_count, round_count, timestamp, country_id, game_type_id) VALUES(") + quote(key) +
+           ", 'Made-up', 2, " + format("{}", (int64_t)rounds.size()) + ", " + quote(time) + ", (SELECT MIN(id) FROM country), " + gameType + ")");
+  String tournament = db.query(String("SELECT id FROM egd_tournament WHERE egd_key=") + quote(key)).text(0, "id");
+  for (ContainerSize i = 0; i < rounds.size(); ++i)
+    db.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
+                    " loser_old_egd_rating, loser_new_egd_rating, egd_tournament_id, egd_tournament_round) VALUES(") +
+             String(player) + "," + String(opponent) + "," + gameType + "," + quote(time) + "," + rounds[i].first + "," + rounds[i].second +
+             ",1500,1490," + tournament + "," + format("{}", (int64_t)(i + 1)) + ")");
+}
+
+test "EGD rating jumps between tournaments: check_rating_changes and collect_manual_rating_changes"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  config.jobSecret = "a-job-secret-for-the-tests";
+  // A player with no EGD games and no rating changes yet, the only one left to check (a jump that
+  // looks like an error would process its tournaments from EGD: none here).
+  String player = dbValue(config, "SELECT id FROM user WHERE id NOT IN (SELECT winner_user_id FROM game WHERE winner_old_egd_rating IS NOT NULL)"
+                                  " AND id NOT IN (SELECT loser_user_id FROM game WHERE loser_old_egd_rating IS NOT NULL)"
+                                  " AND id NOT IN (SELECT user_id FROM rating_change) ORDER BY id LIMIT 1");
+  String opponent = dbValue(config, String("SELECT id FROM user WHERE id != ") + player + " ORDER BY id LIMIT 1");
+  // Tournament 1 takes them from 1950 to 2160; EGD then starts them at 2200 (their new rank's
+  // rating), and after tournament 2 at a pro rank's 2760.
+  madeUpEgdGames(config, player, opponent, "TJUMP1", "2021-01-10 10:00:00", {{String("1950"), String("2060")}, {String("2060"), String("2160")}});
+  madeUpEgdGames(config, player, opponent, "TJUMP2", "2021-03-10 10:00:00", {{String("2200"), String("2210")}});
+  madeUpEgdGames(config, player, opponent, "TJUMP3", "2021-05-10 10:00:00", {{String("2760"), String("2765")}});
+  int firstJump = ratingJumpReason(2200, true, Optional<double>(1950.0), Optional<double>(2160.0));
+  require(firstJump != ratingChangeError && ratingJumpReason(2760, true, Optional<double>(2200.0), Optional<double>(2210.0)) == ratingChangeManualEgd);
+  {
+    mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
+    db.query(String("UPDATE user SET rating_change_checked = (id != ") + player + ")");
+  }
+
+  check(siteRequest(config, "visitor", "GET", "/check_rating_changes").status == 403);
+  http::HttpResponse checked = siteRequest(config, "visitor", "GET", "/check_rating_changes?secret=a-job-secret-for-the-tests");
+  check(checked.status == 200);
+  check(checked.body.starts_with(String("Remaining 1 users to check.\nuser_id=") + player + "\n"));
+  check(checked.body.find("Rating jumped from 2160 to 2200 in tournament TJUMP2 round 1\n") != String::npos);
+  check(checked.body.find("Rating jumped from 2210 to 2760 in tournament TJUMP3 round 1\n") != String::npos);
+  String changes = String("SELECT CONCAT(old_egd_rating, ' ', new_egd_rating, ' ', rating_change_type_id, ' ', timestamp) FROM rating_change WHERE user_id=") +
+                   player + " ORDER BY timestamp";
+  // Each jump dated by the tournament before it.
+  check(dbValue(config, changes) == format("2160 2200 {} 2021-01-10 10:00:00", firstJump));
+  check(dbValue(config, String("SELECT COUNT(*) FROM rating_change WHERE user_id=") + player) == "2");
+  check(dbValue(config, String("SELECT CONCAT(old_egd_rating, ' ', new_egd_rating, ' ', rating_change_type_id) FROM rating_change WHERE user_id=") + player +
+                " ORDER BY timestamp DESC LIMIT 1") == format("2210 2760 {}", ratingChangeManualEgd));
+  check(dbValue(config, String("SELECT rating_change_checked FROM user WHERE id=") + player) == "1");
+  check(siteRequest(config, "visitor", "GET", "/check_rating_changes?secret=a-job-secret-for-the-tests").body == "Remaining 0 users to check.\n");
+
+  // Collected again by hand, by id or username: the recorded jumps are known, nothing is added.
+  String username = dbValue(config, String("SELECT IFNULL(username, '') FROM user WHERE id=") + player);
+  http::HttpResponse again = siteRequest(config, "visitor", "GET", String("/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&id=") + player);
+  check(again.body == String("user_id=") + player + "\n");
+  if (!username.empty())
+    check(siteRequest(config, "visitor", "GET", String("/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&username=") + username).body ==
+          String("user_id=") + player + "\n");
+  check(dbValue(config, String("SELECT COUNT(*) FROM rating_change WHERE user_id=") + player) == "2");
+  check(siteRequest(config, "visitor", "GET", "/collect_manual_rating_changes?secret=a-job-secret-for-the-tests").body == "User id nor username provided\n");
+  check(siteRequest(config, "visitor", "GET", "/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&id=999999").body ==
+        "User with id=\"999999\" doesn't exist.\n");
+  check(siteRequest(config, "visitor", "GET", "/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&username=nobody-here").body ==
+        "User with username=\"nobody-here\" doesn't exist.\n");
+}
