@@ -71,9 +71,14 @@ In the MariaDB process (NFS panel > MySQL Processes; its host name is on that pa
       chmod 755 /home/public/gorating.cgi
       chmod 640 /home/protected/gorating-config.json
       ```
-      The config must be readable by the web server and by no one else; if the error log says
-      `cannot read /home/protected/gorating-config.json`, give it the web server's group
-      (`chgrp web /home/protected/gorating-config.json`).
+      The config must be readable by the web server and by no one else: give it the web server's
+      group (`chgrp web /home/protected/gorating-config.json`).
+- [ ] Check both (an upload can drop the executable bit, and Apache then answers 500 with nothing
+      from the program in the error log; it happened on the first test site, 2026-11-04):
+      ```sh
+      ls -l /home/public/gorating.cgi /home/protected/gorating-config.json
+      ```
+      `gorating.cgi` must show `-rwxr-xr-x`, the config `-rw-r----- ... web`.
 
 ## 5. Check that it works
 
