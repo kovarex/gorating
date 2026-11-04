@@ -1,0 +1,33 @@
+200
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      Friendly go rating
+    </title>
+    <link rel="stylesheet" href="/style2.css"/>
+    <script src="/common.js" type="text/javascript"></script>
+  </head>
+<body><div style="position: absolute;right: 0px;">
+          Currently logged in as player11
+          <form method="post" action="/logout" style="display:inline;">
+            <input type="submit" value="Logoff"/>
+          </form><form method="post" action="/settings" style="display:inline;">
+          <input type="submit" value="Settings"/>
+        </form></div><div class="centered-div">
+<div class="centered-div">
+<a href="/">Home</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/players">Players</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/tournaments">Tournaments</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/invites">Invites</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/about">About</a>
+</div><br/><br/>
+<form method="post" action="/settings_action"><table><tr><td><label for="significant_digits">Singificant digits to show in rating:</label></td><td><select id="significant_digits" name="significant_digits"><option value="0">0</option><option value="1" selected="selected">1</option><option value="2">2</option><option value="3">3</option></select></td></tr><tr><td><label for="rating_change_format">Rating change format:</label></td><td><input type="radio" id="format_1" name="rating_change_format" value="1"/> <label for="format_1">1657&rarr;1667</label><br/>
+<input type="radio" id="format_2" name="rating_change_format" value="2" checked="checked"/> <label for="format_2">+12 1667</label><br/>
+</td></tr></table><input type="submit" value="submit"/></form><div style="position:screen;bottom:0px;">
+  <hr/>
+  Friendly go rating made by kovarex.
+ - Page generated in N seconds</div>
+</div>
+</body>
+</html>

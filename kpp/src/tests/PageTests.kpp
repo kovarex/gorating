@@ -1,0 +1,115 @@
+// The site's pages against the made-up data (TestDatabase.kpp), served by its handler in-process:
+// each line of testdata/pages.txt, "WHO PATH" (WHO: visitor, or a username of the data: owner,
+// player2 an admin, player11 a user), against its expected HTML in testdata/pages/. The expected
+// files are this version's pages, which matched the PHP version's on all 1,625 pages compared
+// (2026-11-03; README.md lists the differences on purpose). GORATING_UPDATE_PAGES=1 writes them
+// anew after a deliberate change: review the diff before committing it.
+
+// A request of the site, as the user named (their session's cookie) or as a visitor.
+http::HttpResponse siteRequest(const GoratingConfig& config, StringView who, StringView method, StringView target, StringView body = "",
+                               StringView contentType = "")
+{
+  http::HttpRequest request;
+  request.method = String(method);
+  http::httpSetTarget(request, target);
+  request.remoteAddress = "127.0.0.1";
+  if (who != "visitor")
+  {
+    mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
+    mariadb::MariaDbResult user = db.query(String("SELECT id, password FROM user WHERE username=") + quote(who));
+    if (user.empty())
+      throw GoratingError(format("the test data has no user {}", who));
+    String cookie = sessionCookieValue(config, user.text(0, "id"), unixNow() + 3600, user.text(0, "password"));
+    request.headers.push_back(http::HttpHeader{String("cookie"), String(sessionCookie) + "=" + cookie});
+  }
+  if (!contentType.empty())
+    request.headers.push_back(http::HttpHeader{String("content-type"), String(contentType)});
+  request.body = String(body);
+  goratingConfig = config;
+  http::HttpResponse response;
+  handle(request, response);
+  return response;
+}
+
+// A page's HTML without what changes from one request to the next: the time it took.
+String stablePage(StringView html)
+{
+  String out(html);
+  ContainerSize at = out.find("Page generated in ");
+  if (at != String::npos)
+  {
+    ContainerSize end = out.find(" seconds", at);
+    if (end != String::npos)
+      out = out.substr(0, at) + "Page generated in N" + out.substr(end);
+  }
+  return out;
+}
+
+// The expected file of a line: testdata/pages/WHO/PATH with each character that is no letter or
+// digit as "_".
+String expectedPagePath(StringView who, StringView path)
+{
+  String name;
+  for (char c : path.substr(1))
+    name.push_back((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ? c : '_');
+  return format("testdata/pages/{}/{}.html", who, name.empty() ? StringView("home") : StringView(name));
+}
+
+void writeTestFile(StringView path, StringView text)
+{
+  FILE* file = fopen(String(path).c_str(), "wb");
+  if (!file)
+    throw GoratingError(format("cannot write {} (does its directory exist?)", path));
+  fwrite(text.data(), 1, text.size(), file);
+  fclose(file);
+}
+
+test "the pages, as visitor, user, admin and owner"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  bool update = getenv("GORATING_UPDATE_PAGES") != nullptr;
+  String list = goratingReadFile("testdata/pages.txt");
+  int pages = 0;
+  for (ContainerSize at = 0; at < list.size();)
+  {
+    ContainerSize end = list.find('\n', at);
+    if (end == String::npos)
+      end = list.size();
+    StringView line = httpTrimSpaces(StringView(list).substr(at, end - at));
+    at = end + 1;
+    if (line.empty() || line.starts_with("#"))
+      continue;
+    ContainerSize space = line.find(' ');
+    require(space != StringView::npos);
+    StringView who = line.substr(0, space);
+    StringView path = line.substr(space + 1);
+    http::HttpResponse response = siteRequest(config, who, "GET", path);
+    String got = format("{}\n{}", response.status, stablePage(response.body));
+    String file = expectedPagePath(who, path);
+    ++pages;
+    if (update)
+    {
+      writeTestFile(file, got);
+      continue;
+    }
+    String expected = goratingReadFile(file);
+    if (got != expected)
+    {
+      // The first line that differs, to find the change by.
+      ContainerSize i = 0;
+      while (i < got.size() && i < expected.size() && got[i] == expected[i])
+        ++i;
+      ContainerSize lineStart = got.rfind('\n', i);
+      lineStart = lineStart == String::npos ? 0 : lineStart + 1;
+      println(format("{} {}: differs from {} at byte {}: {}", who, path, file, (int64_t)i, StringView(got).substr(lineStart, 160)));
+    }
+    check(got == expected);
+  }
+  check(pages > 0);
+}

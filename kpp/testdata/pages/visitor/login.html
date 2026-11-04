@@ -1,0 +1,43 @@
+200
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      Friendly go rating
+    </title>
+    <link rel="stylesheet" href="/style2.css"/>
+    <script src="/common.js" type="text/javascript"></script>
+  </head>
+<body><div style="position: absolute;right: 0px;">
+          Currently not logged in
+          <form method="post" action="/login" style="display:inline;">
+            <input type="submit" value="Login"/>
+          </form>
+        </div><div class="centered-div">
+<div class="centered-div">
+<a href="/">Home</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/players">Players</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/tournaments">Tournaments</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/about">About</a>
+</div><br/><br/>
+<form method="post" action="/login_action">
+    <table>
+      <tr>
+        <td><label for="username">Username:</label></td>
+        <td><input name="username" type="text"/></td>
+      </tr>
+      <tr>
+        <td><label for="password">Password:</label></td>
+        <td><input name="password" type="password"/></td>
+      </tr>
+    </table>
+    <input type="submit" value="Login"/>
+  </form>
+  <a href="/reset_password">Reset password</a>
+<div style="position:screen;bottom:0px;">
+  <hr/>
+  Friendly go rating made by kovarex.
+ - Page generated in N seconds</div>
+</div>
+</body>
+</html>

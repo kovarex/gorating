@@ -1,0 +1,15 @@
+// The test database's SQL scripts split as the mariadb client splits them (TestDatabase.kpp).
+
+test "SQL scripts split into statements"
+{
+  Vector<String> s = sqlStatements("-- a comment; not a statement\nSET NAMES utf8mb4;\n# another;\n"
+                                   "INSERT INTO t VALUES ('a;b', 'O\\'Brien', \"x;\", `c;`); /* gone; */ /*!40101 SET x=1 */;\n"
+                                   "DELIMITER //\nCREATE PROCEDURE p() BEGIN SELECT 1; SELECT 2; END//\nDELIMITER ;\nSELECT 3");
+  require(s.size() == 5);
+  check(s[0] == "SET NAMES utf8mb4");
+  check(s[1] == "INSERT INTO t VALUES ('a;b', 'O\\'Brien', \"x;\", `c;`)");
+  check(s[2] == "/*!40101 SET x=1 */");
+  check(s[3] == "CREATE PROCEDURE p() BEGIN SELECT 1; SELECT 2; END");
+  check(s[4] == "SELECT 3");
+  check(sqlStatements("  \n;;\n").empty());
+}

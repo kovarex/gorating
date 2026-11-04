@@ -73,13 +73,14 @@ CREATE TABLE `user` (
   `egd_win_count` INT UNSIGNED NOT NULL DEFAULT '0',
   `egd_loss_count` INT UNSIGNED NOT NULL DEFAULT '0',
   `reset_password_secret` INT UNSIGNED NULL DEFAULT NULL,
-  `password_password_timestamp` TIMESTAMP NULL DEFAULT NULL,
+  `reset_password_timestamp` TIMESTAMP NULL DEFAULT NULL,
   `name` VARCHAR(128) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)) STORED,
   `overall_game_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + loss_count + egd_win_count + egd_loss_count) STORED,
   `overall_win_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + egd_win_count) STORED,
   `overall_loss_count` INT UNSIGNED GENERATED ALWAYS AS (loss_count + egd_loss_count) STORED,
   `game_count` INT UNSIGNED GENERATED ALWAYS AS (win_count + loss_count) STORED,
   `setting_significant_digits_in_rating` INT UNSIGNED NULL DEFAULT NULL,
+  `setting_rating_change_format` INT UNSIGNED NULL DEFAULT NULL,
   `rating_change_checked` boolean NOT NULL DEFAULT false,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `username` (`username`),
@@ -496,8 +497,9 @@ DELIMITER ;
 
 CREATE TABLE `visit` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `url` varchar(256) NOT NULL,
+  `url` varchar(4096) NOT NULL,
   `source` varchar(100) NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT current_timestamp(),
-  INDEX `timestamp` (`timestamp`),
+  PRIMARY KEY (`id`),
+  INDEX `timestamp` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

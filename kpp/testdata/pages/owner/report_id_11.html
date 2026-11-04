@@ -1,0 +1,105 @@
+200
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      Friendly go rating
+    </title>
+    <link rel="stylesheet" href="/style2.css"/>
+    <script src="/common.js" type="text/javascript"></script>
+  </head>
+<body><div style="position: absolute;right: 0px;">
+          Currently logged in as owner
+          <form method="post" action="/logout" style="display:inline;">
+            <input type="submit" value="Logoff"/>
+          </form><form method="post" action="/toggle_statistics" style="display:inline;">
+            <input type="submit" value="Toggle statistics"/>
+          </form><form method="post" action="/settings" style="display:inline;">
+          <input type="submit" value="Settings"/>
+        </form></div><div class="centered-div">
+<div class="centered-div">
+<a href="/">Home</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/players">Players</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/tournaments">Tournaments</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/invites">Invites</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/changes">Changes</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/rating_discrepancies">Rating discrepancies</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/deleted_games">Deleted games</a>
+&nbsp;&nbsp;:&nbsp;&nbsp;<a href="/about">About</a>
+</div><br/><br/>
+<form method="post" enctype="multipart/form-data" action="/report_action" onsubmit="return tryToSubmit();" id="report-form" data-my-rating="1371.6447352775308" data-opponent-rating="46.79366493960731"><table class="data-table"><tr><td>Opponent:</td><td><a href="/player11">Marek Weiß 21k</a> (47)</td></tr><tr><td>Result:</td><td><input type="radio" id="loss" name="result" value="loss" checked="checked" oninput="updateRatingPreview();"/><label for="loss">Loss</label><input type="radio" id="win" name="result" value="win" oninput="updateRatingPreview();"/><label for="win">Win</label></td></tr><tr><td>Game type:</td><td><input type="radio" id="serious" name="game_type" value="5" checked="checked" oninput="updateRatingPreview();"/><label for="serious">Serious</label><input type="radio" id="rapid" name="game_type" value="6" oninput="updateRatingPreview();"/><label for="rapid">Rapid</label><input type="radio" id="blitz" name="game_type" value="7" oninput="updateRatingPreview();"/><label for="blitz">Blitz</label></td></tr><tr><td>My colour:</td><td><input type="radio" id="black" name="color" value="black" checked="checked" oninput="updateRatingPreview();"/><label for="black">Black</label><input type="radio" id="white" name="color" value="white" oninput="updateRatingPreview();"/><label for="white">White</label></td></tr><tr><td><label for="handicap">Handicap:</label></td><td><input type="text" name="handicap" id="handicap" oninput="updateRatingPreview();" value="0"/></td></tr><tr><td><label for="komi">Komi:</label></td><td><input type="text" name="komi" id="komi" value="6.5" oninput="updateRatingPreview();"/></td></tr><tr><td>Location:</td><td><input type="text" name="location"/></td></tr><tr><td>Comment:</td><td><input type="text" name="comment"/></td></tr><tr><td>SGF:</td><td><input type="file" name="sgf" accept=".sgf"/></td></tr><tr><td>My handicap adjusted rating:</td><td><span id="adjusted-rating"></span></td></tr><tr><td>Rating change preview:</td><td><span id="rating-preview" class="loser"></span></td></tr></table><input type="hidden" name="winner_user_id" value="11"/><input type="submit" value="Report"/><br/></form>
+<script>
+var RATING_RANKS_PER_HANDICAP = 1.2;
+var RATING_RANKS_PER_KOMI = 0.1;
+var GAME_TYPE_RATING_MODIFIER = [];
+GAME_TYPE_RATING_MODIFIER[1] = 1;
+GAME_TYPE_RATING_MODIFIER[2] = 0.75;
+GAME_TYPE_RATING_MODIFIER[3] = 0.5;
+GAME_TYPE_RATING_MODIFIER[4] = 0.25;
+GAME_TYPE_RATING_MODIFIER[5] = 0.5;
+GAME_TYPE_RATING_MODIFIER[6] = 0.25;
+GAME_TYPE_RATING_MODIFIER[7] = 0.1;
+function beta(rating) { return -7 * Math.log(3300 - rating); }
+function calculateAdjustedRating(rating, extraHandicap, extraKomi)
+{
+  return rating + 100 * (extraHandicap * RATING_RANKS_PER_HANDICAP + extraKomi * RATING_RANKS_PER_KOMI);
+}
+// result 1 is win, and 0 is loss
+function calculateNewRating(rating, opponentRating, result, gameType, extraHandicap, extraKomi)
+{
+  let Se = 1.0 / (1.0 + Math.exp(beta(opponentRating) - beta(calculateAdjustedRating(rating, extraHandicap, extraKomi))));
+  let con = Math.pow(((3300 - rating) / 200), 1.6);
+  let bonus = Math.log(1 + Math.exp((2300 - rating) / 80)) / 5;
+  return rating + GAME_TYPE_RATING_MODIFIER[gameType] * (con * (result - Se) + bonus);
+}
+var form = document.getElementById('report-form');
+var myOldRating = parseFloat(form.dataset.myRating);
+var opponentOldRating = parseFloat(form.dataset.opponentRating);
+function showRating(rating) { return Math.round(rating * 10) / 10; }
+function showRatingChange(ratingChange) { return (ratingChange > 0 ? '+' : '') + Math.round(ratingChange * 10) / 10; }
+function currentGameType()
+{
+  if (document.getElementById('rapid').checked)
+    return 6;
+  if (document.getElementById('blitz').checked)
+    return 7;
+  return 5;
+}
+function myExtras()
+{
+  let myColorIsBlack = document.getElementById('black').checked;
+  return {komi: (myColorIsBlack ? -1 : 1) * (document.getElementById('komi').value - 6.5),
+          handicap: (myColorIsBlack ? 1 : -1) * document.getElementById('handicap').value};
+}
+function updateRatingPreview()
+{
+  let extras = myExtras();
+  let win = document.getElementById('win');
+  let result = win && win.checked ? 1 : 0;
+  let myNewRating = calculateNewRating(myOldRating, opponentOldRating, result, currentGameType(), extras.handicap, extras.komi);
+  let cell = document.getElementById('rating-preview');
+  cell.textContent = showRatingChange(myNewRating - myOldRating) + '  (' + showRating(myOldRating) + '→' + showRating(myNewRating) + ')';
+  cell.className = result == 0 ? 'loser' : 'winner';
+  document.getElementById('adjusted-rating').textContent = showRating(calculateAdjustedRating(myOldRating, extras.handicap, extras.komi));
+}
+updateRatingPreview();
+function tryToSubmit()
+{
+  let extras = myExtras();
+  let myOldAdjustedRating = calculateAdjustedRating(myOldRating, extras.handicap, extras.komi);
+  if (myOldRating > opponentOldRating && myOldAdjustedRating > myOldRating &&
+      !window.confirm("You are stronger than your opponent, yet you gave yourself handicap, are you sure?"))
+    return false;
+  if (myOldRating < opponentOldRating && myOldAdjustedRating < myOldRating &&
+      !window.confirm("You are weaker than your opponent, but you gave your opponent handicap, are you sure?"))
+    return false;
+  return true;
+}
+</script>
+<div style="position:screen;bottom:0px;">
+  <hr/>
+  Friendly go rating made by kovarex.
+ - Page generated in N seconds</div>
+</div>
+</body>
+</html>

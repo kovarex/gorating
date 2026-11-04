@@ -50,13 +50,22 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   holds beside the FreeBSD program (DEPLOY.md; DEPLOY-CHECKLIST.md, the short list, and how to build
   the program oneself).
 
-**Tests.** `kpp --test` here: src/tests/ checks the rating formula, ranks, handicaps, rating jumps
-and PHP's printing of numbers against what PHP's code gives (RatingVectors.kpp, written by
-`php testdata/generate_rating_tests.php`: 1,680 rating computations equal to the bit), the EGD
-reader, and PHP's is_numeric and loose equality.
-
 **Building.** `kpp` in this directory, with `libraries` a link to kpp's `libraries` directory
 (`mklink /J libraries <kpp checkout>\libraries`) until they are in kpp's registry.
+
+**Tests** (src/tests/, `kpp --test` here; for FreeBSD, `kpp --target freebsd --no-run --test`
+builds the test program):
+- without a database: the rating formula, ranks, handicaps, rating jumps and PHP's printing of
+  numbers against what PHP's code gives (RatingVectors.kpp, written by
+  `php testdata/generate_rating_tests.php`: 1,680 rating computations equal to the bit), PHP's
+  is_numeric and loose equality, EGD's pages (made-up pages in EGD's markup; jobs/EgdPages.kpp reads
+  them), sessions and passwords, the forms, escaping;
+- with `GORATING_TEST_DB=host:port:user[:password]` naming a MariaDB server: the database
+  gorating_kpp_tests is made fresh from ../setup.sql, migrations/ and testdata/fixture.sql
+  (testdata/generate.py's made-up data), and the pages of testdata/pages.txt (as a visitor, a user,
+  an admin and the owner) are compared with testdata/pages/. Those are this version's pages, checked
+  against the PHP version's on the same database (2026-11-04: every difference is one of those on
+  purpose below); `GORATING_UPDATE_PAGES=1` writes them anew after a deliberate change.
 
 **Differences from the PHP version, on purpose:** every text is escaped (names, comments,
 messages); player links are absolute (`/kovarex`), and a username that is also a page's name links
@@ -75,8 +84,10 @@ confirmation (PHP: a script opened a GET address); the edit form is shown only t
 it (PHP showed it to everyone and refused the save); a column that cannot be sorted (edit, delete,
 restore) has no sort link, and a list's links keep only the filters that are set; PHP's HTML
 mistakes (`selected="select"`, a `</form>` inside a label, `</br>`) and the invites page's typos are
-fixed; a page refused for lack of rights shows its message in the message box, and a report page
-without a player says so where PHP printed warnings.
+fixed (the login page wrote a second document head into the page); a page refused for lack of
+rights shows its message in the message box, and a report page without a player says so where PHP
+printed warnings; only a trusted user may report a win, as PHP's "Trusted users can report a win"
+meant (its report form offered Win to everyone and its action took it).
 
 **Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first), and DEPLOY-CHECKLIST.md,
 its short list with "Build it yourself": kpp v0.2.229 or later, its FreeBSD sysroot, `kpp --release
