@@ -58,8 +58,11 @@ jobs:
           New-Item -ItemType Directory -Force ..\freebsd | Out-Null
           Copy-Item build\release\gorating ..\freebsd\gorating
           Copy-Item $tests ..\freebsd\gorating-tests
-          $env:KPP_VERSION_LINE = (& $env:KPP --version | Select-Object -First 1)
-          $env:KPP_VERSION_LINE | Out-File -Encoding ascii ..\freebsd\kpp-version.txt
+          # (all of --version's output first: Select-Object -First 1 on the pipe stops kpp early, and
+          # the step then ended with its non-zero exit code)
+          $version = @(& $env:KPP --version)
+          $version[0] | Out-File -Encoding ascii ..\freebsd\kpp-version.txt
+          exit 0
 
       - uses: actions/upload-artifact@v4
         with:
