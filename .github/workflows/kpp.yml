@@ -1,8 +1,9 @@
 # The kpp version (kpp/): built with a pinned release of kpp (kpp/kpp-version: the installed kpp
 # alone, its FreeBSD sysroot and official libraries included), tested on Windows and in a FreeBSD
 # 14.3 VM against a MariaDB with the made-up data, and packed as the site's release
-# (gorating-site.tar.gz, kpp/DEPLOY.md). A tag kpp-v* publishes the package as a GitHub Release,
-# which tools/deploy's deploy.sh installs on the server. Nothing here deploys, holds a secret or
+# (gorating-site.tar.gz, kpp/DEPLOY.md), whose install kpp's tools/deploy/test-deploy.sh checks in
+# the VM. A tag kpp-v* publishes the package as a GitHub Release, which tools/deploy's
+# kpp-deploy.sh (in the package) installs on the server. Nothing here deploys, holds a secret or
 # connects to the site.
 name: kpp
 
@@ -14,6 +15,10 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # kpp's tools/deploy (kpp-deploy.sh and its test) at this commit, until a kpp release ships them.
+  KPP_DEPLOY_COMMIT: f23622e92aa0f97d1eab1bfe5d30fead9a92643a
 
 jobs:
   # kpp's release, the unit tests (no database), the FreeBSD program and its test program.
@@ -83,9 +88,10 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # The whole suite in FreeBSD 14.3, against MariaDB from pkg, then the program run as Apache runs it.
+  # The whole suite in FreeBSD 14.3, against MariaDB from pkg, then the program run as Apache runs it,
+  # then the package installed by kpp-deploy.sh (test-deploy.sh) on a database made by setup.sql.
   test-freebsd:
-    needs: build
+    needs: [build, package]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -95,6 +101,18 @@ jobs:
         with:
           name: freebsd
           path: freebsd
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: gorating-site
+          path: package
+
+      - name: kpp's tools/deploy
+        run: |
+          mkdir deploy-tools
+          for f in kpp-deploy.sh test-deploy.sh; do
+            curl -fsSL -o deploy-tools/$f "https://raw.githubusercontent.com/kovarex/kpp/$KPP_DEPLOY_COMMIT/tools/deploy/$f"
+          done
 
       - name: Tests on FreeBSD 14.3 with MariaDB
         uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1.5.9
@@ -121,6 +139,13 @@ jobs:
               REQUEST_METHOD=GET REQUEST_URI=$page GORATING_CONFIG=../freebsd/config.json ../freebsd/gorating > ../freebsd/cgi$(echo $page | tr / _).txt 2>&1 || true
               head -c 300 ../freebsd/cgi$(echo $page | tr / _).txt; echo
             done
+            # The package installed as on the server: a database as production's before the switch
+            # (setup.sql), the migrations run by kpp-deploy.sh --migrate, its smoke tests, a rollback.
+            mysql -e "CREATE DATABASE gorating_deploy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            mysql gorating_deploy < ../setup.sql
+            sed 's/gorating_kpp_tests/gorating_deploy/' ../freebsd/config.json > ../freebsd/deploy-config.json
+            GORATING_TEST_CONFIG=../freebsd/deploy-config.json sh ../deploy-tools/test-deploy.sh ../package/gorating-site.tar.gz "mysql -h 127.0.0.1 -u gorating -ptest-only gorating_deploy" > ../freebsd/deploy.log 2>&1 || true
+            cat ../freebsd/deploy.log
 
       - name: Result
         if: always()
@@ -136,10 +161,14 @@ jobs:
           for file in $(cd freebsd/assets && ls); do
             grep -q "/$file\"" freebsd/cgi_about.txt || { echo "the pages do not link $file, which the package holds"; exit 1; }
           done
+          deployed=$(tail -n 1 freebsd/deploy.log 2>/dev/null || true)
+          { echo; echo "    ${deployed:-test-deploy: no result}"; grep -E '^FAIL' freebsd/deploy.log 2>/dev/null | sed 's/^/    /' || true; } >> "$GITHUB_STEP_SUMMARY"
+          [ "$deployed" = "test-deploy: ALL PASSED" ] || { echo "the package's install failed:"; cat freebsd/deploy.log; exit 1; }
 
-  # The site's package: what kpp/DEPLOY.md puts on the server, laid out as there.
+  # The site's package: what kpp/DEPLOY.md puts on the server, laid out as there, with kpp-deploy.sh,
+  # which installs it. test-freebsd installs it before a release is made of it.
   package:
-    needs: test-freebsd
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -163,6 +192,7 @@ jobs:
           cp -R img $p/public/img
           cp kpp/migrations/*.sql $p/migrations/
           cp kpp/deploy/gorating-config.example.json kpp/DEPLOY.md kpp/DEPLOY-CHECKLIST.md $p/
+          curl -fsSL -o $p/kpp-deploy.sh "https://raw.githubusercontent.com/kovarex/kpp/$KPP_DEPLOY_COMMIT/tools/deploy/kpp-deploy.sh"
           {
             echo "app gorating"
             echo "version $version"
@@ -172,6 +202,7 @@ jobs:
           {
             echo "gorating $version, commit $GITHUB_SHA"
             echo "$(cat freebsd/kpp-version.txt), installed (kpp/kpp-version)"
+            echo "kpp-deploy.sh from kovarex/kpp $KPP_DEPLOY_COMMIT"
             echo "built by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             (cd $p && find . -type f ! -name BUILD.txt | sort | xargs sha256sum)
           } > $p/BUILD.txt
@@ -191,7 +222,7 @@ jobs:
 
   # A tag kpp-v*: the package as that tag's GitHub Release, which deploy.sh downloads.
   release:
-    needs: package
+    needs: [package, test-freebsd]
     if: startsWith(github.ref, 'refs/tags/kpp-v')
     runs-on: ubuntu-latest
     timeout-minutes: 10

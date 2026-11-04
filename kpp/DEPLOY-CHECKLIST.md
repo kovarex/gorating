@@ -13,6 +13,7 @@ public/img/                the PHP version's, unchanged
 protected/gorating-config.example.json   the configuration to fill in (placeholders only)
 migrations/001-*.sql, 002-*.sql          the database changes, in order
 DEPLOY.md, DEPLOY-CHECKLIST.md, BUILD.txt   the runbook, this list, what it was built from
+kpp-deploy.sh                installs the package (kpp's tools/deploy; BUILD.txt names its commit)
 ```
 
 ## 1. The site (NFS panel)

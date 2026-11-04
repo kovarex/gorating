@@ -41,6 +41,7 @@ public/img/               the PHP checkout's, unchanged
 protected/gorating-config.example.json   kpp/deploy's: fill it in as gorating-config.json
 migrations/               the database changes (step 1)
 DEPLOY.md, BUILD.txt      this runbook; the commits it was built from and the program's SHA-256
+kpp-deploy.sh             installs the package on the server (kpp's tools/deploy, at the commit BUILD.txt names)
 ```
 
 `public/` goes to `/home/public/`, the filled-in config to `/home/protected/gorating-config.json`.
