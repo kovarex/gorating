@@ -1,0 +1,145 @@
+// What a user does besides games' results (before the switch from PHP, kovarex 2026-11-04: the gaps
+// that would scare a deploy): a game's SGF uploaded, downloaded, replaced and removed, with the change
+// log's old and new files for admins; a user's settings; a mod's edit of a player's name.
+// Against the test database (GORATING_TEST_DB, TestDatabase.kpp).
+
+// The response's header of that name ("" when it has none).
+String headerOf(const http::HttpResponse& response, StringView name)
+{
+  for (const http::HttpHeader& h : response.headers)
+    if (http::httpLower(h.name) == http::httpLower(name))
+      return h.value;
+  return String();
+}
+
+// A multipart/form-data body of fields and one file in the field sgf (the report and edit forms).
+String multipartBody(const Vector<Pair<String, String>>& fields, StringView fileName, StringView file)
+{
+  String body;
+  for (const Pair<String, String>& field : fields)
+    body.append(String("--XyZ\r\nContent-Disposition: form-data; name=\"") + field.first + "\"\r\n\r\n" + field.second + "\r\n");
+  body.append(String("--XyZ\r\nContent-Disposition: form-data; name=\"sgf\"; filename=\"") + fileName +
+              "\"\r\nContent-Type: application/x-go-sgf\r\n\r\n" + file + "\r\n--XyZ--\r\n");
+  return body;
+}
+
+test "a game's SGF: reported with it, downloaded, replaced and removed, the change log's files for admins"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  String opponent = goratingDbValue(config, "SELECT id FROM user WHERE username='player2'");
+  String sgf = "(;GM[1]FF[4]SZ[19]PB[Novák]PW[Weiß];B[pd];W[dp])";
+  String reportBody = multipartBody({{String("winner_user_id"), opponent}, {String("result"), String("loss")}, {String("game_type"), String("5")},
+                                     {String("handicap"), String("0")}, {String("komi"), String("6.5")}, {String("color"), String("black")},
+                                     {String("location"), String("Brno")}, {String("comment"), String("")}},
+                                    "game.sgf", sgf);
+  http::HttpResponse reported = siteRequest(config, "player11", "POST", "/report_action", reportBody, "multipart/form-data; boundary=XyZ");
+  check(locationOf(reported).find("message=Game%20added") != String::npos);
+  String game = goratingDbValue(config, "SELECT MAX(id) FROM game");
+  check(goratingDbValue(config, String("SELECT sgf FROM game WHERE id=") + game) == sgf);
+
+  // Anyone downloads it, named by the game and its players.
+  http::HttpResponse download = siteRequest(config, "visitor", "GET", String("/sgf?id=") + game);
+  check(download.status == 200 && download.body == sgf);
+  check(headerOf(download, "Content-Type") == "application/octet-stream");
+  String disposition = headerOf(download, "Content-Disposition");
+  check(disposition.starts_with(String("attachment; filename=\"") + game + " ") && disposition.find(".sgf\"; filename*=UTF-8''") != String::npos);
+  check(siteRequest(config, "visitor", "GET", "/sgf?id=999999").status == 404);
+  check(siteRequest(config, "visitor", "GET", "/sgf").body == "Sgf id not provided.");
+
+  // The admin replaces it: the change log keeps both files, which only admins download.
+  String timestamp = goratingDbValue(config, String("SELECT timestamp FROM game WHERE id=") + game);
+  Vector<Pair<String, String>> editFields = {{String("id"), game}, {String("redirect"), String("/")}, {String("original_winner"), String("winner")},
+                                             {String("original_winner_color"), String("white")}, {String("handicap"), String("0")},
+                                             {String("komi"), String("6.5")}, {String("location"), String("Brno")}, {String("timestamp"), timestamp}};
+  String replacement = "(;GM[1]FF[4]SZ[19];B[qd])";
+  http::HttpResponse replaced = siteRequest(config, "player2", "POST", "/edit_game_action", multipartBody(editFields, "new.sgf", replacement),
+                                            "multipart/form-data; boundary=XyZ");
+  check(locationOf(replaced).find("SGF%20was%20updated.") != String::npos);
+  check(siteRequest(config, "visitor", "GET", String("/sgf?id=") + game).body == replacement);
+  String change = goratingDbValue(config, String("SELECT MAX(id) FROM `change` WHERE change_type_id=") + format("{}", changeGameSgf) +
+                                              " AND game_id=" + game);
+  check(siteRequest(config, "player2", "GET", String("/sgf?from=change_old&id=") + change).body == sgf);
+  check(siteRequest(config, "player2", "GET", String("/sgf?from=change_new&id=") + change).body == replacement);
+  check(siteRequest(config, "player11", "GET", String("/sgf?from=change_old&id=") + change).status == 403);
+  check(siteRequest(config, "visitor", "GET", String("/sgf?from=change_new&id=") + change).status == 403);
+
+  // Removed with the form's checkbox: the game has none, the log keeps the last one.
+  String removeForm = String("id=") + game + "&redirect=%2F&original_winner=winner&original_winner_color=white&handicap=0&komi=6.5&location=Brno&delete-sgf=on&timestamp=" +
+                      url::urlEncode(timestamp);
+  check(locationOf(postForm(config, "player2", "/edit_game_action", removeForm)).find("SGF%20was%20removed") != String::npos);
+  check(goratingDbValue(config, String("SELECT sgf IS NULL FROM game WHERE id=") + game) == "1");
+  check(siteRequest(config, "visitor", "GET", String("/sgf?id=") + game).body.empty());
+  String removal = goratingDbValue(config, String("SELECT MAX(id) FROM `change` WHERE change_type_id=") + format("{}", changeGameSgf) +
+                                               " AND game_id=" + game);
+  check(removal != change && siteRequest(config, "player2", "GET", String("/sgf?from=change_old&id=") + removal).body == replacement);
+}
+
+test "a user's settings: rating digits and the rating change format"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  String settings = "SELECT CONCAT(setting_significant_digits_in_rating, ' ', setting_rating_change_format) FROM user WHERE username='player11'";
+  String before = goratingDbValue(config, settings);
+  check(siteRequest(config, "visitor", "GET", "/settings").body.find("Not logged in") != String::npos);
+  check(locationOf(postForm(config, "visitor", "/settings_action", "significant_digits=2&rating_change_format=2")).find("Not%20logged%20in") != String::npos);
+  check(locationOf(siteRequest(config, "player11", "GET", "/settings_action")) == "/settings");
+  check(locationOf(postForm(config, "player11", "/settings_action", "significant_digits=5&rating_change_format=2")).find("Significant%20digits%20are%200%20to%203") !=
+        String::npos);
+  check(locationOf(postForm(config, "player11", "/settings_action", "significant_digits=2&rating_change_format=3")).find("Invalid%20rating%20change%20format%20value") !=
+        String::npos);
+  check(goratingDbValue(config, settings) == before);
+
+  check(locationOf(postForm(config, "player11", "/settings_action", "significant_digits=2&rating_change_format=2")) == "/");
+  check(goratingDbValue(config, settings) == "2 2");
+  // The form shows them, and the pages use them at once: the player's rating with two decimals.
+  String form = siteRequest(config, "player11", "GET", "/settings").body;
+  check(form.find("<option value=\"2\" selected=\"selected\">2</option>") != String::npos);
+  check(form.find("id=\"format_2\" name=\"rating_change_format\" value=\"2\" checked=\"checked\"") != String::npos);
+  double rating = ratingValue(goratingDbValue(config, "SELECT rating FROM user WHERE username='player11'"));
+  String shown = format("<td>Rating:</td><td>{}</td>", fixed(rating, 2));
+  check(siteRequest(config, "player11", "GET", "/player11").body.find(shown) != String::npos);
+  check(siteRequest(config, "visitor", "GET", "/player11").body.find(shown) == String::npos);
+}
+
+test "a mod edits a player's name: the change log, and what is refused"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  String player = goratingDbValue(config, "SELECT id FROM user WHERE username='player12'");
+  String oldName = goratingDbValue(config, String("SELECT name FROM user WHERE id=") + player);
+  String form = String("id=") + player + "&first_name=Jana&last_name=Nov%C3%A1kov%C3%A1";
+  // A user may not; a mod (player3) may, with a POST.
+  check(locationOf(postForm(config, "player11", "/edit_player_name_action", form)).find("No%20rights%20to%20edit%20names") != String::npos);
+  check(locationOf(siteRequest(config, "player3", "GET", String("/edit_player_name_action?") + form)).find("A%20name%20is%20edited%20with%20the%20form") !=
+        String::npos);
+  check(goratingDbValue(config, String("SELECT name FROM user WHERE id=") + player) == oldName);
+
+  String done = locationOf(postForm(config, "player3", "/edit_player_name_action", form));
+  check(done.starts_with(String("/player?id=") + player) && done.find("Changed%20name%20from%20") != String::npos);
+  check(goratingDbValue(config, String("SELECT name FROM user WHERE id=") + player) == "Jana Nováková");
+  check(goratingDbValue(config, String("SELECT COUNT(*) FROM `change` WHERE change_type_id IN (1, 2) AND user_id=") + player) == "2");
+  check(goratingDbValue(config, String("SELECT CONCAT(old_value, ' ', new_value) FROM `change` WHERE change_type_id=2 AND user_id=") + player).ends_with(" Nováková"));
+  check(siteRequest(config, "visitor", "GET", String("/player?id=") + player).body.find("Jana Nováková") != String::npos);
+
+  check(locationOf(postForm(config, "player3", "/edit_player_name_action", form)).find("No%20change.") != String::npos);
+  check(locationOf(postForm(config, "player3", "/edit_player_name_action", String("id=") + player + "&first_name=Jana&last_name=")).find("A%20first%20and%20a%20last%20name%20are%20needed") !=
+        String::npos);
+  check(locationOf(postForm(config, "player3", "/edit_player_name_action", "id=999999&first_name=A&last_name=B")).find("No%20player%20with%20id%3D999999") != String::npos);
+  check(goratingDbValue(config, String("SELECT COUNT(*) FROM `change` WHERE change_type_id IN (1, 2) AND user_id=") + player) == "2");
+}
