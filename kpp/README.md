@@ -65,7 +65,9 @@ builds the test program):
   (testdata/generate.py's made-up data), and the pages of testdata/pages.txt (as a visitor, a user,
   an admin and the owner) are compared with testdata/pages/. Those are this version's pages, checked
   against the PHP version's on the same database (2026-11-04: every difference is one of those on
-  purpose below); `GORATING_UPDATE_PAGES=1` writes them anew after a deliberate change.
+  purpose below); `GORATING_UPDATE_PAGES=1` writes them anew after a deliberate change. A game is
+  reported, edited, deleted and restored through the pages, each rating checked against the
+  formula applied as PHP applies it (refusals included: a plain user's win, another user's edit).
 
 **Differences from the PHP version, on purpose:** every text is escaped (names, comments,
 messages); player links are absolute (`/kovarex`), and a username that is also a page's name links

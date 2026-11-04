@@ -1,0 +1,104 @@
+// The pages that write, against the made-up data (TestDatabase.kpp): a game reported, edited,
+// deleted and restored through the site's handler, and every rating it moves. The expected numbers
+// come from the rating formula (Rating.kpp, which RatingTests.kpp holds to PHP's to the bit) applied
+// to the ratings before the game, as PHP's report_action.php and the rating update apply it.
+
+String goratingDbValue(const GoratingConfig& config, StringView sql)
+{
+  mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
+  Optional<String> value = db.scalar(sql);
+  return value.has_value() ? *value : String();
+}
+
+double userRating(const GoratingConfig& config, StringView username)
+{
+  return ratingValue(goratingDbValue(config, String("SELECT rating FROM user WHERE username=") + quote(username)));
+}
+
+bool nearly(double a, double b) { return a - b < 1e-9 && b - a < 1e-9; }
+
+http::HttpResponse postForm(const GoratingConfig& config, StringView who, StringView target, StringView form)
+{
+  return siteRequest(config, who, "POST", target, form, "application/x-www-form-urlencoded");
+}
+
+String locationOf(const http::HttpResponse& response)
+{
+  for (const http::HttpHeader& h : response.headers)
+    if (h.name == "Location")
+      return h.value;
+  return String();
+}
+
+// The rating update the change started, run to its end by its job (as the owner).
+void finishRatingUpdate(const GoratingConfig& config)
+{
+  for (int i = 0; i < 100; ++i)
+    if (!siteRequest(config, "owner", "GET", "/update_rating").body.starts_with("Rating update:"))
+      return;
+  throw GoratingError("the rating update did not finish in 100 runs of its job");
+}
+
+test "a game reported, edited, deleted and restored"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  String me = goratingDbValue(config, "SELECT id FROM user WHERE username='player11'");
+  String opponent = goratingDbValue(config, "SELECT id FROM user WHERE username='player2'");
+  String lastGame = goratingDbValue(config, "SELECT MAX(id) FROM game");
+  double meBefore = userRating(config, "player11");
+  double opponentBefore = userRating(config, "player2");
+
+  // A plain user may not report a win; nothing is written.
+  String form = String("winner_user_id=") + opponent + "&game_type=5&handicap=0&komi=6.5&color=black&location=Brno&comment=gg";
+  http::HttpResponse refused = postForm(config, "player11", "/report_action", form + "&result=win");
+  check(locationOf(refused).find("Only%20trusted%20users%20report%20their%20wins") != String::npos);
+  check(goratingDbValue(config, "SELECT MAX(id) FROM game") == lastGame);
+  // The loss, as black, even.
+  http::HttpResponse reported = postForm(config, "player11", "/report_action", form + "&result=loss");
+  check(locationOf(reported) == String("/player?id=") + me + "&message=Game%20added");
+  String game = goratingDbValue(config, "SELECT MAX(id) FROM game");
+  require(game != lastGame);
+  double meAfter = calculateNewRating(meBefore, opponentBefore, 0, 5, 0, 0);
+  double opponentAfter = calculateNewRating(opponentBefore, meBefore, 1, 5, 0, 0);
+  check(goratingDbValue(config, String("SELECT CONCAT(winner_user_id, ' ', loser_user_id, ' ', winner_is_black, ' ', handicap, ' ', komi, ' ', location, ' ', loser_comment) FROM game WHERE id=") + game) ==
+        opponent + " " + me + " 0 0 6.5 Brno gg");
+  check(nearly(ratingValue(goratingDbValue(config, String("SELECT winner_new_rating FROM game WHERE id=") + game)), opponentAfter));
+  check(nearly(ratingValue(goratingDbValue(config, String("SELECT loser_new_rating FROM game WHERE id=") + game)), meAfter));
+  check(nearly(userRating(config, "player11"), meAfter) && nearly(userRating(config, "player2"), opponentAfter));
+  check(meAfter < meBefore && opponentAfter > opponentBefore);
+
+  // The admin edits it: 2 handicap stones and komi 0.5 for black (player11). The rating update the
+  // edit starts computes it again from the ratings before it.
+  String timestamp = goratingDbValue(config, String("SELECT timestamp FROM game WHERE id=") + game);
+  String edit = String("id=") + game + "&redirect=%2F&original_winner=winner&original_winner_color=white&handicap=2&komi=0.5&location=Brno&timestamp=" +
+                url::urlEncode(timestamp);
+  // A user who did not play it may not (one who did may, while it is recent).
+  check(locationOf(postForm(config, "player12", "/edit_game_action", edit)).find("You%20can") != String::npos);
+  check(goratingDbValue(config, String("SELECT CONCAT(handicap, ' ', komi) FROM game WHERE id=") + game) == "0 6.5");
+  postForm(config, "player2", "/edit_game_action", edit);
+  check(goratingDbValue(config, String("SELECT CONCAT(handicap, ' ', komi) FROM game WHERE id=") + game) == "2 0.5");
+  finishRatingUpdate(config);
+  double meEdited = calculateNewRating(meBefore, opponentBefore, 0, 5, 2, 6);
+  double opponentEdited = calculateNewRating(opponentBefore, meBefore, 1, 5, -2, -6);
+  check(nearly(ratingValue(goratingDbValue(config, String("SELECT loser_new_rating FROM game WHERE id=") + game)), meEdited));
+  check(nearly(ratingValue(goratingDbValue(config, String("SELECT winner_new_rating FROM game WHERE id=") + game)), opponentEdited));
+  check(nearly(userRating(config, "player11"), meEdited) && nearly(userRating(config, "player2"), opponentEdited));
+  check(goratingDbValue(config, String("SELECT COUNT(*) FROM `change` WHERE game_id=") + game) != "0");
+
+  // Deleted: the two players' ratings are as before the game; restored: as edited.
+  check(locationOf(postForm(config, "player11", "/delete_game_action", String("id=") + game)).find("No%20rights") != String::npos);
+  postForm(config, "player2", "/delete_game_action", String("id=") + game);
+  finishRatingUpdate(config);
+  check(goratingDbValue(config, String("SELECT deleted FROM game WHERE id=") + game) == "1");
+  check(nearly(userRating(config, "player11"), meBefore) && nearly(userRating(config, "player2"), opponentBefore));
+  postForm(config, "player2", "/restore_game_action", String("id=") + game);
+  finishRatingUpdate(config);
+  check(goratingDbValue(config, String("SELECT deleted FROM game WHERE id=") + game) == "0");
+  check(nearly(userRating(config, "player11"), meEdited) && nearly(userRating(config, "player2"), opponentEdited));
+}
