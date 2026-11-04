@@ -68,6 +68,11 @@ builds the test program):
   purpose below); `GORATING_UPDATE_PAGES=1` writes them anew after a deliberate change. A game is
   reported, edited, deleted and restored through the pages, each rating checked against the
   formula applied as PHP applies it (refusals included: a plain user's win, another user's edit).
+  A made-up tournament is processed by its job from saved pages (testdata/egd-work, written by the
+  test), and recomputing agrees with it (testdata/recompute-check.sh's checks: a recompute moves no
+  game, a deleted game leaves no discrepancy, two changes keep the earlier start, a tournament added
+  after a later game recomputes that game); the jobs refuse anyone but the owner and the secret, and
+  update_tournament_list queues and processes a new tournament of EGD's list.
 
 **Differences from the PHP version, on purpose:** every text is escaped (names, comments,
 messages); player links are absolute (`/kovarex`), and a username that is also a page's name links

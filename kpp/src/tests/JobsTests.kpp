@@ -1,0 +1,42 @@
+// The jobs (Jobs.kpp) against the made-up data, from saved pages (no network): who may run them,
+// and the hourly update_tournament_list, which queues EGD's new tournaments and processes them.
+
+test "the jobs: who may run them, and the tournament list"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  saveMadeUpPages();
+  config.egdPageDirectory = String(egdWork);
+  config.jobSecret = "a-job-secret-for-the-tests";
+
+  // A visitor, an admin, or a wrong secret: 403, nothing done; the owner or the secret: the job.
+  for (StringView who : {"visitor", "player2"})
+  {
+    http::HttpResponse refused = siteRequest(config, who, "GET", "/update_rating");
+    check(refused.status == 403 && refused.body == "The jobs take the configuration's secret.\n");
+  }
+  check(siteRequest(config, "visitor", "GET", "/update_rating?secret=wrong").status == 403);
+  check(siteRequest(config, "visitor", "GET", "/update_rating?secret=a-job-secret-for-the-tests").status == 200);
+  GoratingConfig noSecret = config;
+  noSecret.jobSecret = String();
+  check(siteRequest(noSecret, "visitor", "GET", "/update_rating?secret=").status == 403);
+
+  // EGD's list names a known tournament and a new one: the new one is queued and processed.
+  String known = dbValue(config, "SELECT egd_key FROM egd_tournament ORDER BY id LIMIT 1");
+  String list = String("<pre>\n Tournament list\n ") + known + "  A  4 Known\n " + madeUpKey + "  A  4 Made-up Cup\n</pre>\n";
+  writeTestFile(String(egdWork) + "/" + egdPageName(String(egdAddress) + "EGD_2_0/downloads/tlist.html", ""), list);
+  String before = dbValue(config, "SELECT COUNT(*) FROM egd_tournament");
+  http::HttpResponse ran = siteRequest(config, "visitor", "GET", "/update_tournament_list?secret=a-job-secret-for-the-tests");
+  check(ran.status == 200 && ran.body.starts_with("Queued 1 tournaments.\n"));
+  check(ratingValue(dbValue(config, "SELECT COUNT(*) FROM egd_tournament")) == ratingValue(before) + 1);
+  check(dbValue(config, String("SELECT COUNT(*) FROM game JOIN egd_tournament ON egd_tournament.id=game.egd_tournament_id WHERE egd_key=") +
+                            quote(madeUpKey)) == "6");
+  check(dbValue(config, "SELECT COUNT(*) FROM egd_tournament_to_process") == "0");
+  // Run again, the list queues nothing new.
+  check(siteRequest(config, "owner", "GET", "/update_tournament_list").body.starts_with("Queued 0 tournaments.\n"));
+}
