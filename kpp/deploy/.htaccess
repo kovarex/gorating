@@ -1,0 +1,6 @@
+Options +ExecCGI
+AddHandler cgi-script .cgi
+SetEnv GORATING_CONFIG /home/protected/gorating-config.json
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ /gorating.cgi [L]

@@ -46,6 +46,9 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   tournament gave (a saved tournament, a recompute from its start, a deleted game, processing it
   again) and the update's start; PHP's recomputation fails it.
 - `testdata/generate.py`: made-up data for a local database (no real person in it).
+- `deploy/`: the test site's .htaccess and an example configuration; `.github/workflows/kpp-test-site.yml`
+  (in the repository's root) packs them with the FreeBSD program on every push to the kpp branch
+  (DEPLOY.md).
 
 **Tests.** `kpp --test` here: src/tests/ checks the rating formula, ranks, handicaps, rating jumps
 and PHP's printing of numbers against what PHP's code gives (RatingVectors.kpp, written by

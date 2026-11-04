@@ -27,27 +27,24 @@ first run is CI's FreeBSD VM with a MariaDB of the made-up data (README.md, "Not
 
 ## 2. The files (kovarex, over SSH)
 
+Every push to the kpp branch builds them (.github/workflows/kpp-test-site.yml): the run's artifact
+**gorating-test-site** (Actions, the run, Artifacts) is the site's files, laid out as on NFS:
+
 ```
-/home/public/gorating.cgi        the program: build/release/gorating.exe of kpp --release --target freebsd
-/home/public/.htaccess           below
-/home/public/style2.css, common.js, img/   the PHP checkout's, unchanged
-/home/protected/gorating-config.json        below; readable by the web server only
+public/gorating.cgi       the program: a static FreeBSD 14.3 executable, kpp --release --target freebsd
+public/.htaccess          kpp/deploy/.htaccess: every request that is not a static file goes to the
+                          program, as Apache sent them to start.php
+public/style2.css, common.js, img/   the PHP checkout's, unchanged
+protected/gorating-config.example.json   kpp/deploy's: fill it in as gorating-config.json
+migrations/               the database changes (step 1)
+DEPLOY.md, BUILD.txt      this runbook; the commits it was built from and the program's SHA-256
 ```
 
+`public/` goes to `/home/public/`, the filled-in config to `/home/protected/gorating-config.json`.
 `chmod 755 /home/public/gorating.cgi`, `chmod 640 /home/protected/gorating-config.json`.
 
-**.htaccess:** every request that is not one of the static files goes to the program, as Apache
-sent them to start.php:
-```
-Options +ExecCGI
-AddHandler cgi-script .cgi
-SetEnv GORATING_CONFIG /home/protected/gorating-config.json
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ /gorating.cgi [L]
-```
-
-**gorating-config.json** (the passwords are kovarex's; nothing here goes into git):
+**gorating-config.json** (the passwords are kovarex's; nothing here goes into git): the example's
+placeholders replaced:
 ```json
 {"database": {"host": "<the MariaDB process's host>", "port": 3306, "user": "gorating_test",
               "password": "<its password>", "name": "gorating_test"},

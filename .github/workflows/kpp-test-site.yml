@@ -1,0 +1,102 @@
+# The kpp version's package for a test site (kpp/DEPLOY.md; kovarex, 2026-11-04): on every push to
+# the kpp branch, and by hand, the FreeBSD program is built with kpp's latest release and packed with
+# what DEPLOY.md's steps put on the site, as the workflow artifact gorating-test-site. It deploys
+# nothing, holds no secret and connects to nothing but GitHub and FreeBSD's archive (the sysroot):
+# kovarex copies the package to NearlyFreeSpeech.NET himself.
+name: kpp test site package
+
+on:
+  push:
+    branches: [kpp]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: gorating
+
+      # kpp's latest release (the compiler, its standard library, projectlib), and kpp's repository at
+      # that release's tag for what the release does not carry: the libraries and the FreeBSD sysroot's
+      # script.
+      - name: kpp
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = gh release view --repo kovarex/kpp --json tagName -q .tagName
+          if ($LASTEXITCODE -ne 0 -or -not $tag) { throw 'no kpp release' }
+          gh release download $tag --repo kovarex/kpp --pattern "kpp-*.zip" --dir kpp-release
+          if ($LASTEXITCODE -ne 0) { throw "kpp $tag: no zip" }
+          Expand-Archive (Get-ChildItem kpp-release\*.zip)[0].FullName kpp-release
+          $exe = (Get-ChildItem -Recurse kpp-release -Filter kpp.exe)[0].FullName
+          git clone --quiet --depth 1 --branch $tag https://github.com/kovarex/kpp kpp-source
+          if ($LASTEXITCODE -ne 0) { throw "kpp's repository at $tag" }
+          "KPP_EXE=$exe" | Out-File -Append -Encoding ascii $env:GITHUB_ENV
+          "KPP_TAG=$tag" | Out-File -Append -Encoding ascii $env:GITHUB_ENV
+          & $exe --version
+
+      - name: FreeBSD sysroot cache
+        uses: actions/cache@v4
+        with:
+          path: kpp-source/compiler/build/sysroots/freebsd-x86_64
+          key: freebsd-sysroot-${{ hashFiles('kpp-source/tools/sysroot/freebsd.ps1') }}
+
+      # Clang for the C imports and llvm-objcopy beside it for the sysroot's script: Visual Studio's.
+      - name: FreeBSD sysroot
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Llvm.Clang -property installationPath
+          if (-not $vs) { throw 'no Visual Studio with the Clang component' }
+          $env:KPP_CLANG = "$vs\VC\Tools\Llvm\x64\bin\clang.exe"
+          powershell -NoProfile -ExecutionPolicy Bypass -File kpp-source\tools\sysroot\freebsd.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'freebsd.ps1 failed' }
+
+      - name: The FreeBSD program
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmd /c mklink /J gorating\kpp\libraries kpp-source\libraries | Out-Null
+          Push-Location gorating\kpp
+          & $env:KPP_EXE --no-server --release --target freebsd --sysroot ..\..\kpp-source\compiler\build\sysroots\freebsd-x86_64 gorating
+          $code = $LASTEXITCODE
+          Pop-Location
+          if ($code -ne 0) { throw "kpp --release --target freebsd: exit $code" }
+
+      # The package: public\ and protected\ as DEPLOY.md lays out the site (the config an example to
+      # fill in), migrations\, DEPLOY.md, and BUILD.txt naming what it was built from.
+      - name: The package
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $p = 'gorating-test-site'
+          New-Item -ItemType Directory -Force "$p\public", "$p\protected", "$p\migrations" | Out-Null
+          Copy-Item gorating\kpp\build\release\gorating.exe "$p\public\gorating.cgi"
+          Copy-Item gorating\kpp\deploy\.htaccess "$p\public\.htaccess"
+          Copy-Item gorating\style2.css, gorating\common.js "$p\public\"
+          Copy-Item -Recurse gorating\img "$p\public\img"
+          Copy-Item gorating\kpp\deploy\gorating-config.example.json "$p\protected\"
+          Copy-Item gorating\kpp\migrations\*.sql "$p\migrations\"
+          Copy-Item gorating\kpp\DEPLOY.md "$p\"
+          $kppCommit = git -C kpp-source rev-parse HEAD
+          $hash = (Get-FileHash "$p\public\gorating.cgi" -Algorithm SHA256).Hash.ToLowerInvariant()
+          @("gorating $env:GITHUB_SHA (branch kpp)", "kpp $env:KPP_TAG ($kppCommit)", "built by $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID",
+            "public/gorating.cgi: a static FreeBSD 14.3 x86-64 executable, SHA-256 $hash") | Out-File -Encoding ascii "$p\BUILD.txt"
+          Get-Content "$p\BUILD.txt"
+          Get-ChildItem -Recurse $p | Select-Object -ExpandProperty FullName
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gorating-test-site
+          path: gorating-test-site
+          include-hidden-files: true
+          retention-days: 30
+          if-no-files-found: error

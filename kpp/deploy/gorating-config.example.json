@@ -1,0 +1,9 @@
+{"database": {"host": "<the MariaDB process's host>", "port": 3306, "user": "gorating_test",
+              "password": "<its password>", "name": "gorating_test"},
+ "resourceAddress": "",
+ "sessionSecret": "<64 random hex characters: openssl rand -hex 32>",
+ "secureCookies": true,
+ "siteAddress": "https://gorating-test.nfshost.com",
+ "mailCommand": "/usr/sbin/sendmail -t -i",
+ "jobSecret": "<64 random hex characters, also in the cron's address: ...?secret=...>",
+ "scrapeDoToken": "<the scrape.do token, as config.php has it>"}
