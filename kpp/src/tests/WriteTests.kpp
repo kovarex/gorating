@@ -81,8 +81,12 @@ test "a game reported, edited, deleted and restored"
   // A user who did not play it may not (one who did may, while it is recent).
   check(locationOf(postForm(config, "player12", "/edit_game_action", edit)).find("You%20can") != String::npos);
   check(goratingDbValue(config, String("SELECT CONCAT(handicap, ' ', komi) FROM game WHERE id=") + game) == "0 6.5");
-  postForm(config, "player2", "/edit_game_action", edit);
+  // The update finishes in the edit's request, whose message says what the edit did to this game's
+  // ratings: player11's, then and now.
+  String edited = locationOf(postForm(config, "player2", "/edit_game_action", edit));
   check(goratingDbValue(config, String("SELECT CONCAT(handicap, ' ', komi) FROM game WHERE id=") + game) == "2 0.5");
+  check(edited.find("Rating%20update%20finished%20after%20") != String::npos);
+  check(edited.find("%0AThis%20game%3A%20") != String::npos && edited.find("before%20the%20edit%20") != String::npos);
   finishRatingUpdate(config);
   double meEdited = calculateNewRating(meBefore, opponentBefore, 0, 5, 2, 6);
   double opponentEdited = calculateNewRating(opponentBefore, meBefore, 1, 5, -2, -6);
@@ -109,4 +113,31 @@ test "a game reported, edited, deleted and restored"
   finishRatingUpdate(config);
   check(goratingDbValue(config, String("SELECT deleted FROM game WHERE id=") + game) == "0");
   check(nearly(userRating(config, "player11"), meEdited) && nearly(userRating(config, "player2"), opponentEdited));
+}
+
+test "a rating update moved on for a time: how far it got, then what it changed"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
+  Page page;
+  page.config = &config;
+  page.db = &db;
+  check(processRating(page, ratingUpdateSeconds) == "No rating changes to process.");
+  // The first game deleted: its players' later games, and their opponents', are computed again.
+  String first = goratingDbValue(config, "SELECT id FROM game WHERE deleted = false ORDER BY timestamp, id LIMIT 1");
+  db.query(String("UPDATE game SET deleted=true WHERE id=") + first);
+  // No time: one transaction, 50 games, and where it stopped.
+  String progress = processRating(page, 0);
+  check(progress.starts_with("Rating update: 50 games recomputed in this request, up to the games of "));
+  check(progress.find(" later games are left to look at (the next edit or the hourly job goes on).") != String::npos);
+  String done = processRating(page, 120);
+  check(done.starts_with("Rating update finished after "));
+  check(done.find("\nRating changes:\n") != String::npos);
+  check(processRating(page, ratingUpdateSeconds) == "No rating changes to process.");
 }

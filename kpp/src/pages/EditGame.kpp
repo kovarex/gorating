@@ -121,6 +121,47 @@ bool isTimestamp(StringView text)
   return true;
 }
 
+// A player's gorating rating before and after a game, from its row: "1950.2→1961.0"; "" when the
+// game gives them none (a player with only an EGD rating).
+String gameRatingChange(const Row& game, StringView userId)
+{
+  String side = game["winner_user_id"] == userId ? "winner" : "loser";
+  if (game.isNull(side + "_old_rating") || game.isNull(side + "_new_rating"))
+    return String();
+  return showRating(game[side + "_old_rating"]) + "→" + showRating(game[side + "_new_rating"]);
+}
+
+// What the edit did to the game's own ratings (kovarex, 2026-11-04), once the rating update
+// recomputed it: "This game: Novák 1950.2→1961.0 (before the edit 1950.2→1941.8); ...". "" when its
+// ratings did not change; that the update has not reached it yet when it has not.
+String editedGameRatings(Page& page, const Row& before, StringView id)
+{
+  mariadb::MariaDbResult found = page.query(String("SELECT game.*, winner.name AS winner_name, loser.name AS loser_name FROM game"
+                                                   " JOIN user AS winner ON winner.id = game.winner_user_id"
+                                                   " JOIN user AS loser ON loser.id = game.loser_user_id WHERE game.id=") +
+                                            quote(id));
+  if (found.empty())
+    return String();
+  Row after(found, 0);
+  if (variable(page, "rating_update_in_progress") == "1" &&
+      ratingValue(after["rating_update_version"]) < ratingValue(variable(page, "rating_update_version")))
+    return "This game's ratings are not recomputed yet: the rating update has not reached it.";
+  String out;
+  bool changed = false;
+  for (StringView side : {"winner", "loser"})
+  {
+    String userId = after[String(side) + "_user_id"];
+    String now = gameRatingChange(after, userId);
+    String then = gameRatingChange(before, userId);
+    if (now.empty())
+      continue;
+    changed = changed || now != then;
+    out.append(String(out.empty() ? "This game: " : "; ") + after[String(side) + "_name"] + " " + now +
+               (then.empty() ? String() : String(" (before the edit ") + then + ")"));
+  }
+  return changed ? out + "." : String();
+}
+
 void addChange(Page& page, int type, StringView gameId, const Optional<String>& oldValue, const Optional<String>& newValue)
 {
   String columns = "change_type_id, game_id, executed_by_user_id";
@@ -257,6 +298,9 @@ void editGameAction(Page& page, http::HttpResponse& response)
   String message = String("Game id=") + id + ":";
   for (const String& change : changes)
     message.append(String("\n") + change);
-  message.append(String("\n") + processRating(page, 50));
+  message.append(String("\n") + processRating(page, ratingUpdateSeconds));
+  String ratings = editedGameRatings(page, game, id);
+  if (!ratings.empty())
+    message.append(String("\n") + ratings);
   redirectWithMessage(response, redirect, message);
 }

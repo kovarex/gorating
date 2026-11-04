@@ -162,7 +162,28 @@ String variable(Page& page, StringView name)
 }
 
 // One iteration: true when the update is finished.
-bool processRatingIteration(Page& page, String& finishedReport)
+// How long a request moves a rating update on (kovarex, 2026-11-04: "go as much as you can in 20
+// seconds"; PHP did 50 games), and the games in each of its transactions: a request stopped half way
+// keeps what it committed.
+constexpr int ratingUpdateSeconds = 20;
+constexpr int ratingUpdateGamesPerTransaction = 50;
+// The players the "Rating changes" list names; an update can change thousands.
+constexpr ContainerSize ratingChangesShown = 30;
+
+// header, then a line each, the first limit of them and how many more there are.
+String limitedLines(StringView header, const Vector<String>& lines, ContainerSize limit, StringView more)
+{
+  String out(header);
+  for (ContainerSize i = 0; i < lines.size() && i < limit; ++i)
+    out.append(String("\n") + lines[i]);
+  if (lines.size() > limit)
+    out.append(format("\n... and {} more {}.", (int64_t)(lines.size() - limit), more));
+  return out;
+}
+
+// One game of the update in progress (processRatingIteration in PHP); true when none is left and the
+// update finished, with what it changed in finishedReport. reached is the time of the game done.
+bool processRatingIteration(Page& page, String& finishedReport, String& reached)
 {
   String version = variable(page, "rating_update_version");
   String since = variable(page, "rating_update_timestamp");
@@ -199,20 +220,22 @@ bool processRatingIteration(Page& page, String& finishedReport)
     // table, in the message of the request that finishes the update).
     mariadb::MariaDbResult users = page.query("SELECT user.id AS id, user.name AS name, user.rating AS rating FROM rating_update_value"
                                               " JOIN user ON user.id = rating_update_value.user_id ORDER BY user.name, user.id");
-    finishedReport = "Rating changes:";
+    Vector<String> changes;
     for (ContainerSize i = 0; i < users.size(); ++i)
     {
       Row user(users, i);
       updateFinalRating(page, user["id"]);
       Optional<String> now = page.db->scalar(String("SELECT rating FROM user WHERE id=") + quote(user["id"]));
-      finishedReport.append(String("\n") + user["name"] + ": " + showRating(user["rating"]) + "→" + showRating(now.value_or(String())));
+      changes.push_back(user["name"] + ": " + showRating(user["rating"]) + "→" + showRating(now.value_or(String())));
     }
+    finishedReport = limitedLines("Rating changes:", changes, ratingChangesShown, "players");
     page.query("DELETE FROM rating_update_value");
     page.query("update variable SET value='0' WHERE name='rating_update_in_progress'");
     return true;
   }
   Row row(found, 0);
   String gameId = row["game_id"];
+  reached = row["game_timestamp"];
   String winnerId = row["winner_user_id"];
   String loserId = row["loser_user_id"];
   Optional<String> gameWinnerRating = found.at(0, "game_winner_rating");
@@ -278,26 +301,48 @@ bool processRatingIteration(Page& page, String& finishedReport)
   return false;
 }
 
-// Up to iterations games of a rating update in progress, in one transaction (processRating). The
-// result says how far it got, for the message after a game was deleted, restored or edited.
-String processRating(Page& page, int iterations)
+// A rating update in progress moved on for up to seconds, ratingUpdateGamesPerTransaction games a
+// transaction (processRating). The result says how far it got, for the message after a game was
+// deleted, restored or edited, and for the jobs: the players' changes when it finished, else the
+// time of the last game done and how many later games are left to look at (at most that many are
+// recomputed: those of players the update has not reached yet are only passed).
+String processRating(Page& page, int seconds)
 {
-  page.db->begin();
-  if (variable(page, "rating_update_in_progress") != "1")
-  {
-    page.db->commit();
-    return "No rating changes to process.";
-  }
+  int64_t until = unixNow() + seconds;
   int processed = 0;
   bool finished = false;
   String report;
-  for (int i = 0; i < iterations && !finished; ++i)
+  String reached;
+  for (;;)
   {
-    finished = processRatingIteration(page, report);
-    if (!finished)
-      ++processed;
+    page.db->begin();
+    if (variable(page, "rating_update_in_progress") != "1")
+    {
+      // None, or another request finished it meanwhile.
+      page.db->commit();
+      if (processed == 0)
+        return "No rating changes to process.";
+      finished = true;
+      break;
+    }
+    for (int i = 0; i < ratingUpdateGamesPerTransaction && !finished; ++i)
+    {
+      finished = processRatingIteration(page, report, reached);
+      if (!finished)
+        ++processed;
+    }
+    page.db->commit();
+    if (finished || unixNow() >= until)
+      break;
   }
-  page.db->commit();
-  return finished ? format("Rating update finished after {} games.\n", processed) + report
-                  : format("Rating update: {} games processed, more to go.", processed);
+  if (finished)
+    return format("Rating update finished after {} games.\n", processed) + report;
+  String version = variable(page, "rating_update_version");
+  if (reached.empty())
+    reached = variable(page, "rating_update_timestamp");
+  Optional<String> left = page.db->scalar(String("SELECT COUNT(*) FROM game WHERE deleted = false and rating_update_version < ") + version +
+                                          " and timestamp >= " + quote(reached));
+  return format("Rating update: {} games recomputed in this request, up to the games of {}; {} later games are left to look at"
+                " (the next edit or the hourly job goes on).",
+                processed, reached, left.value_or(String("0")));
 }
