@@ -4,3 +4,4 @@ gorating-config.json
 gorating-config-scenario.json
 gorating-config-live.json
 testdata/egd-work
+testdata/mail-work

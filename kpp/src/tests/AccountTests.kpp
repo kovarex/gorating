@@ -1,0 +1,101 @@
+// Accounts against the made-up data (Accounts.kpp, Session.kpp): an invite mailed, the registration
+// it leads to, logging in, and a password reset by mail. The mails go to the configuration's
+// mailDirectory (testdata/mail-work, written by the test), as one's own machine sends them.
+
+constexpr StringView mailWork = "testdata/mail-work";
+
+// The mails written so far, oldest first by name (a time and a secret).
+Vector<String> mails()
+{
+  Vector<String> names;
+  for (const filesystem::directory_entry& entry : filesystem::directory_iterator(filesystem::path(String(mailWork))))
+    names.push_back(entry.path().string());
+  sort(names.begin(), names.end());
+  return names;
+}
+
+String setCookieOf(const http::HttpResponse& response)
+{
+  for (const http::HttpHeader& h : response.headers)
+    if (h.name == "Set-Cookie")
+      return h.value;
+  return String();
+}
+
+test "an invite, its registration, logging in, a password reset"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  filesystem::create_directories(filesystem::path(String(mailWork)));
+  for (const String& old : mails())
+    filesystem::remove(filesystem::path(old));
+  config.mailDirectory = String(mailWork);
+  config.siteAddress = "https://gorating.test";
+
+  // Invites refused: a visitor, an address that is none, one already registered.
+  String invite = "email=new.person%40example.test&first_name=Nov%C3%A1&last_name=Osoba&rating=1200";
+  check(locationOf(postForm(config, "visitor", "/invite_action", invite)).find("Not%20logged%20in") != String::npos);
+  check(locationOf(postForm(config, "player11", "/invite_action", "email=nobody&first_name=A&last_name=B&rating=1200"))
+            .find("That%20is%20not%20an%20email%20address") != String::npos);
+  check(locationOf(postForm(config, "player11", "/invite_action", "email=player12%40example.test&first_name=A&last_name=B&rating=1200"))
+            .find("already%20registered") != String::npos);
+  check(mails().empty());
+
+  // The invite: a mail with its link, the secret 32 hexadecimal digits.
+  check(locationOf(postForm(config, "player11", "/invite_action", invite)).find("Invite%20created") != String::npos);
+  String inviteId = goratingDbValue(config, "SELECT id FROM invite WHERE email='new.person@example.test'");
+  String secret = goratingDbValue(config, "SELECT secret FROM invite WHERE email='new.person@example.test'");
+  check(secret.size() == 32);
+  require(mails().size() == 1);
+  String mail = goratingReadFile(mails()[0]);
+  check(mail.find("new.person@example.test") != String::npos && mail.find(secret) != String::npos);
+
+  // Registering: a wrong secret refused, a page's name as username refused, then registered.
+  String registration = String("invite_id=") + inviteId + "&username=nova&password=secret1&country_code=CZ&secret=";
+  check(locationOf(postForm(config, "visitor", "/register_action", registration + "0123456789abcdef0123456789abcdef")) != "");
+  check(goratingDbValue(config, "SELECT COUNT(*) FROM user WHERE username='nova'") == "0");
+  check(locationOf(postForm(config, "visitor", "/register_action",
+                            String("invite_id=") + inviteId + "&username=players&password=secret1&country_code=CZ&secret=" + secret))
+            .find("not%20a%20page%27s%20name") != String::npos);
+  http::HttpResponse registered = postForm(config, "visitor", "/register_action", registration + secret);
+  check(locationOf(registered).find("Registration%20successful") != String::npos);
+  check(goratingDbValue(config, "SELECT CONCAT(first_name, ' ', last_name, ' ', email, ' ', rating) FROM user WHERE username='nova'") ==
+        "Nová Osoba new.person@example.test 1200");
+  // The link registers once.
+  postForm(config, "visitor", "/register_action", String("invite_id=") + inviteId + "&username=nova2&password=secret1&country_code=CZ&secret=" + secret);
+  check(goratingDbValue(config, "SELECT COUNT(*) FROM user WHERE username='nova2'") == "0");
+
+  // Logging in: the right password gives a session cookie, a wrong one does not.
+  check(setCookieOf(postForm(config, "visitor", "/login_action", "username=nova&password=secret1")).starts_with("gorating_id="));
+  check(setCookieOf(postForm(config, "visitor", "/login_action", "username=nova&password=secret2")).empty());
+
+  // A password reset: the same answer for an unknown address (and no mail), a mail with its link for
+  // a known one, and only one mail while the last is recent.
+  String answer = "If%20an%20account%20has%20this%20address";
+  check(locationOf(postForm(config, "visitor", "/reset_password_action", "email=nobody%40example.test")).find(answer) != String::npos);
+  check(mails().size() == 1);
+  check(locationOf(postForm(config, "visitor", "/reset_password_action", "email=new.person%40example.test")).find(answer) != String::npos);
+  require(mails().size() == 2);
+  String userId = goratingDbValue(config, "SELECT id FROM user WHERE username='nova'");
+  String resetSecret = goratingDbValue(config, "SELECT reset_password_secret FROM user WHERE username='nova'");
+  // (two mails of one second: their names do not say which came first)
+  check(resetSecret.size() == 32);
+  bool linked = false;
+  for (const String& name : mails())
+    linked = linked || goratingReadFile(name).find(String("https://gorating.test/reset_password_confirm?id=") + userId + "&amp;secret=" + resetSecret) != String::npos;
+  check(linked);
+  postForm(config, "visitor", "/reset_password_action", "email=new.person%40example.test");
+  check(mails().size() == 2);
+  // A wrong secret changes nothing; the right one sets the new password, which logs in.
+  postForm(config, "visitor", "/reset_password_confirm_action", String("id=") + userId + "&secret=0123456789abcdef0123456789abcdef&password=newpass1");
+  check(setCookieOf(postForm(config, "visitor", "/login_action", "username=nova&password=newpass1")).empty());
+  check(locationOf(postForm(config, "visitor", "/reset_password_confirm_action", String("id=") + userId + "&secret=" + resetSecret + "&password=newpass1"))
+            .find("Password%20successfully%20changed") != String::npos);
+  check(setCookieOf(postForm(config, "visitor", "/login_action", "username=nova&password=newpass1")).starts_with("gorating_id="));
+  check(setCookieOf(postForm(config, "visitor", "/login_action", "username=nova&password=secret1")).empty());
+}
