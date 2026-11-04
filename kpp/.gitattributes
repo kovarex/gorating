@@ -1,0 +1,5 @@
+# The kpp version's text files are LF in every checkout: the pages' HTML is in raw string literals,
+# which kpp (unlike C++ compilers) keeps a CRLF checkout's CR in, so a FreeBSD program built on
+# CI's Windows runner (core.autocrlf true) wrote its pages with CRLF (run 41867124956); and the
+# expected pages in testdata/ are compared byte for byte.
+* text=auto eol=lf

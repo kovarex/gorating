@@ -7,7 +7,14 @@ test "the rating formula, as PHP computes it"
   {
     const double* v = ratingFormulaVectors[i];
     double got = calculateNewRating(v[0], v[1], v[2], (int)v[3], v[4], v[5]);
-    check(got == v[6]);
+    // The vectors come from PHP on Windows, whose exp, log and pow are the C runtime's, as kpp's
+    // are there: the same bits. FreeBSD's libm rounds some of them a unit in the last place apart
+    // (1740.168823763115 for 1740.1688237631147), as PHP on FreeBSD would; the database keeps 14
+    // significant digits (phpNumber), so such a difference never reaches it.
+    if constexpr (config::platform == Platform::Windows)
+      check(got == v[6]);
+    else
+      check(fabs(got - v[6]) <= fabs(v[6]) * 1e-15);
   }
 }
 
