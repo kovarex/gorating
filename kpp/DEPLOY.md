@@ -25,6 +25,28 @@ first run is CI's FreeBSD VM with a MariaDB of the made-up data (README.md, "Not
   order (`mariadb gorating_test < migrations/001-secrets-and-rating-discrepancies.sql`). The PHP
   site works on the changed database too (tested locally).
 
+## Installing a release with kpp-deploy.sh (kovarex, over SSH)
+
+Every push to the kpp branch that passes CI is published as the GitHub Release `kpp-<run>`, the
+latest; `kpp-deploy.sh` installs it (the files below, laid out as there). Once per site:
+
+```sh
+fetch -o /home/protected/kpp-deploy.sh https://raw.githubusercontent.com/kovarex/kpp/master/tools/deploy/kpp-deploy.sh
+mkdir -p /home/protected/deploy && chmod 700 /home/protected/deploy
+# the database client's defaults, for migrations and their record (yours; never in git):
+printf '[client]\nhost=<the MariaDB process host>\nuser=<user>\npassword=<password>\ndatabase=<the site database>\n' > /home/protected/deploy/my.cnf
+chmod 600 /home/protected/deploy/my.cnf
+# the migrations applied by hand before (001 and 002 on a copy that already has them):
+sh /home/protected/kpp-deploy.sh --mark-applied 001-secrets-and-rating-discrepancies.sql 002-rating-update-start.sql
+```
+
+Then each time: `sh /home/protected/kpp-deploy.sh` (the latest; `--migrate` when it lists pending
+migrations), `--status` (the installed release and the migrations applied), `--rollback` (the
+previous program and files back). The web root, the configuration's place
+(`/home/protected/gorating-config.json`, group `web`, mode 640) and the smoke paths are the
+script's defaults for gorating on NearlyFreeSpeech.NET; `DEPLOY_CONF` names a file that changes
+them. The package's kpp-deploy.sh is the one it was tested with (BUILD.txt names its commit).
+
 ## 2. The files (kovarex, over SSH)
 
 The package **gorating-test-site.zip** holds them, laid out as on NFS: built with kpp's

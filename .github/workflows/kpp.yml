@@ -2,15 +2,14 @@
 # alone, its FreeBSD sysroot and official libraries included), tested on Windows and in a FreeBSD
 # 14.3 VM against a MariaDB with the made-up data, and packed as the site's release
 # (gorating-site.tar.gz, kpp/DEPLOY.md), whose install kpp's tools/deploy/test-deploy.sh checks in
-# the VM. A tag kpp-v* publishes the package as a GitHub Release, which tools/deploy's
-# kpp-deploy.sh (in the package) installs on the server. Nothing here deploys, holds a secret or
-# connects to the site.
+# the VM. Every push to kpp that passes publishes the package as the GitHub Release kpp-<run>
+# (kovarex, 2026-11-04: "just take the latest"), which `kpp-deploy.sh` alone installs on the server
+# (kpp-deploy.sh kpp-<run> an older one). Nothing here deploys, holds a secret or connects to the site.
 name: kpp
 
 on:
   push:
     branches: [kpp]
-    tags: ['kpp-v*']
   workflow_dispatch:
 
 permissions:
@@ -183,8 +182,9 @@ jobs:
         shell: bash
         run: |
           set -e
-          version=${GITHUB_REF_NAME}
-          case "$GITHUB_REF" in refs/tags/*) ;; *) version="kpp-$(git rev-parse --short=10 HEAD)" ;; esac
+          # The release's name: kpp-<run number>, rising, which the server shows (kpp-deploy.sh
+          # --status); BUILD.txt names the commit.
+          version="kpp-$GITHUB_RUN_NUMBER"
           p=gorating-site
           mkdir -p $p/public $p/migrations
           cp freebsd/gorating $p/public/gorating.cgi && chmod 755 $p/public/gorating.cgi
@@ -220,10 +220,11 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-  # A tag kpp-v*: the package as that tag's GitHub Release, which deploy.sh downloads.
+  # A push to kpp that passed: the package as the release kpp-<run number> (its tag made here, at
+  # the commit built), GitHub's latest, which kpp-deploy.sh downloads without a token.
   release:
     needs: [package, test-freebsd]
-    if: startsWith(github.ref, 'refs/tags/kpp-v')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/kpp'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -236,4 +237,8 @@ jobs:
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" gorating-site.tar.gz gorating-site.tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes "The kpp version's site package (kpp/DEPLOY.md). Commit $GITHUB_SHA."
+        run: |
+          tag="kpp-$GITHUB_RUN_NUMBER"
+          gh release create "$tag" gorating-site.tar.gz gorating-site.tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "$tag (${GITHUB_SHA:0:10})" \
+            --notes "The kpp version's site package (kpp/DEPLOY.md), commit $GITHUB_SHA, built by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Install: kpp-deploy.sh (the latest) or kpp-deploy.sh $tag."
