@@ -27,8 +27,9 @@ first run is CI's FreeBSD VM with a MariaDB of the made-up data (README.md, "Not
 
 ## 2. The files (kovarex, over SSH)
 
-Every push to the kpp branch builds them (.github/workflows/kpp-test-site.yml): the run's artifact
-**gorating-test-site** (Actions, the run, Artifacts) is the site's files, laid out as on NFS:
+The package **gorating-test-site.zip** holds them, laid out as on NFS: built with kpp's
+`--release --target freebsd` (DEPLOY-CHECKLIST.md, "Build it yourself", says how), packed with
+kpp/deploy's files. DEPLOY-CHECKLIST.md is the short list of these steps.
 
 ```
 public/gorating.cgi       the program: a static FreeBSD 14.3 executable, kpp --release --target freebsd

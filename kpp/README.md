@@ -46,9 +46,9 @@ page, against the same MariaDB database (its triggers and procedures stay as the
   tournament gave (a saved tournament, a recompute from its start, a deleted game, processing it
   again) and the update's start; PHP's recomputation fails it.
 - `testdata/generate.py`: made-up data for a local database (no real person in it).
-- `deploy/`: the test site's .htaccess and an example configuration; `.github/workflows/kpp-test-site.yml`
-  (in the repository's root) packs them with the FreeBSD program on every push to the kpp branch
-  (DEPLOY.md).
+- `deploy/`: the test site's .htaccess and an example configuration, which the test site's package
+  holds beside the FreeBSD program (DEPLOY.md; DEPLOY-CHECKLIST.md, the short list, and how to build
+  the program oneself).
 
 **Tests.** `kpp --test` here: src/tests/ checks the rating formula, ranks, handicaps, rating jumps
 and PHP's printing of numbers against what PHP's code gives (RatingVectors.kpp, written by
@@ -78,9 +78,9 @@ mistakes (`selected="select"`, a `</form>` inside a label, `</br>`) and the invi
 fixed; a page refused for lack of rights shows its message in the message box, and a report page
 without a player says so where PHP printed warnings.
 
-**Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first). `kpp --release --target
-freebsd` builds the FreeBSD program (2026-11-04: kpp's exceptions, POSIX layer and FreeBSD sysroot,
-and httpclient's FreeBSD client, are in).
+**Deploying:** DEPLOY.md, a runbook for kovarex (a test site on NFS first), and DEPLOY-CHECKLIST.md,
+its short list with "Build it yourself": kpp v0.2.229 or later, its FreeBSD sysroot, `kpp --release
+--target freebsd`.
 
 ## Not yet
 
