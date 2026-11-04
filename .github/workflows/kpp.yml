@@ -1,0 +1,190 @@
+# The kpp version (kpp/): built with a pinned release of kpp (kpp/kpp-version: the installed kpp
+# alone, its FreeBSD sysroot and official libraries included), tested on Windows and in a FreeBSD
+# 14.3 VM against a MariaDB with the made-up data, and packed as the site's release
+# (gorating-site.tar.gz, kpp/DEPLOY.md). A tag kpp-v* publishes the package as a GitHub Release,
+# which tools/deploy's deploy.sh installs on the server. Nothing here deploys, holds a secret or
+# connects to the site.
+name: kpp
+
+on:
+  push:
+    branches: [kpp]
+    tags: ['kpp-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # kpp's release, the unit tests (no database), the FreeBSD program and its test program.
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: kpp
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content kpp\kpp-version -Raw).Trim()
+          gh release download $version --repo kovarex/kpp --pattern "kpp-*.zip" --dir kpp-release
+          if ($LASTEXITCODE -ne 0) { throw "kpp $version has no zip" }
+          Expand-Archive (Get-ChildItem kpp-release\*.zip)[0].FullName kpp-release\kpp
+          $exe = (Get-ChildItem -Recurse kpp-release\kpp -Filter kpp.exe)[0].FullName
+          "KPP=$exe" | Out-File -Append -Encoding ascii $env:GITHUB_ENV
+          & $exe --version
+
+      - name: Tests on Windows (without a database)
+        shell: powershell
+        working-directory: kpp
+        run: |
+          & $env:KPP --no-server --test
+          if ($LASTEXITCODE -ne 0) { throw "kpp --test: exit $LASTEXITCODE" }
+
+      - name: The FreeBSD program and its tests
+        shell: powershell
+        working-directory: kpp
+        run: |
+          $ErrorActionPreference = 'Continue'
+          & $env:KPP --no-server --release --target freebsd gorating
+          if ($LASTEXITCODE -ne 0) { throw "kpp --release --target freebsd: exit $LASTEXITCODE" }
+          $out = & $env:KPP --no-server --target freebsd --no-run --test gorating 2>&1 | ForEach-Object { "$_" }
+          $out
+          $tests = $out | ForEach-Object { if ($_ -match '^kppc --test: built (.*) \(not run: --no-run\)$') { $Matches[1] } } | Select-Object -First 1
+          if (-not $tests -or -not (Test-Path $tests)) { throw 'no FreeBSD test program' }
+          New-Item -ItemType Directory -Force ..\freebsd | Out-Null
+          Copy-Item build\release\gorating ..\freebsd\gorating
+          Copy-Item $tests ..\freebsd\gorating-tests
+          $env:KPP_VERSION_LINE = (& $env:KPP --version | Select-Object -First 1)
+          $env:KPP_VERSION_LINE | Out-File -Encoding ascii ..\freebsd\kpp-version.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freebsd
+          path: freebsd
+          retention-days: 7
+          if-no-files-found: error
+
+  # The whole suite in FreeBSD 14.3, against MariaDB from pkg, then the program run as Apache runs it.
+  test-freebsd:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: freebsd
+          path: freebsd
+
+      - name: Tests on FreeBSD 14.3 with MariaDB
+        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1.5.9
+        with:
+          release: '14.3'
+          sync: rsync
+          copyback: true
+          prepare: |
+            pkg install -y mariadb1011-server
+          run: |
+            set -e
+            freebsd-version
+            sysrc mysql_enable=YES
+            service mysql-server start
+            mysql -e "CREATE USER 'gorating'@'127.0.0.1' IDENTIFIED BY 'test-only'; GRANT ALL PRIVILEGES ON *.* TO 'gorating'@'127.0.0.1'"
+            chmod +x freebsd/gorating freebsd/gorating-tests
+            cd kpp
+            GORATING_TEST_DB=127.0.0.1:3306:gorating:test-only ../freebsd/gorating-tests > ../freebsd/tests.log 2>&1 || true
+            cat ../freebsd/tests.log
+            # The program as Apache runs it, on the database the tests left: the About page (no
+            # database) and the players' list (the database).
+            printf '{"database": {"host": "127.0.0.1", "port": 3306, "user": "gorating", "password": "test-only", "name": "gorating_kpp_tests"}, "resourceAddress": "", "sessionSecret": "0123456789abcdef0123456789abcdef-ci"}' > ../freebsd/config.json
+            for page in /about /players; do
+              REQUEST_METHOD=GET REQUEST_URI=$page GORATING_CONFIG=../freebsd/config.json ../freebsd/gorating > ../freebsd/cgi$(echo $page | tr / _).txt 2>&1 || true
+              head -c 300 ../freebsd/cgi$(echo $page | tr / _).txt; echo
+            done
+
+      - name: Result
+        if: always()
+        shell: bash
+        run: |
+          last=$(grep -E '^[0-9]+ tests?, [0-9]+ failed$' freebsd/tests.log 2>/dev/null | tail -n 1 || true)
+          [ -n "$last" ] || last='no result: the tests did not finish'
+          { echo '### gorating (kpp) on FreeBSD 14.3'; echo; echo "    $last"; grep -E '^failed:|check failed|test failed' freebsd/tests.log 2>/dev/null | sed 's/^/    /' || true; } >> "$GITHUB_STEP_SUMMARY"
+          case "$last" in *", 0 failed") ;; *) exit 1 ;; esac
+          for page in _about _players; do
+            grep -q '^Status: 200' freebsd/cgi$page.txt && grep -q '</html>' freebsd/cgi$page.txt || { echo "the CGI's $page did not answer 200 with a page:"; head -c 2000 freebsd/cgi$page.txt; exit 1; }
+          done
+
+  # The site's package: what kpp/DEPLOY.md puts on the server, laid out as there.
+  package:
+    needs: test-freebsd
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: freebsd
+          path: freebsd
+
+      - name: gorating-site.tar.gz
+        shell: bash
+        run: |
+          set -e
+          version=${GITHUB_REF_NAME}
+          case "$GITHUB_REF" in refs/tags/*) ;; *) version="kpp-$(git rev-parse --short=10 HEAD)" ;; esac
+          p=gorating-site
+          mkdir -p $p/public $p/migrations
+          cp freebsd/gorating $p/public/gorating.cgi && chmod 755 $p/public/gorating.cgi
+          cp kpp/deploy/.htaccess style2.css common.js $p/public/
+          cp -R img $p/public/img
+          cp kpp/migrations/*.sql $p/migrations/
+          cp kpp/deploy/gorating-config.example.json kpp/DEPLOY.md kpp/DEPLOY-CHECKLIST.md $p/
+          {
+            echo "app gorating"
+            echo "version $version"
+            echo "program public/gorating.cgi"
+            for m in $p/migrations/*.sql; do echo "migration $(basename $m)"; done
+          } > $p/MANIFEST
+          {
+            echo "gorating $version, commit $GITHUB_SHA"
+            echo "$(cat freebsd/kpp-version.txt), installed (kpp/kpp-version)"
+            echo "built by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            (cd $p && find . -type f ! -name BUILD.txt | sort | xargs sha256sum)
+          } > $p/BUILD.txt
+          cat $p/MANIFEST $p/BUILD.txt
+          tar -czf gorating-site.tar.gz $p
+          sha256sum gorating-site.tar.gz | cut -d' ' -f1 > gorating-site.tar.gz.sha256
+          cat gorating-site.tar.gz.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gorating-site
+          path: |
+            gorating-site.tar.gz
+            gorating-site.tar.gz.sha256
+          retention-days: 30
+          if-no-files-found: error
+
+  # A tag kpp-v*: the package as that tag's GitHub Release, which deploy.sh downloads.
+  release:
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/kpp-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: gorating-site
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" gorating-site.tar.gz gorating-site.tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes "The kpp version's site package (kpp/DEPLOY.md). Commit $GITHUB_SHA."
