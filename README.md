@@ -52,6 +52,21 @@ MariaDB database (setup.sql: the schema, its triggers and procedures; migrations
 **Building.** `kpp` in this directory: an installed kpp (kpp-version names the release CI uses)
 brings the libraries it uses.
 
+**Code style** (kovarex, 2026-11-05: the code reads like Factorio's C++):
+- kpp's integer names (`i32`, `i64`, `u8`, `usize`), never `int`, `int64_t` or `size_t` outside an
+  `extern "C"` declaration (`kpp --check --c-type-warnings` lists them).
+- One type per file, named after it; data members after the functions. A class with private data
+  where its values keep an invariant (`Row`, `Form`), a struct where they are plain values.
+- No constructor or operator the language writes itself: no empty `X() {}`, `operator==` defaulted.
+- Text as pieces: `out << a << b`, `toString("game ", id, " deleted")`, and SQL the same way,
+  `page.query("UPDATE user SET rating=", rating, " WHERE id=", quote(id))`; no `format("{}")`, no
+  `.append(`, no String concatenation for SQL.
+- A form is read through `Form`: `form.number<u8>("significant_digits", message)` parses or fails,
+  and a failure (`form.fail(...)`) is a FormError that `handle` turns into the redirect with its
+  message, so an action does not return at each check.
+- HTML through `html::HtmlTemplate`s, one template per thing shown: an attribute that appears or not
+  is a boolean attribute, `<option value="b" ?selected="{{black}}">`, not a second template.
+
 **Tests** (src/tests/, `kpp --test` here; for FreeBSD, `kpp --target freebsd --no-run --test`
 builds the test program):
 - without a database: the rating formula, ranks, handicaps, rating jumps and PHP's printing of
