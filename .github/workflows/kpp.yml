@@ -68,13 +68,13 @@ jobs:
           $out
           $tests = $out | ForEach-Object { if ($_ -match '^kppc --test: built (.*) \(not run: --no-run\)$') { $Matches[1] } } | Select-Object -First 1
           if (-not $tests -or -not (Test-Path $tests)) { throw 'no FreeBSD test program' }
-          New-Item -ItemType Directory -Force ..\freebsd | Out-Null
-          Copy-Item build\release\gorating ..\freebsd\gorating
-          Copy-Item $tests ..\freebsd\gorating-tests
+          New-Item -ItemType Directory -Force freebsd | Out-Null
+          Copy-Item build\release\gorating freebsd\gorating
+          Copy-Item $tests freebsd\gorating-tests
           # (all of --version's output first: Select-Object -First 1 on the pipe stops kpp early, and
           # the step then ended with its non-zero exit code)
           $version = @(& $env:KPP --version)
-          $version[0] | Out-File -Encoding ascii ..\freebsd\kpp-version.txt
+          $version[0] | Out-File -Encoding ascii freebsd\kpp-version.txt
           exit 0
 
       - uses: actions/upload-artifact@v4
