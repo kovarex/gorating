@@ -43,10 +43,6 @@ struct Page
     return value;
   }
 
-  // A rating update's ratings before a tournament (RatingUpdate.kpp, ratingForCalculation), by
-  // player, tournament and time: the same for all its games, and fixed once the update reaches it.
-  HashMap<String, Optional<String>> ratingsBeforeTournament;
-
   // The owner's statistics (toggle_statistics): each query and its time, shown on the page.
   bool statistics = false;
   Vector<Pair<String, double>> queries;

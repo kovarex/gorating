@@ -132,9 +132,11 @@ test "a rating update moved on for a time: how far it got, then what it changed"
   // The first game deleted: its players' later games, and their opponents', are computed again.
   String first = goratingDbValue(config, "SELECT id FROM game WHERE deleted = false ORDER BY timestamp, id LIMIT 1");
   db.query(String("UPDATE game SET deleted=true WHERE id=") + first);
-  // No time: one transaction, 50 games, and where it stopped.
+  // No time and a window of 50 games read: one window, what it computed of them, and where it stopped.
+  ratingUpdateWindowGames = 50;
   String progress = processRating(page, 0);
-  check(progress.starts_with("Rating update: 50 games recomputed in this request, up to the games of "));
+  ratingUpdateWindowGames = 5000;
+  check(progress.starts_with("Rating update: ") && progress.find(" games recomputed in this request, up to the games of ") != String::npos);
   check(progress.find(" later games are left to look at (the next edit or the hourly job goes on).") != String::npos);
   String done = processRating(page, 120);
   check(done.starts_with("Rating update finished after "));
