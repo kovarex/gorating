@@ -27,8 +27,8 @@ first run is CI's FreeBSD VM with a MariaDB of the made-up data (README.md, "Not
 
 ## The switch from PHP: switch-to-kpp.sh (kovarex, over SSH, once)
 
-With the database backed up, production's `/home/protected/gorating-config.json` (mode 640, group
-web) and `/home/protected/deploy/my.cnf` (below) written:
+With the database backed up and production's `/home/protected/gorating-config.json` written (mode
+640, group web; the database client's login, `/home/protected/deploy/my.cnf`, is written from it):
 
 ```sh
 fetch -o /home/protected/switch-to-kpp.sh https://raw.githubusercontent.com/kovarex/gorating/master/kpp/deploy/switch-to-kpp.sh

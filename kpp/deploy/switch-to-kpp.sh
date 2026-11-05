@@ -7,9 +7,10 @@
 #                                     and 002, which the PHP version works with)
 #
 # What it does, stopping at the first problem with what to do:
-#  1. checks, changing nothing: the kpp configuration (/home/protected/gorating-config.json: its
-#     fields, mode 640, group web), the database client's defaults (/home/protected/deploy/my.cnf)
-#     reaching the database, the PHP version in /home/public, kpp-deploy.sh (fetched if missing);
+#  1. checks, changing nothing but writing the database client's login when it has none
+#     (/home/protected/deploy/my.cnf, from the configuration's "database", mode 600): the kpp
+#     configuration (/home/protected/gorating-config.json: its fields, mode 640, group web), the
+#     database reached, the PHP version in /home/public, kpp-deploy.sh (fetched if missing);
 #  2. asks you to type yes;
 #  3. moves the PHP version's files (/home/public/*.php, src/ and .htaccess) to /home/protected/php-site;
 #  4. runs kpp-deploy.sh --migrate: migrations 001 and 002 on the database, the latest kpp release
@@ -23,7 +24,8 @@ PUBLIC=/home/public
 CONFIG=/home/protected/gorating-config.json
 CONFIG_GROUP=web
 STATE=/home/protected/deploy
-DATABASE="mysql --defaults-extra-file=/home/protected/deploy/my.cnf"
+MYCNF=/home/protected/deploy/my.cnf
+DATABASE="mysql --defaults-extra-file=$MYCNF"
 DEPLOY=/home/protected/kpp-deploy.sh
 # kpp-deploy.sh as gorating's CI tests it (kpp.yml's KPP_DEPLOY_COMMIT).
 DEPLOY_URL=https://raw.githubusercontent.com/kovarex/kpp/f23622e92aa0f97d1eab1bfe5d30fead9a92643a/tools/deploy/kpp-deploy.sh
@@ -61,6 +63,20 @@ grep -q '": *"<' "$CONFIG" && fail "$CONFIG still has a placeholder (\"<...>\")"
 grep -q 'gorating-test\|gorating_test' "$CONFIG" && fail "$CONFIG has the test site's values (gorating_test, gorating-test.nfshost.com): production's database and https://gorating.com"
 if stat -f '%Sp %Sg' "$CONFIG" > /dev/null 2>&1; then mode=$(stat -f '%Sp %Sg' "$CONFIG"); else mode=$(stat -c '%A %G' "$CONFIG"); fi
 [ "$mode" = "-rw-r----- $CONFIG_GROUP" ] || fail "$CONFIG is $mode: chgrp $CONFIG_GROUP $CONFIG; chmod 640 $CONFIG"
+# The database client's login (my.cnf, which kpp-deploy.sh's DATABASE reads): written from the
+# configuration's "database" when there is none (kovarex: "the data is already in gorating-config.json").
+if [ ! -f "$MYCNF" ]; then
+  db=$(tr '\n' ' ' < "$CONFIG" | sed -n 's/.*"database" *: *{\([^}]*\)}.*/\1/p')
+  case "$db" in *'\'*) fail "$CONFIG's database has a backslash (an escape): write $MYCNF by hand ([client] host, port, user, password, database)" ;; esac
+  field() { echo "$db" | sed -n "s/.*\"$1\" *: *\"\([^\"]*\)\".*/\1/p"; }
+  host=$(field host); user=$(field user); password=$(field password); name=$(field name)
+  port=$(echo "$db" | sed -n 's/.*"port" *: *\([0-9][0-9]*\).*/\1/p')
+  [ -n "$host" ] && [ -n "$user" ] && [ -n "$name" ] || fail "cannot read host, user and name from $CONFIG's database: write $MYCNF by hand"
+  mkdir -p "$(dirname "$MYCNF")" || fail "cannot make $(dirname "$MYCNF")"
+  (umask 077 && printf '[client]\nhost=%s\nport=%s\nuser=%s\npassword="%s"\ndatabase=%s\n' "$host" "${port:-3306}" "$user" "$password" "$name" > "$MYCNF") || fail "cannot write $MYCNF"
+  chmod 600 "$MYCNF"
+  say "wrote $MYCNF from $CONFIG's database"
+fi
 echo "SELECT COUNT(*) FROM user" | $DATABASE > /dev/null || fail "the database client ($DATABASE) does not reach the database: write its my.cnf ([client] host, user, password, database; chmod 600)"
 if [ ! -f "$DEPLOY" ]; then
   if command -v fetch > /dev/null 2>&1; then fetch -q -o "$DEPLOY" "$DEPLOY_URL"; else curl -fsSL -o "$DEPLOY" "$DEPLOY_URL"; fi || fail "cannot download kpp-deploy.sh from $DEPLOY_URL"
