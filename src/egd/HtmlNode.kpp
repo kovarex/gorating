@@ -1,0 +1,8 @@
+struct HtmlNode
+{
+  String tag; // lower case; empty for text
+  String text;
+  Vector<Pair<String, String>> attributes;
+  Vector<i32> children;
+  i32 parent = -1;
+};

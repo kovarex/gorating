@@ -1,0 +1,38 @@
+// One request's context: the configuration, the database, the request, the logged-in user's row,
+// the page's body, and the owner's query statistics.
+struct Page
+{
+  // The query's parameter as start.php reads it: the last one of that name; "" when absent.
+  String get(StringView name) const
+  {
+    String value;
+    for (const url::UrlQueryParameter& p : this->request->parameters)
+      if (p.name == name && !p.value.empty())
+        value = p.value;
+    return value;
+  }
+
+  // A statement given as pieces: page.query("UPDATE user SET rating=", rating, " WHERE id=", quote(id)).
+  mariadb::MariaDbResult query(Text sql)
+  {
+    if (!this->statistics)
+      return this->db->query(sql);
+    String statement = toString(sql);
+    auto start = SteadyClock::now();
+    mariadb::MariaDbResult result = this->db->query(statement);
+    this->queries.push_back(Pair<String, double>(statement, (double)durationCast<Microseconds>(SteadyClock::now() - start).count() / 1e6));
+    return result;
+  }
+
+  String resource(StringView path) const { return this->config->resourceAddress + String(path); }
+
+  const GoratingConfig* config = nullptr;
+  mariadb::MariaDbConnection* db = nullptr;
+  const http::HttpRequest* request = nullptr;
+  Optional<mariadb::MariaDbResult> user; // the logged-in user's row (Session.kpp)
+  html::SafeHtml body;
+
+  // The owner's statistics (toggle_statistics): each query and its time, shown on the page.
+  bool statistics = false;
+  Vector<Pair<String, double>> queries;
+};

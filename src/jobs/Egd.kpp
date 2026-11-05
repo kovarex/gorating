@@ -39,33 +39,6 @@ String fetchEgd(const GoratingConfig& config, StringView url, StringView form = 
   return page.body;
 }
 
-// A number as PHP keeps it: the text it was read as (a page's, the database's), or a double it
-// computed. Written into SQL as PHP wrote it: the text as it is, a double with 14 digits.
-struct PhpNumber
-{
-  bool computed = false;
-  String text;
-  double value = 0;
-
-  PhpNumber() {}
-  static PhpNumber read(StringView text)
-  {
-    PhpNumber n;
-    n.text = String(text);
-    n.value = text.empty() ? 0.0 : stod(String(text));
-    return n;
-  }
-  static PhpNumber of(double value)
-  {
-    PhpNumber n;
-    n.computed = true;
-    n.value = value;
-    return n;
-  }
-  String sql() const { return this->computed ? phpNumber(this->value) : this->text; }
-  PhpNumber operator+(const PhpNumber& other) const { return PhpNumber::of(this->value + other.value); }
-};
-
 // PHP's is_numeric for what EGD's pages hold: an optional sign, digits, a point, an exponent.
 bool phpIsNumeric(StringView text)
 {
@@ -82,12 +55,6 @@ bool phpLooseEqual(const Optional<String>& a, const Optional<String>& b)
     return *phpNumeric(*a) == *phpNumeric(*b);
   return *a == *b;
 }
-
-struct EgdCountry
-{
-  String id;
-  String code;
-};
 
 // "Germany (DE)": the code in the last brackets, and its country (getCountryCodeAndID).
 EgdCountry egdCountry(Page& page, StringView country)
@@ -122,12 +89,6 @@ bool isTournamentKey(StringView key)
 }
 
 constexpr StringView egdAddress = "https://www.europeangodatabase.eu/EGD/";
-
-struct EgdPlayerInfo
-{
-  String rating;
-  EgdCountry country;
-};
 
 // A player's rating and country from their EGD card (getEgdInfo).
 EgdPlayerInfo egdPlayerInfo(Page& page, StringView pin)

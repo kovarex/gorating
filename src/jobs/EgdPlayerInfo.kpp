@@ -1,0 +1,5 @@
+struct EgdPlayerInfo
+{
+  String rating;
+  EgdCountry country;
+};

@@ -3,11 +3,6 @@
 
 GoratingConfig goratingConfig;
 
-// A path that is no page and no player's username.
-class PageNotFound : public Exception
-{
-};
-
 // The pages ported so far; the others answer 501 until they are.
 bool route(Page& page, StringView name)
 {

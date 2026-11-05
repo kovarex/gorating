@@ -1,0 +1,9 @@
+// A player's block: their GoR before the tournament, their link's pin and name, their games.
+struct EgdTournamentPlayer
+{
+  String gor;       // numeric
+  String pin;       // numeric
+  String firstName; // the link's third word ("PIN - First Last")
+  String lastName;  // its fourth and the rest
+  Vector<EgdTournamentGame> games;
+};

@@ -1,0 +1,5 @@
+class GoratingError : public RuntimeError
+{
+public:
+  GoratingError(const String& message) : RuntimeError(message) {}
+};

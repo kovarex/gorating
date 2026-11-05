@@ -1,0 +1,5 @@
+struct SqlColumn
+{
+  String sql;
+  String as;
+};

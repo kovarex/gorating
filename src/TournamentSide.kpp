@@ -1,0 +1,6 @@
+struct TournamentSide
+{
+  String oldRating; // before the game
+  String newRating; // after it
+  String end;       // after the player's last game in the tournament
+};

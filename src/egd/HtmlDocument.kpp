@@ -1,0 +1,56 @@
+struct HtmlDocument
+{
+ // nodes[0] is the document
+
+  // The elements named tag under node (not node itself), in document order.
+  Vector<i32> elements(i32 node, StringView tag) const
+  {
+    Vector<i32> found;
+    this->collect(node, tag, found);
+    return found;
+  }
+
+  void collect(i32 node, StringView tag, Vector<i32>& found) const
+  {
+    for (i32 child : this->nodes[node].children)
+    {
+      if (this->nodes[child].tag == tag)
+        found.push_back(child);
+      this->collect(child, tag, found);
+    }
+  }
+
+  // The text under node, all of it, as DOM's nodeValue of an element.
+  String text(i32 node) const
+  {
+    String out;
+    this->appendText(node, out);
+    return out;
+  }
+
+  void appendText(i32 node, String& out) const
+  {
+    const HtmlNode& n = this->nodes[node];
+    if (n.tag.empty())
+      out << n.text;
+    for (i32 child : n.children)
+      this->appendText(child, out);
+  }
+
+  // The attribute's value, or nullptr.
+  const String* attribute(i32 node, StringView name) const
+  {
+    for (const Pair<String, String>& a : this->nodes[node].attributes)
+      if (a.first == name)
+        return &a.second;
+    return nullptr;
+  }
+
+  bool hasAttribute(i32 node, StringView name, StringView value) const
+  {
+    const String* found = this->attribute(node, name);
+    return found != nullptr && *found == value;
+  }
+
+  Vector<HtmlNode> nodes;
+};

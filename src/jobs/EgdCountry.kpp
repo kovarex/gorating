@@ -1,0 +1,5 @@
+struct EgdCountry
+{
+  String id;
+  String code;
+};

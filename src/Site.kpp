@@ -1,66 +1,5 @@
-// One request's context, the database's rows as pages read them, and the links every page makes
-// (src/link_helper.php and src/rating_helper.php in the PHP version).
-
-// A row of a query, read by column name: NULL reads as "", as PHP's echo prints it.
-struct Row
-{
-  const mariadb::MariaDbResult* result = nullptr;
-  ContainerSize index = 0;
-
-  Row() {}
-  Row(const mariadb::MariaDbResult& result, ContainerSize index) : result(&result), index(index) {}
-
-  String operator[](StringView name) const
-  {
-    const Optional<String>& value = this->result->at(this->index, name);
-    return value.has_value() ? *value : String();
-  }
-  bool isNull(StringView name) const { return !this->result->at(this->index, name).has_value(); }
-  bool has(StringView name) const
-  {
-    for (const String& column : this->result->columns)
-      if (column == name)
-        return true;
-    return false;
-  }
-};
-
-struct Page
-{
-  const GoratingConfig* config = nullptr;
-  mariadb::MariaDbConnection* db = nullptr;
-  const http::HttpRequest* request = nullptr;
-  Optional<mariadb::MariaDbResult> user; // the logged-in user's row (Session.kpp)
-  html::SafeHtml body;
-
-  // The query's parameter as start.php reads it: the last one of that name; "" when absent.
-  String get(StringView name) const
-  {
-    String value;
-    for (const url::UrlQueryParameter& p : this->request->parameters)
-      if (p.name == name && !p.value.empty())
-        value = p.value;
-    return value;
-  }
-
-  // The owner's statistics (toggle_statistics): each query and its time, shown on the page.
-  bool statistics = false;
-  Vector<Pair<String, double>> queries;
-
-  // A statement given as pieces: page.query("UPDATE user SET rating=", rating, " WHERE id=", quote(id)).
-  mariadb::MariaDbResult query(Text sql)
-  {
-    if (!this->statistics)
-      return this->db->query(sql);
-    String statement = toString(sql);
-    auto start = SteadyClock::now();
-    mariadb::MariaDbResult result = this->db->query(statement);
-    this->queries.push_back(Pair<String, double>(statement, (double)durationCast<Microseconds>(SteadyClock::now() - start).count() / 1e6));
-    return result;
-  }
-
-  String resource(StringView path) const { return this->config->resourceAddress + String(path); }
-};
+// The links every page makes and how pages show ratings, ranks and dates (src/link_helper.php and
+// src/rating_helper.php in the PHP version). A request's context is a Page, a row a Row.
 
 String quote(StringView text) { return mariadb::mariaDbQuote(text); }
 
@@ -107,16 +46,6 @@ String readableRank(i32 rank)
 }
 
 double ratingValue(StringView text) { return text.empty() ? 0.0 : stod(String(text)); }
-
-// A player as links show one: the rank comes from rating, or egdRating when rating is NULL.
-struct PlayerRef
-{
-  String id;
-  String name;
-  String username;
-  Optional<String> rating;
-  Optional<String> egdRating;
-};
 
 // The player whose columns start with prefix ("black" reads black_id, black_name...).
 PlayerRef playerRef(const Row& row, StringView prefix)

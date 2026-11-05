@@ -1,0 +1,7 @@
+// rating_update_value's row of a player: their rating after their last game the update computed,
+// and its time.
+struct UpdateValue
+{
+  String rating;
+  String timestamp;
+};

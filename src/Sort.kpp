@@ -1,0 +1,5 @@
+struct Sort
+{
+  String column;                     // an SQL column or alias
+  bool ascending = true;
+};

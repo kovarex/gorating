@@ -1,0 +1,25 @@
+// A number as PHP keeps it: the text it was read as (a page's, the database's), or a double it
+// computed. Written into SQL as PHP wrote it: the text as it is, a double with 14 digits.
+struct PhpNumber
+{
+  static PhpNumber read(StringView text)
+  {
+    PhpNumber n;
+    n.text = String(text);
+    n.value = text.empty() ? 0.0 : stod(String(text));
+    return n;
+  }
+  static PhpNumber of(double value)
+  {
+    PhpNumber n;
+    n.computed = true;
+    n.value = value;
+    return n;
+  }
+  String sql() const { return this->computed ? phpNumber(this->value) : this->text; }
+  PhpNumber operator+(const PhpNumber& other) const { return PhpNumber::of(this->value + other.value); }
+
+  bool computed = false;
+  String text;
+  double value = 0;
+};

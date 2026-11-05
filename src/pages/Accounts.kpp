@@ -261,12 +261,13 @@ void registerPage(Page& page)
   if (!row["user_id"].empty())
     user = page.query("SELECT * FROM user WHERE id=", quote(row["user_id"]));
   bool existing = !user.empty();
-  Row existingUser = existing ? Row(user, 0) : Row();
+  // The names are the user's when the invite is for one already in the database.
+  Row names = existing ? Row(user, 0) : row;
   page.body << registerTemplate.render(
-      {{"first", existing ? existingUser["first_name"] : row["first_name"]},
-       {"last", existing ? existingUser["last_name"] : row["last_name"]},
+      {{"first", names["first_name"]},
+       {"last", names["last_name"]},
        {"email", row["email"]},
-       {"who", existing ? existingUserRowTemplate.render({{"link", playerLink(existingUser, "")}})
+       {"who", existing ? existingUserRowTemplate.render({{"link", playerLink(names, "")}})
                         : countryRowTemplate.render({{"selector", countrySelector(page, "")}})},
        {"id", id},
        {"secret", secret}});

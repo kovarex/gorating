@@ -1,0 +1,9 @@
+// A player as links show one: the rank comes from rating, or egdRating when rating is NULL.
+struct PlayerRef
+{
+  String id;
+  String name;
+  String username;
+  Optional<String> rating;
+  Optional<String> egdRating;
+};

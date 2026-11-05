@@ -2,41 +2,6 @@
 // says the SQL it selects and how a cell shows its row; the table builds the query, its ORDER BY
 // from ?sort= and ?d=, its LIMIT and OFFSET from ?start=, and the links between pages.
 
-enum class Align { left, center, right };
-
-struct SqlColumn
-{
-  String sql;
-  String as;
-};
-
-struct TableColumn
-{
-  String name;                       // ?sort= names it; empty: not sortable
-  String caption;
-  Vector<SqlColumn> sql;             // the first one is what it sorts by
-  Function<html::SafeHtml(const Row&)> cell;
-  Align align = Align::left;
-  bool defaultAscending = true;
-  bool writesCells = false;          // cell gives the <td> elements itself (two, with headerColspan 2)
-  i32 headerColspan = 1;
-  bool hasSecondary = false;         // with Table::secondaryFrom: what the second query selects
-  Vector<SqlColumn> secondarySql;    // (else NULL for each of sql's columns)
-
-  TableColumn& addSecondary(Vector<SqlColumn> sql)
-  {
-    this->secondarySql = move(sql);
-    this->hasSecondary = true;
-    return *this;
-  }
-};
-
-struct Sort
-{
-  String column;                     // an SQL column or alias
-  bool ascending = true;
-};
-
 constexpr i32 tablePageSize = 100;
 
 constexpr html::HtmlTemplate tableTemplate{R"(<br/>
@@ -54,20 +19,6 @@ constexpr html::HtmlTemplate rightCellTemplate{R"(<td style="text-align:right;">
 
 struct Table
 {
-  Page* page = nullptr;
-  String from;                       // the FROM part: tables, joins and WHERE
-  Optional<i32> limit;               // a fixed number of rows: no sorting links, no pages
-  html::SafeHtml caption;
-  String tableClass = "data-table";
-  Vector<TableColumn> columns;
-  Optional<Sort> fixedSort;
-  Optional<Sort> currentSort;
-  Optional<Sort> lastSort;
-  // A second query whose rows come after UNION ALL (the player page's rating changes), and a row
-  // that is shown its own way (a whole <tr>) instead of the columns' cells.
-  Optional<String> secondaryFrom;
-  Function<Optional<html::SafeHtml>(const Row&)> specialRow;
-
   Table(Page& page, StringView from) : page(&page), from(from) {}
 
   TableColumn& addColumn(StringView name, StringView caption, Vector<SqlColumn> sql,
@@ -304,4 +255,18 @@ struct Table
                                  {"header", this->header()},
                                  {"rows", rows}});
   }
+
+  Page* page = nullptr;
+  String from;                       // the FROM part: tables, joins and WHERE
+  Optional<i32> limit;               // a fixed number of rows: no sorting links, no pages
+  html::SafeHtml caption;
+  String tableClass = "data-table";
+  Vector<TableColumn> columns;
+  Optional<Sort> fixedSort;
+  Optional<Sort> currentSort;
+  Optional<Sort> lastSort;
+  // A second query whose rows come after UNION ALL (the player page's rating changes), and a row
+  // that is shown its own way (a whole <tr>) instead of the columns' cells.
+  Optional<String> secondaryFrom;
+  Function<Optional<html::SafeHtml>(const Row&)> specialRow;
 };

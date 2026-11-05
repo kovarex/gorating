@@ -1,0 +1,22 @@
+struct TableColumn
+{
+    // (else NULL for each of sql's columns)
+
+  TableColumn& addSecondary(Vector<SqlColumn> sql)
+  {
+    this->secondarySql = move(sql);
+    this->hasSecondary = true;
+    return *this;
+  }
+
+  String name;                       // ?sort= names it; empty: not sortable
+  String caption;
+  Vector<SqlColumn> sql;             // the first one is what it sorts by
+  Function<html::SafeHtml(const Row&)> cell;
+  Align align = Align::left;
+  bool defaultAscending = true;
+  bool writesCells = false;          // cell gives the <td> elements itself (two, with headerColspan 2)
+  i32 headerColspan = 1;
+  bool hasSecondary = false;         // with Table::secondaryFrom: what the second query selects
+  Vector<SqlColumn> secondarySql;
+};

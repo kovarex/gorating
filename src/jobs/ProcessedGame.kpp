@@ -1,0 +1,8 @@
+// Pins of the two players and a round: the game id stored for them (PHP's $pinsProcessed).
+struct ProcessedGame
+{
+  String playerPin;
+  String opponentPin;
+  String round;
+  String gameId;
+};

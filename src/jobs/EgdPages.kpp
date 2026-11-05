@@ -12,43 +12,6 @@ String egdCell(const HtmlDocument& doc, const Vector<i32>& cells, ContainerSize 
   return doc.text(cells[index]);
 }
 
-// One row of a player's games, as the page has it (the texts PHP read).
-struct EgdTournamentGame
-{
-  String round;             // numeric
-  String gorChange;         // the player's, numeric
-  String color;             // "w" or "b" (an old tournament without colours: "b")
-  String handicap;          // the handicap cell's first word: "0" of "0 explicit"
-  String result;            // "Win", "Loss" or "Jigo"
-  String opponentPin;       // numeric
-  String opponentFirstName; // the name's first word, or " " when it has one word (then the last name)
-  String opponentLastName;  // the rest
-  String opponentGor;       // numeric
-  String opponentGorChange; // numeric
-};
-
-// A player's block: their GoR before the tournament, their link's pin and name, their games.
-struct EgdTournamentPlayer
-{
-  String gor;       // numeric
-  String pin;       // numeric
-  String firstName; // the link's third word ("PIN - First Last")
-  String lastName;  // its fourth and the rest
-  Vector<EgdTournamentGame> games;
-};
-
-struct EgdTournamentPage
-{
-  String nation;      // "Germany (DE)"
-  i32 gameType = 0;   // egdGameType of its class
-  String date;        // DD-MM-YYYY
-  String city;
-  String roundCount;
-  String playerCount;
-  Optional<String> name;
-  Vector<EgdTournamentPlayer> players; // in the page's order: by placement
-};
-
 // A tournament's GoR page; a page without what processTournament needs throws PHP's message.
 EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
 {
@@ -173,13 +136,6 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
   }
   return page;
 }
-
-// A player's card: their GoR (the gor input's first word) and country ("Germany (DE)").
-struct EgdPlayerCard
-{
-  String rating;
-  String country;
-};
 
 EgdPlayerCard readEgdPlayerCard(const HtmlDocument& doc, StringView url)
 {

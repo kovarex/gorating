@@ -1,0 +1,11 @@
+struct EgdTournamentPage
+{
+  String nation;      // "Germany (DE)"
+  i32 gameType = 0;   // egdGameType of its class
+  String date;        // DD-MM-YYYY
+  String city;
+  String roundCount;
+  String playerCount;
+  Optional<String> name;
+  Vector<EgdTournamentPlayer> players; // in the page's order: by placement
+};

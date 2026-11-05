@@ -1,0 +1,25 @@
+// A game of the window, as the database has it, changed as the update computes it.
+struct UpdateGame
+{
+  String id;
+  i64 number = 0;
+  String winner;
+  String loser;
+  String timestamp;
+  Optional<String> tournament;
+  i64 round = -1; // NULL: before every round, as MariaDB orders NULL
+  bool deleted = false;
+  i32 gameType = 0;
+  String handicap;
+  String komi;
+  bool winnerIsBlack = false;
+  bool jigo = false;
+  i64 version = 0;
+  Optional<String> winnerOld;
+  Optional<String> winnerNew;
+  Optional<String> loserOld;
+  Optional<String> loserNew;
+  Optional<String> winnerNewEgd;
+  Optional<String> loserNewEgd;
+  bool written = false;
+};

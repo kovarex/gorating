@@ -1,0 +1,101 @@
+struct HtmlBuilder
+{
+ // the open elements, the document first
+
+  HtmlBuilder()
+  {
+    this->document.nodes.emplace_back();
+    this->open.push_back(0);
+  }
+
+  i32 add(HtmlNode node)
+  {
+    i32 index = (i32)this->document.nodes.size();
+    node.parent = this->open.back();
+    this->document.nodes.push_back(move(node));
+    this->document.nodes[this->open.back()].children.push_back(index);
+    return index;
+  }
+
+  void text(StringView raw)
+  {
+    if (raw.empty())
+      return;
+    HtmlNode node;
+    node.text = htmlDecode(raw);
+    this->add(move(node));
+  }
+
+  // Whether an element named tag is open above the nearest one named by boundaries.
+  i32 openBefore(StringView tag, InitializerList<StringView> boundaries) const
+  {
+    for (i32 k = (i32)this->open.size() - 1; k > 0; --k)
+    {
+      const String& name = this->document.nodes[this->open[k]].tag;
+      if (name == tag)
+        return k;
+      for (StringView b : boundaries)
+        if (name == b)
+          return -1;
+    }
+    return -1;
+  }
+
+  void closeTo(i32 depth) { this->open.resize((ContainerSize)depth); }
+
+  void start(const String& tag, Vector<Pair<String, String>> attributes, bool selfClosing)
+  {
+    if (tag == "td" || tag == "th")
+    {
+      for (StringView cell : {"td", "th"})
+      {
+        i32 k = this->openBefore(cell, {"tr", "table"});
+        if (k > 0)
+          this->closeTo(k);
+      }
+    }
+    else if (tag == "tr")
+    {
+      i32 k = this->openBefore("tr", {"table"});
+      if (k > 0)
+        this->closeTo(k);
+    }
+    else if (tag == "li")
+    {
+      i32 k = this->openBefore("li", {"ul", "ol"});
+      if (k > 0)
+        this->closeTo(k);
+    }
+    else if (tag == "option")
+    {
+      i32 k = this->openBefore("option", {"select"});
+      if (k > 0)
+        this->closeTo(k);
+    }
+    if (htmlClosesParagraph(tag))
+    {
+      i32 k = this->openBefore("p", {"td", "th", "div", "table", "body"});
+      if (k > 0)
+        this->closeTo(k);
+    }
+    HtmlNode node;
+    node.tag = tag;
+    node.attributes = move(attributes);
+    i32 index = this->add(move(node));
+    if (!selfClosing && !htmlIsVoid(tag))
+      this->open.push_back(index);
+  }
+
+  void end(const String& tag)
+  {
+    for (i32 k = (i32)this->open.size() - 1; k > 0; --k)
+      if (this->document.nodes[this->open[k]].tag == tag)
+      {
+        this->closeTo(k);
+        return;
+      }
+  }
+
+  HtmlDocument document;
+  Vector<i32> open;
+};

@@ -1,0 +1,9 @@
+// A game in the cross table, as the row of one of its players shows it.
+struct TournamentCell
+{
+  bool present = false;
+  PlayerRef opponent;
+  String result; // WIN, LOSS or JIGO
+  bool hasSgf = false;
+  String gameId;
+};

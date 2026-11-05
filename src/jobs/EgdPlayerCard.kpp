@@ -1,0 +1,6 @@
+// A player's card: their GoR (the gor input's first word) and country ("Germany (DE)").
+struct EgdPlayerCard
+{
+  String rating;
+  String country;
+};

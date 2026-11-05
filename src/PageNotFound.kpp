@@ -1,0 +1,4 @@
+// A path that is no page and no player's username.
+class PageNotFound : public Exception
+{
+};

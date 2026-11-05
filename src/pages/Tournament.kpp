@@ -5,16 +5,6 @@ constexpr html::HtmlTemplate roundHeaderTemplate{R"(<th>Round {{round}}</th>)"};
 constexpr html::HtmlTemplate placementRowTemplate{R"(<tr><td>{{placement}}. {{player}}</td>{{cells}}</tr>)"};
 constexpr html::HtmlTemplate plainCellTemplate{R"(<td>{{content}}</td>)"};
 
-// A game in the cross table, as the row of one of its players shows it.
-struct TournamentCell
-{
-  bool present = false;
-  PlayerRef opponent;
-  String result; // WIN, LOSS or JIGO
-  bool hasSgf = false;
-  String gameId;
-};
-
 void tournamentPage(Page& page)
 {
   String id = page.get("id");

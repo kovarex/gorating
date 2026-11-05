@@ -19,15 +19,6 @@ String egdTimestamp(StringView date)
   return String(date.substr(6, 4)) + "-" + String(date.substr(3, 2)) + "-" + String(date.substr(0, 2)) + " 00:00:00";
 }
 
-// Pins of the two players and a round: the game id stored for them (PHP's $pinsProcessed).
-struct ProcessedGame
-{
-  String playerPin;
-  String opponentPin;
-  String round;
-  String gameId;
-};
-
 const String* processedGame(const Vector<ProcessedGame>& processed, StringView playerPin, StringView opponentPin, StringView round)
 {
   for (const ProcessedGame& g : processed)

@@ -1,0 +1,14 @@
+// One row of a player's games, as the page has it (the texts PHP read).
+struct EgdTournamentGame
+{
+  String round;             // numeric
+  String gorChange;         // the player's, numeric
+  String color;             // "w" or "b" (an old tournament without colours: "b")
+  String handicap;          // the handicap cell's first word: "0" of "0 explicit"
+  String result;            // "Win", "Loss" or "Jigo"
+  String opponentPin;       // numeric
+  String opponentFirstName; // the name's first word, or " " when it has one word (then the last name)
+  String opponentLastName;  // the rest
+  String opponentGor;       // numeric
+  String opponentGorChange; // numeric
+};

@@ -1,0 +1,8 @@
+// A session cookie's parts; nothing when it is malformed (the id and the expiry are digits, at most 10
+// and 12 of them).
+struct SessionCookie
+{
+  String id;
+  i64 expires = 0;
+  String signature;
+};
