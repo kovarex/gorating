@@ -135,10 +135,12 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
 }
 
 // `gorating.cgi --job NAME [PARAMETER=VALUE...]`: the job NAME run as its address would run it (the
-// parameters its query's), its answer in output; 0 when it answered 200. The cron's command.
+// parameters its query's), its answer in output; 0 when it answered 200, 1 when it failed (what
+// went wrong in output), 2 for no such job. The cron's command (with --quiet: main prints nothing
+// when it worked, so the cron mails only failures).
 int jobCommand(const Vector<String>& arguments, String& output)
 {
-  const char* usage = "usage: gorating.cgi --job NAME [PARAMETER=VALUE...] (update_tournament_list, check_new_tournaments,"
+  const char* usage = "usage: gorating.cgi --job NAME [--quiet] [PARAMETER=VALUE...] (update_tournament_list, check_new_tournaments,"
                       " process_tournament, process_tournament_batch, update_rating, check_rating_changes, collect_manual_rating_changes)\n";
   if (arguments.empty())
   {
@@ -154,7 +156,16 @@ int jobCommand(const Vector<String>& arguments, String& output)
   request.remoteAddress = "command line";
   http::HttpResponse response;
   jobFromCommandLine = true;
-  handle(request, response);
+  try
+  {
+    handle(request, response);
+  }
+  catch (const Exception& e)
+  {
+    jobFromCommandLine = false;
+    output = format("{} failed: {}\n", arguments[0], StringView(e.what()));
+    return 1;
+  }
   jobFromCommandLine = false;
   if (response.header("Content-Type") == nullptr || *response.header("Content-Type") != "text/plain; charset=utf-8" ||
       response.status == 404 || response.status == 501)

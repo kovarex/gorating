@@ -197,12 +197,18 @@ int main(int argc, char** argv)
     return http::httpCgi(handle);
   if (argc >= 2 && StringView(argv[1]) == "--job")
   {
+    // --quiet: nothing printed when the job worked (the cron mails whatever a command prints).
     Vector<String> arguments;
+    bool quiet = false;
     for (int i = 2; i < argc; ++i)
-      arguments.push_back(String(StringView(argv[i])));
+      if (StringView(argv[i]) == "--quiet")
+        quiet = true;
+      else
+        arguments.push_back(String(StringView(argv[i])));
     String output;
     int code = jobCommand(arguments, output);
-    fputs(output.c_str(), code == 0 ? stdout : stderr);
+    if (code != 0 || !quiet)
+      fputs(output.c_str(), code == 0 ? stdout : stderr);
     return code;
   }
   http::HttpServerOptions options;

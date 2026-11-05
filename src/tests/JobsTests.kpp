@@ -135,6 +135,13 @@ test "the jobs from the server's shell: gorating.cgi --job NAME, no secret"
   check(jobCommand(Vector<String>(), output) == 2 && output.starts_with("usage: gorating.cgi --job NAME"));
   check(jobCommand({String("about")}, output) == 2 && output.starts_with("no job about\n"));
   check(jobCommand({String("no_such_page")}, output) == 2 && output.starts_with("no job no_such_page\n"));
+  // A job that fails says what went wrong and exits 1 (the cron mails it): EGD's list read from a
+  // directory that has no saved copy.
+  GoratingConfig noPages = config;
+  noPages.egdPageDirectory = "testdata/no-such-directory";
+  String failed = job(noPages, {String("update_tournament_list")}, 1);
+  check(failed.starts_with("update_tournament_list failed: ") && failed.ends_with("\n"));
+  goratingConfig = config;
   // Over HTTP only the owner runs them.
   check(siteRequest(config, "visitor", "GET", "/update_rating?secret=").status == 403);
   check(siteRequest(config, "owner", "GET", "/update_rating").body == "No rating changes to process.\n");
