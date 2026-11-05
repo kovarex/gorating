@@ -48,7 +48,8 @@ void playersPage(Page& page)
       text << "MATCH(user.name) AGAINST(" << quote(part + "*") << " IN BOOLEAN MODE)";
   }
   String where;
-  auto add = [&where](StringView condition) {
+  auto add = [&where](StringView condition)
+  {
     where << (where.empty() ? StringView(" WHERE ") : StringView(" and "));
     where << condition;
   };

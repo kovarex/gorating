@@ -163,7 +163,8 @@ test "a player who joins a rating update has their games computed again from tha
   // After every game of the made-up data: player11 beats player12 (the game deleted below), then
   // player13 beats player14 (no one the update changed), then player11 beats player13, which brings
   // player13 into the update.
-  auto game = [&](StringView winner, StringView loser, StringView time) {
+  auto game = [&](StringView winner, StringView loser, StringView time)
+  {
     db.query("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_rating, winner_new_rating, loser_old_rating,"
              " loser_new_rating) VALUES(",
              String(winner), ",", loser, ",5,", quote(time), ",1500,1510,1500,1490)");

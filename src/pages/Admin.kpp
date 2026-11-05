@@ -55,7 +55,8 @@ void deletedGamesPage(Page& page)
   table.addColumn("egd_tournament_name", "Tournament",
                   {{"egd_tournament.name", "egd_tournament_name"}, {"egd_tournament.egd_key", "egd_tournament_key"},
                    {"egd_tournament.id", "egd_tournament_id"}},
-                  [](const Row& row) {
+                  [](const Row& row)
+                  {
                     if (row["egd_tournament_id"].empty())
                       return html::SafeHtml();
                     String name = row["egd_tournament_name"];
@@ -102,7 +103,8 @@ void changesPage(Page& page)
                   {{"executed_by.name", "executed_by_name"}, {"executed_by.id", "executed_by_id"},
                    {"executed_by.username", "executed_by_username"}, {"executed_by.rating", "executed_by_rating"}},
                   [](const Row& row) { return playerLink(row, "executed_by"); });
-  table.addColumn("game", "Game", {{"game.id", "game_id"}}, [](const Row& row) {
+  table.addColumn("game", "Game", {{"game.id", "game_id"}}, [](const Row& row)
+  {
     return row["game_id"].empty() ? html::SafeHtml() : gameLinkTemplate.render({{"id", row["game_id"]}});
   });
   table.addColumn("user", "User",
@@ -112,7 +114,8 @@ void changesPage(Page& page)
   {
     String s(side);
     table.addColumn(side == "old" ? "from" : "to", side == "old" ? "From" : "To", {{toString("change.", s, "_value"), toString("change_", s, "_value")}},
-                    [s](const Row& row) {
+                    [s](const Row& row)
+                    {
                       String value = row[toString("change_", s, "_value")];
                       if (row["change_type_id"] == toString(changeGameSgfType) && !value.empty())
                         return changeSgfLinkTemplate.render({{"from", toString("change_", s)}, {"id", row["change_id"]},
@@ -148,7 +151,8 @@ void ratingDiscrepanciesPage(Page& page)
   table.addColumn("user", "Player",
                   {{"user.name", "user_name"}, {"user.id", "user_id"}, {"user.username", "user_username"}, {"user.rating", "user_rating"}},
                   [](const Row& row) { return playerLink(row, "user"); });
-  table.addColumn("kind", "Kind", {{"rating_discrepancy.kind", "kind"}}, [](const Row& row) {
+  table.addColumn("kind", "Kind", {{"rating_discrepancy.kind", "kind"}}, [](const Row& row)
+  {
     return html::SafeHtml::escape(row["kind"] == "egd" ? "EGD's ratings changed" : row["kind"] == "own" ? "gorating's ratings differ"
                                                                                                          : "game added by EGD");
   });

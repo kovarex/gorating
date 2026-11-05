@@ -127,7 +127,8 @@ void playerPage(Page& page, StringView id)
   // someone was logged in, column or not.
   bool editColumn = loggedIn(page) && (canEditAnyGame(page) || userId == player["id"]);
   bool deleteColumn = canDeleteAnyGame(page);
-  table.specialRow = [editColumn, deleteColumn](const Row& row) -> Optional<html::SafeHtml> {
+  table.specialRow = [editColumn, deleteColumn](const Row& row) -> Optional<html::SafeHtml>
+  {
     if (row["rating_change_type_id"].empty())
       return Optional<html::SafeHtml>();
     html::SafeHtml by = row["opponent_id"].empty() ? html::SafeHtml::escape("EGD") : playerLink(row, "opponent");
@@ -158,7 +159,8 @@ void playerPage(Page& page, StringView id)
     String redirect = playerPath(player["id"], player["username"]);
     String playerId = player["id"];
     table.addColumn("", "", {{"TIMESTAMPDIFF(SECOND, game.timestamp, NOW())", "age_seconds"}},
-                    [admin, redirect, userId, playerId](const Row& row) {
+                    [admin, redirect, userId, playerId](const Row& row)
+                    {
                       bool mine = userId == row["opponent_id"] || userId == playerId;
                       bool recent = !row["age_seconds"].empty() && stoll(row["age_seconds"]) < 24 * 3600;
                       if (!admin && !(mine && recent))
@@ -220,7 +222,8 @@ void playerPage(Page& page, StringView id)
                    {"egd_tournament.egd_key", "egd_tournament_key"},
                    {"egd_tournament.id", "egd_tournament_id"},
                    {"game.egd_tournament_round", "egd_tournament_round"}},
-                  [](const Row& row) {
+                  [](const Row& row)
+                  {
                     if (row["egd_tournament_id"].empty())
                       return html::SafeHtml();
                     String name = row["egd_tournament_name"];

@@ -19,7 +19,8 @@ html::SafeHtml latestGames(Page& page, Optional<i32> limit, StringView caption)
                    {"IF(game.winner_is_black, winner.username, loser.username)", "black_username"},
                    {"IF(game.winner_is_black, winner.rating, loser.rating)", "black_rating"},
                    {"IF(game.jigo, 'JIGO', IF(game.winner_is_black, 'WIN', 'LOSS'))", "black_result"}},
-                  [p](const Row& row) {
+                  [p](const Row& row)
+                  {
                     html::SafeHtml out = resultImage(*p, row["black_result"]);
                     out << html::SafeHtml::trusted(" ");
                     out << playerLink(row, "black");
@@ -31,7 +32,8 @@ html::SafeHtml latestGames(Page& page, Optional<i32> limit, StringView caption)
                    {"IF(game.winner_is_black, loser.username, winner.username)", "white_username"},
                    {"IF(game.winner_is_black, loser.rating, winner.rating)", "white_rating"},
                    {"IF(game.jigo, 'JIGO', IF(game.winner_is_black, 'LOSS', 'WIN'))", "white_result"}},
-                  [p](const Row& row) {
+                  [p](const Row& row)
+                  {
                     html::SafeHtml out = resultImage(*p, row["white_result"]);
                     out << html::SafeHtml::trusted(" ");
                     out << playerLink(row, "white");
@@ -45,7 +47,8 @@ html::SafeHtml latestGames(Page& page, Optional<i32> limit, StringView caption)
   table.addColumn("timestamp", "Date", {{"game.timestamp", "timestamp"}},
                   [](const Row& row) { return html::SafeHtml::escape(showDate(row["timestamp"], true)); }, Align::center);
   table.addColumn("has_sgf", "SGF", {{"length(game.sgf) > 0", "has_sgf"}, {"game.id", "game_id"}},
-                  [](const Row& row) {
+                  [](const Row& row)
+                  {
                     if (row["has_sgf"] != "1")
                       return html::SafeHtml();
                     return sgfLink(row["game_id"]);
