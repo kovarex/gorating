@@ -107,7 +107,7 @@ if ! sh "$DEPLOY" --migrate "$@"; then
 fi
 
 say "gorating.com runs the kpp version. Now:"
-echo "  - the hourly scheduled task, a command (user web): cd $PUBLIC && GORATING_CONFIG=$CONFIG ./gorating.cgi --job update_tournament_list"
+echo "  - the hourly scheduled task, a command (user web): cd $PUBLIC && GORATING_CONFIG=$CONFIG ./gorating.cgi --job update_tournament_list --quiet"
 echo "    (its next run also finishes the rating update in progress)"
 echo "  - check in a browser: the home page, a player, the players' search, a tournament, a game; log in (everyone logs in again)"
 echo "  - back to PHP: sh $0 --back-to-php"
