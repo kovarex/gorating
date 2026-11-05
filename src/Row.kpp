@@ -9,7 +9,9 @@ public:
     const Optional<String>& value = this->result->at(this->index, name);
     return value.has_value() ? *value : String();
   }
+
   bool isNull(StringView name) const { return !this->result->at(this->index, name).has_value(); }
+
   bool has(StringView name) const
   {
     for (const String& column : this->result->columns)

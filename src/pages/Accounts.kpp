@@ -54,9 +54,11 @@ To invite EGD players, use the Invite link under their name.</div><form method="
         <input type="submit" value="invite"/>
       </form><br/><br/>
 {{own}})"};
+
 constexpr html::HtmlTemplate inviteMailTemplate{R"(You have been invited to register as {{name}} on gorating.com<br/>
 If you already exist in EGD (you participated in any official tournament), ignore this email and request invitation that is connected to it.<br/>
 Otherwise follow <a href="{{link}}">the link</a> to register.)"};
+
 constexpr html::HtmlTemplate inviteExistingMailTemplate{R"(You have been invited to register as <a href="{{player}}">{{name}}</a><br/>
 Follow this <a href="{{link}}">link</a> to register.)"};
 
@@ -360,9 +362,11 @@ constexpr html::HtmlTemplate resetPasswordTemplate{R"(<div>Enter the email addre
   <input type="submit" value="Send reset link"/>
 </form>
 )"};
+
 constexpr html::HtmlTemplate resetMailTemplate{R"(You have requested to reset your password<br/>
 Follow this <a href="{{link}}">link</a> to proceed.<br/>
 If you didn't order the reset, you can ignore the email.)"};
+
 constexpr html::HtmlTemplate resetConfirmTemplate{R"(Now you can set a new password:<br/>
 <form method="post" action="/reset_password_confirm_action">
 <table>

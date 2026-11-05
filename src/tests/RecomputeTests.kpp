@@ -29,6 +29,7 @@ struct MadeUpGame
 
 constexpr MadeUpPlayer madeUpPlayers[] = {{"19990001", "Ada Testová", "2100"}, {"19990002", "Bea Example", "1900"},
                                           {"19990003", "Cyril van Mock", "1700"}, {"19990004", "Dana Sample", "1500"}};
+
 constexpr MadeUpGame madeUpGames[] = {{1, 0, 1, "Win", "w", "0 explicit", "4.1", "-4.1"},  {1, 2, 3, "Loss", "b", "0 explicit", "-6.2", "6.2"},
                                       {2, 0, 2, "Win", "b", "0 explicit", "2.5", "-2.5"},  {2, 1, 3, "Jigo", "w", "0 explicit", "-1.3", "1.3"},
                                       {3, 0, 3, "Loss", "w", "2 explicit", "-9.8", "9.8"}, {3, 1, 2, "Win", "b", "0 explicit", "3.6", "-3.6"}};

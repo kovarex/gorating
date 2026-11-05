@@ -9,6 +9,7 @@ struct PhpNumber
     n.value = text.empty() ? 0.0 : stod(String(text));
     return n;
   }
+
   static PhpNumber of(double value)
   {
     PhpNumber n;
@@ -16,6 +17,7 @@ struct PhpNumber
     n.value = value;
     return n;
   }
+
   String sql() const { return this->computed ? phpNumber(this->value) : this->text; }
   PhpNumber operator+(const PhpNumber& other) const { return PhpNumber::of(this->value + other.value); }
 

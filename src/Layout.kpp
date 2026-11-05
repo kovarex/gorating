@@ -40,11 +40,13 @@ constexpr html::HtmlTemplate loggedInTemplate{R"(<div style="position: absolute;
 constexpr html::HtmlTemplate statisticsButtonTemplate{R"(<form method="post" action="/toggle_statistics" style="display:inline;">
             <input type="submit" value="Toggle statistics"/>
           </form>)"};
+
 constexpr html::HtmlTemplate queryStatisticTemplate{R"(<div>Query:<pre>{{sql}}</pre>Took {{seconds}} seconds</div>
 )"};
 
 constexpr html::HtmlTemplate menuItemTemplate{R"(&nbsp;&nbsp;:&nbsp;&nbsp;<a href="{{href}}">{{text}}</a>
 )"};
+
 constexpr html::HtmlTemplate firstMenuItemTemplate{R"(<a href="{{href}}">{{text}}</a>
 )"};
 constexpr html::HtmlTemplate messageTemplate{R"(<div class="message-div"><h3><b>Message:</b></h3><br/>{{message}}</div>)"};

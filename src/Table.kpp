@@ -11,6 +11,7 @@ constexpr html::HtmlTemplate captionTemplate{R"(<caption>{{content}}</caption>)"
 constexpr html::HtmlTemplate headerTemplate{R"(<th><span style="vertical-align: middle;">{{content}}</span></th>)"};
 constexpr html::HtmlTemplate wideHeaderTemplate{R"(<th colspan="2"><span style="vertical-align: middle;">{{content}}</span></th>)"};
 constexpr html::HtmlTemplate sortImageTemplate{R"(<img class="sorting-image" src="{{resources}}/img/arrow-{{direction}}.png"/>)"};
+
 constexpr html::HtmlTemplate rowTemplate{R"(<tr>{{cells}}</tr>
 )"};
 constexpr html::HtmlTemplate cellTemplate{R"(<td>{{content}}</td>)"};

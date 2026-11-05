@@ -40,9 +40,11 @@ function fixWinner(caller)
 }
 </script>
 )"};
+
 // Who won, for a player's row (side "winner" or "loser"): mods may switch them.
 constexpr html::HtmlTemplate resultChoiceTemplate{R"(<td><select id="original_{{side}}" name="original_{{side}}" oninput="fixWinner(this);"><option value="winner" ?selected="{{won}}">Winner</option><option value="loser" ?selected="{{lost}}">Loser</option></select></td>
 )"};
+
 constexpr html::HtmlTemplate deleteSgfTemplate{R"(<tr><td></td><td colspan="2"><input type="checkbox" id="delete-sgf" name="delete-sgf"/><label for="delete-sgf">Delete Current sgf</label></td></tr>
 )"};
 
