@@ -91,7 +91,8 @@ recomputing ratings computes a game as it was computed in the first place (kovar
 a jigo is half a win, a player with no rating before starts from the one the game was computed
 with (PHP: 0), a tournament's games from the ratings before it whatever order the update reaches
 its rounds in (PHP chained them), and a deleted tournament game does not count when the tournament
-is processed again; a tournament EGD adds or corrects after later games were computed starts a
+is processed again; an update takes a player's games from the time they entered it, going forward
+in time only (PHP went back to a newly reached player's earlier games, kovarex 2026-11-05); a tournament EGD adds or corrects after later games were computed starts a
 recomputation of its players' later games, which the hourly update_tournament_list moves on (PHP's
 moved only when a game was deleted or edited). Deleting and restoring a game is a POST form with a
 confirmation (PHP: a script opened a GET address); the edit form is shown only to whoever may save
