@@ -4,7 +4,7 @@
 // keyed by the configuration's sessionSecret. A changed password ends every session of that user,
 // and the user's row is read on every request, so a page never shows a stale rating or setting.
 
-constexpr int64_t sessionSeconds = 3600 * 24 * 7; // a week, as PHP's
+constexpr i64 sessionSeconds = 3600 * 24 * 7; // a week, as PHP's
 constexpr StringView sessionCookie = "gorating_id";
 
 enum AdminLevel
@@ -17,14 +17,14 @@ enum AdminLevel
   adminLevelUnregistered = 6,
 };
 
-int64_t unixNow() { return durationCast<Seconds>(SystemClock::now().time_since_epoch()).count(); }
+i64 unixNow() { return durationCast<Seconds>(SystemClock::now().time_since_epoch()).count(); }
 
-String sessionSignature(const GoratingConfig& config, StringView id, int64_t expires, StringView passwordHash)
+String sessionSignature(const GoratingConfig& config, StringView id, i64 expires, StringView passwordHash)
 {
   return sha256::hmacSha256(config.sessionSecret, format("{}.{}.{}", id, expires, passwordHash)).hex();
 }
 
-String sessionCookieValue(const GoratingConfig& config, StringView id, int64_t expires, StringView passwordHash)
+String sessionCookieValue(const GoratingConfig& config, StringView id, i64 expires, StringView passwordHash)
 {
   return format("{}.{}.{}", id, expires, sessionSignature(config, id, expires, passwordHash));
 }
@@ -34,7 +34,7 @@ String sessionCookieValue(const GoratingConfig& config, StringView id, int64_t e
 struct SessionCookie
 {
   String id;
-  int64_t expires = 0;
+  i64 expires = 0;
   String signature;
 };
 
@@ -59,7 +59,7 @@ Optional<SessionCookie> parseSessionCookie(StringView value)
 
 // Whether the cookie is a session of the user whose password hash this is, at the time now: not
 // expired, and signed with the configuration's secret over that hash.
-bool sessionValid(const GoratingConfig& config, const SessionCookie& cookie, StringView passwordHash, int64_t now)
+bool sessionValid(const GoratingConfig& config, const SessionCookie& cookie, StringView passwordHash, i64 now)
 {
   if (cookie.expires < now)
     return false;
@@ -93,8 +93,8 @@ String userValue(const Page& page, StringView column)
 }
 
 // PHP's adminLevel(): 1000 for a visitor, below every level.
-int adminLevel(const Page& page) { return loggedIn(page) ? (int)stoll(userValue(page, "admin_level_id")) : 1000; }
-bool userCanDo(const Page& page, int level) { return adminLevel(page) <= level; }
+i32 adminLevel(const Page& page) { return loggedIn(page) ? (i32)stoll(userValue(page, "admin_level_id")) : 1000; }
+bool userCanDo(const Page& page, i32 level) { return adminLevel(page) <= level; }
 
 bool canEditPlayerName(const Page& page) { return userCanDo(page, adminLevelMod); }
 bool canSeeInviters(const Page& page) { return userCanDo(page, adminLevelMod); }
@@ -129,10 +129,10 @@ void toggleStatisticsAction(Page& page, http::HttpResponse& response)
 }
 
 // The rating's decimals the user chose (settings), 0 for a visitor.
-int significantDigits(const Page& page)
+i32 significantDigits(const Page& page)
 {
   String digits = userValue(page, "setting_significant_digits_in_rating");
-  return digits.empty() ? 0 : (int)stoll(digits);
+  return digits.empty() ? 0 : (i32)stoll(digits);
 }
 
 constexpr html::HtmlTemplate loginTemplate{R"(<form method="post" action="/login_action">
@@ -201,9 +201,9 @@ void loginAction(Page& page, http::HttpResponse& response)
   if (user.empty() || !user.at(0, "password").has_value() || !bcrypt::bcryptVerify(password, *user.at(0, "password")))
     return redirectWithMessage(response, "/login", "Wrong username or password!");
   Row row(user, 0);
-  int64_t expires = unixNow() + sessionSeconds;
+  i64 expires = unixNow() + sessionSeconds;
   http::HttpCookieOptions options;
-  options.maxAgeSeconds = Optional<int64_t>(sessionSeconds);
+  options.maxAgeSeconds = Optional<i64>(sessionSeconds);
   options.secure = page.config->secureCookies;
   response.setCookie(sessionCookie, sessionCookieValue(*page.config, row["id"], expires, row["password"]), options);
   response.redirect(playerPath(row["id"], row["username"]));

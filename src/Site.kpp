@@ -91,13 +91,13 @@ String playerPath(StringView id, StringView username)
 // --- ranks (src/rating_helper.php) ---
 
 // 30k is rank 1, 1k rank 30, 1D rank 31: rating 2050 to 2150 is 1D.
-int rankFromRating(double rating)
+i32 rankFromRating(double rating)
 {
   double rank = (rating + 1050) / 100;
-  return (int)floor(rank < 1 ? 1 : rank);
+  return (i32)floor(rank < 1 ? 1 : rank);
 }
 
-String readableRank(int rank)
+String readableRank(i32 rank)
 {
   if (rank <= 30)
     return format("{}k", 31 - rank);
@@ -171,7 +171,7 @@ constexpr html::HtmlTemplate sgfLinkTemplate{R"(<a href="/sgf?id={{id}}">SGF</a>
 html::SafeHtml sgfLink(StringView gameId) { return sgfLinkTemplate.render({{"id", String(gameId)}}); }
 
 // The viewer's decimals for ratings (their setting; 0 for a visitor), set for each request.
-int ratingDigits = 0;
+i32 ratingDigits = 0;
 
 // A rating with the viewer's decimals, as %.Nf rounds.
 String showRating(StringView rating) { return format("{}", fixed(ratingValue(rating), ratingDigits)); }

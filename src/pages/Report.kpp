@@ -133,7 +133,7 @@ Optional<double> number(StringView text)
   }
   if (!digit)
     return Optional<double>();
-  size_t used = 0;
+  usize used = 0;
   double value = 0;
   try
   {
@@ -209,7 +209,7 @@ void reportAction(Page& page, http::HttpResponse& response)
   double opponentOldRating = ratingValue(opponentOldText);
   double myHandicap = (opponentIsBlack ? -1 : 1) * *handicap;
   double myExtraKomi = (opponentIsBlack ? 1 : -1) * (*komi - 6.5);
-  int type = (int)stoll(gameType);
+  i32 type = (i32)stoll(gameType);
   double myNewRating = calculateNewRating(myOldRating, opponentOldRating, reportingWin ? 1.0 : 0.0, type, myHandicap, myExtraKomi);
   double opponentNewRating = calculateNewRating(opponentOldRating, myOldRating, reportingWin ? 0.0 : 1.0, type, -myHandicap, -myExtraKomi);
   String comment = formValue(form.fields, "comment");

@@ -105,7 +105,7 @@ Optional<mariadb::MariaDbOptions> testDatabaseServer()
     throw GoratingError(format("GORATING_TEST_DB is \"{}\", not host:port:user[:password]", text));
   mariadb::MariaDbOptions options;
   options.host = parts[0];
-  options.port = (int)stoll(parts[1]);
+  options.port = (i32)stoll(parts[1]);
   options.user = parts[2];
   if (parts.size() > 3)
     options.password = parts[3];

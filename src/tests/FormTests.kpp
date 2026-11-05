@@ -57,7 +57,7 @@ test "a game's form, urlencoded or with its SGF"
 
   // A field that is not UTF-8 is the request's error, 400.
   ReportForm notUtf8 = readGameForm(postRequest("application/x-www-form-urlencoded", "comment=%FF%FE"));
-  int status = 0;
+  i32 status = 0;
   try
   {
     formValue(notUtf8.fields, "comment");

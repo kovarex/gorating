@@ -69,9 +69,9 @@ html::SafeHtml menu(const Page& page)
 // PHP's round(seconds, 4) as echo prints it: up to 4 decimals, no trailing zeros.
 String secondsText(double seconds)
 {
-  int64_t tenThousandths = (int64_t)floor(seconds * 10000 + 0.5);
+  i64 tenThousandths = (i64)floor(seconds * 10000 + 0.5);
   String out = format("{}", tenThousandths / 10000);
-  int64_t fraction = tenThousandths % 10000;
+  i64 fraction = tenThousandths % 10000;
   if (fraction != 0)
   {
     String digits = format("{}", fraction + 10000).substr(1);

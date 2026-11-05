@@ -102,7 +102,7 @@ EgdCountry egdCountry(Page& page, StringView country)
 }
 
 // A tournament's class, "A (1x)", as its game type (getGameTypeID).
-int egdGameType(StringView text)
+i32 egdGameType(StringView text)
 {
   if (text.starts_with("A"))
     return gameTypeEgdA;

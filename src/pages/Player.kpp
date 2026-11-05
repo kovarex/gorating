@@ -17,7 +17,7 @@ constexpr html::HtmlTemplate emptyNewRatingCellTemplate{R"(<td style="border-lef
 
 // The viewer's rating change format (settings): 1 "1657&rarr;1667" in one cell (the default), 2
 // "+10" and "1667" in two. Set for each request.
-int ratingChangeFormat = 1;
+i32 ratingChangeFormat = 1;
 
 // "1500&rarr;1512" in green for a gain, red for a loss (src/rating_helper.php's showRatingChange
 // in its first format).
@@ -32,7 +32,7 @@ html::SafeHtml showRatingDelta(StringView oldRating, StringView newRating)
 {
   double delta = ratingValue(newRating) - ratingValue(oldRating);
   double size = delta < 0 ? -delta : delta;
-  int digits = ratingDigits;
+  i32 digits = ratingDigits;
   if (size < 1 && digits < 1)
     digits = 1;
   if (size < 0.1 && digits < 2)
@@ -64,7 +64,7 @@ String shortened(StringView text)
   if (text.size() <= 30)
     return String(text);
   ContainerSize end = 30;
-  while (end > 0 && ((unsigned char)text[end] & 0xc0) == 0x80)
+  while (end > 0 && ((u8)text[end] & 0xc0) == 0x80)
     --end;
   return String(text.substr(0, end));
 }

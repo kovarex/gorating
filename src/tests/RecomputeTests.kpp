@@ -17,9 +17,9 @@ struct MadeUpPlayer
 // the handicap cell, and EGD's GoR changes of the two.
 struct MadeUpGame
 {
-  int round;
-  int a;
-  int b;
+  i32 round;
+  i32 a;
+  i32 b;
   const char* result;
   const char* color;
   const char* handicap;
@@ -37,7 +37,7 @@ constexpr MadeUpGame madeUpGames[] = {{1, 0, 1, "Win", "w", "0 explicit", "4.1",
 String madeUpTournament()
 {
   String blocks;
-  for (int p = 0; p < 4; ++p)
+  for (i32 p = 0; p < 4; ++p)
   {
     String rows;
     for (const MadeUpGame& g : madeUpGames)
@@ -105,7 +105,7 @@ String madeUpRatings(const GoratingConfig& config, StringView tournament)
 
 void runRatingUpdate(const GoratingConfig& config)
 {
-  for (int i = 0; i < 20 && dbValue(config, "SELECT value FROM variable WHERE name='rating_update_in_progress'") != "0"; ++i)
+  for (i32 i = 0; i < 20 && dbValue(config, "SELECT value FROM variable WHERE name='rating_update_in_progress'") != "0"; ++i)
     siteRequest(config, "owner", "GET", "/update_rating");
 }
 

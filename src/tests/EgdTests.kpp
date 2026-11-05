@@ -13,7 +13,7 @@ String egdGameRow(StringView round, StringView gorChange, StringView color, Stri
 }
 
 // A player's block: place, the link "PIN - <b>Name</b>", GoR before, the games' table.
-String egdPlayerBlock(int place, StringView pin, StringView name, StringView gor, StringView rows)
+String egdPlayerBlock(i32 place, StringView pin, StringView name, StringView gor, StringView rows)
 {
   return format("<div class=\"thisdiv\"><br>Place {}: <a href=\"/EGD/Player_Card.php?key={}\">{} - <b>{}</b></a> (rank declared: 4d)<br>"
                 "GoR before tournament: <b>{}</b><br><br><table width=100%><tr><td><a href=\"/EGD/Player_Card.php?key={}\"><img src=\"x.png\" alt=\"\" ></a></td>"

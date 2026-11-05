@@ -18,7 +18,7 @@ html::SafeHtml countrySelector(Page& page, StringView selected)
   return selectTemplate.render({{"options", options}});
 }
 
-html::SafeHtml tournamentTable(Page& page, Optional<int> limit, StringView caption, StringView country)
+html::SafeHtml tournamentTable(Page& page, Optional<i32> limit, StringView caption, StringView country)
 {
   String from = "egd_tournament, country, game_type"
                 " WHERE egd_tournament.country_id=country.id and egd_tournament.game_type_id=game_type.id";
@@ -56,5 +56,5 @@ void tournamentsPage(Page& page)
 {
   String country = page.get("country_code");
   page.body << tournamentFormTemplate.render({{"selector", countrySelector(page, country)}});
-  page.body << tournamentTable(page, Optional<int>(), "", country);
+  page.body << tournamentTable(page, Optional<i32>(), "", country);
 }

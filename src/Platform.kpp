@@ -9,16 +9,16 @@ extern "C" FILE* popen(const char* command, const char* mode);
 extern "C" int pclose(FILE* stream);
 
 // n bytes from the operating system's secure random source.
-String secureRandomBytes(int n)
+String secureRandomBytes(i32 n)
 {
   String out(n, '\0');
   if constexpr (config::platform == Platform::Windows)
   {
-    if (!SystemFunction036(out.data(), (unsigned long)n))
+    if (!SystemFunction036(out.data(), (u32)n))
       throw GoratingError("RtlGenRandom failed");
   }
   else
-    arc4random_buf(out.data(), (size_t)n);
+    arc4random_buf(out.data(), (usize)n);
   return out;
 }
 
@@ -30,14 +30,14 @@ String secureRandomSecret()
   String out;
   for (char c : bytes)
   {
-    out.push_back("0123456789abcdef"[(uint8_t)c >> 4]);
-    out.push_back("0123456789abcdef"[(uint8_t)c & 15]);
+    out.push_back("0123456789abcdef"[(u8)c >> 4]);
+    out.push_back("0123456789abcdef"[(u8)c & 15]);
   }
   return out;
 }
 
 // Runs command with text on its standard input; its exit code.
-int runWithInput(StringView command, StringView text)
+i32 runWithInput(StringView command, StringView text)
 {
   String line(command);
   FILE* pipe = nullptr;

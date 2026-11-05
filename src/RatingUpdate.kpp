@@ -86,7 +86,7 @@ String variable(Page& page, StringView name)
 // How long a request moves a rating update on (kovarex, 2026-11-04: "go as much as you can in 20
 // seconds"; PHP did 50 games); each window of games is a transaction, so a request stopped half way
 // keeps what it committed.
-constexpr int ratingUpdateSeconds = 20;
+constexpr i32 ratingUpdateSeconds = 20;
 // The players the "Rating changes" list names; an update can change thousands.
 constexpr ContainerSize ratingChangesShown = 30;
 
@@ -97,7 +97,7 @@ String limitedLines(StringView header, const Vector<String>& lines, ContainerSiz
   for (ContainerSize i = 0; i < lines.size() && i < limit; ++i)
     out << String("\n") + lines[i];
   if (lines.size() > limit)
-    out << format("\n... and {} more {}.", (int64_t)(lines.size() - limit), more);
+    out << format("\n... and {} more {}.", (i64)(lines.size() - limit), more);
   return out;
 }
 
@@ -109,25 +109,25 @@ String limitedLines(StringView header, const Vector<String>& lines, ContainerSiz
 // gave the same stored ratings on the 2026-11-05 production copy.
 
 // (A variable: the tests make it small to see an update stop between windows.)
-int ratingUpdateWindowGames = 5000;
+i32 ratingUpdateWindowGames = 5000;
 
 // A game of the window, as the database has it, changed as the update computes it.
 struct UpdateGame
 {
   String id;
-  int64_t number = 0;
+  i64 number = 0;
   String winner;
   String loser;
   String timestamp;
   Optional<String> tournament;
-  int64_t round = -1; // NULL: before every round, as MariaDB orders NULL
+  i64 round = -1; // NULL: before every round, as MariaDB orders NULL
   bool deleted = false;
-  int gameType = 0;
+  i32 gameType = 0;
   String handicap;
   String komi;
   bool winnerIsBlack = false;
   bool jigo = false;
-  int64_t version = 0;
+  i64 version = 0;
   Optional<String> winnerOld;
   Optional<String> winnerNew;
   Optional<String> loserOld;
@@ -156,7 +156,7 @@ struct RatingUpdateWindow
 {
   Page* page = nullptr;
   String version;
-  int64_t versionNumber = 0;
+  i64 versionNumber = 0;
   String since;
   String start; // the window's first time: every game from it on (up to its end) is here
   HashMap<String, UpdateValue> values;
@@ -167,7 +167,7 @@ struct RatingUpdateWindow
   Vector<UpdateGame> outside; // games of the window's tournaments at other times (read only)
   HashMap<String, Optional<String>> beforeWindow; // a player's rating before the window, by player and tournament
   HashMap<String, Optional<String>> egdBefore;    // EGD's rating of a player before a tournament
-  int processed = 0;
+  i32 processed = 0;
   String reached;
 
   Optional<String> column(const mariadb::MariaDbResult& rows, ContainerSize i, StringView name) const { return rows.at(i, name); }
@@ -230,7 +230,7 @@ struct RatingUpdateWindow
       Optional<String> round = column(rows, i, "egd_tournament_round");
       g.round = round.has_value() ? stoll(*round) : -1;
       g.deleted = phpTrue(column(rows, i, "deleted"));
-      g.gameType = (int)stoll(rows.text(i, "game_type_id"));
+      g.gameType = (i32)stoll(rows.text(i, "game_type_id"));
       g.handicap = rows.text(i, "handicap");
       g.komi = rows.text(i, "komi");
       g.winnerIsBlack = phpTrue(column(rows, i, "winner_is_black"));
@@ -586,10 +586,10 @@ String finishRatingUpdate(Page& page)
 // after a game was deleted, restored or edited, and for the jobs: the players' changes when it
 // finished, else the time of the last game done and how many later games are left to look at (at
 // most that many are recomputed: those of players the update has not reached yet are only passed).
-String processRating(Page& page, int seconds)
+String processRating(Page& page, i32 seconds)
 {
-  int64_t until = unixNow() + seconds;
-  int processed = 0;
+  i64 until = unixNow() + seconds;
+  i32 processed = 0;
   bool finished = false;
   String report;
   String reached;

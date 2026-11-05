@@ -35,7 +35,7 @@ String goratingReadFile(const String& path)
   char buffer[65536];
   for (;;)
   {
-    size_t n = fread(buffer, 1, 65536, file);
+    usize n = fread(buffer, 1, 65536, file);
     if (n == 0)
       break;
     text << StringView(buffer, (ContainerSize)n);
@@ -52,7 +52,7 @@ GoratingConfig goratingReadConfig()
   GoratingConfig config;
   const json::JsonValue& database = root["database"];
   config.database.host = database["host"].asString();
-  config.database.port = (int)database["port"].asInteger();
+  config.database.port = (i32)database["port"].asInteger();
   config.database.user = database["user"].asString();
   config.database.password = database["password"].asString();
   config.database.database = database["name"].asString();
@@ -61,7 +61,7 @@ GoratingConfig goratingReadConfig()
     config.staticDirectory = directory->asString();
   config.sessionSecret = root["sessionSecret"].asString();
   if (config.sessionSecret.size() < 32)
-    throw GoratingError(format("{}: sessionSecret has {} characters; it needs 32 or more", path, (int64_t)config.sessionSecret.size()));
+    throw GoratingError(format("{}: sessionSecret has {} characters; it needs 32 or more", path, (i64)config.sessionSecret.size()));
   if (const json::JsonValue* secure = root.find("secureCookies"))
     config.secureCookies = secure->asBool();
   for (auto [name, field] : {Pair<const char*, String*>{"siteAddress", &config.siteAddress},

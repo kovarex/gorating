@@ -3,10 +3,10 @@
 
 test "the rating formula, as PHP computes it"
 {
-  for (int i = 0; i < ratingFormulaVectorCount; ++i)
+  for (i32 i = 0; i < ratingFormulaVectorCount; ++i)
   {
     const double* v = ratingFormulaVectors[i];
-    double got = calculateNewRating(v[0], v[1], v[2], (int)v[3], v[4], v[5]);
+    double got = calculateNewRating(v[0], v[1], v[2], (i32)v[3], v[4], v[5]);
     // The vectors come from PHP on Windows, whose exp, log and pow are the C runtime's, as kpp's
     // are there: the same bits. FreeBSD's libm rounds some of them a unit in the last place apart
     // (1740.168823763115 for 1740.1688237631147), as PHP on FreeBSD would; the database keeps 14
@@ -20,21 +20,21 @@ test "the rating formula, as PHP computes it"
 
 test "ranks, handicaps, rating jumps"
 {
-  for (int i = 0; i < rankVectorCount; ++i)
+  for (i32 i = 0; i < rankVectorCount; ++i)
     check(readableRank(rankFromRating(stod(String(StringView(rankVectors[i][0]))))) == StringView(rankVectors[i][1]));
-  for (int i = 0; i < handicapVectorCount; ++i)
+  for (i32 i = 0; i < handicapVectorCount; ++i)
     check(showHandicap(handicapVectors[i][0], handicapVectors[i][1]) == StringView(handicapVectors[i][2]));
-  for (int i = 0; i < jumpVectorCount; ++i)
+  for (i32 i = 0; i < jumpVectorCount; ++i)
   {
     const double* v = jumpVectors[i];
     Optional<double> lastStart = v[2] == -99999 ? Optional<double>() : Optional<double>(v[2]);
-    check(ratingJumpReason(v[0], v[1] != 0, lastStart, Optional<double>(v[3])) == (int)v[4]);
+    check(ratingJumpReason(v[0], v[1] != 0, lastStart, Optional<double>(v[3])) == (i32)v[4]);
   }
 }
 
 test "numbers written as PHP writes them"
 {
-  for (int i = 0; i < phpNumberVectorCount; ++i)
+  for (i32 i = 0; i < phpNumberVectorCount; ++i)
     check(phpNumber(stod(String(StringView(phpNumberVectors[i][0])))) == StringView(phpNumberVectors[i][1]));
 }
 
@@ -45,18 +45,18 @@ test "the EGD reader"
       "<div class='thisdiv'><b>a</b><b>2100&nbsp;</b><a href=x>123 - Jan Nov&aacute;k</a>"
       "<SCRIPT>if (a < b) document.write('</div>');</SCRIPT><input name=gor value=\"2100 (x)\">"
       "<input type=hidden name=empty></div><!-- <div class=thisdiv> --></body></html>");
-  Vector<int> tables = doc.elements(0, "table");
+  Vector<i32> tables = doc.elements(0, "table");
   check(tables.size() == 1 && doc.hasAttribute(tables[0], "bordercolor", "#396B95"));
-  Vector<int> rows = doc.elements(tables[0], "tr");
+  Vector<i32> rows = doc.elements(tables[0], "tr");
   check(rows.size() == 2);
-  Vector<int> cells = doc.elements(rows[0], "td");
+  Vector<i32> cells = doc.elements(rows[0], "td");
   check(cells.size() == 2 && doc.text(cells[0]) == "T1" && doc.text(cells[1]) == "A");
   check(doc.text(doc.elements(rows[1], "td")[0]) == " T2 & x");
-  Vector<int> divs = doc.elements(0, "div");
+  Vector<i32> divs = doc.elements(0, "div");
   check(divs.size() == 1 && doc.hasAttribute(divs[0], "class", "thisdiv"));
   check(doc.text(doc.elements(divs[0], "b")[1]) == "2100\xc2\xa0");
   check(doc.text(doc.elements(divs[0], "a")[0]) == "123 - Jan Nov\xc3\xa1k");
-  Vector<int> inputs = doc.elements(divs[0], "input");
+  Vector<i32> inputs = doc.elements(divs[0], "input");
   check(inputs.size() == 2 && *doc.attribute(inputs[0], "value") == "2100 (x)" && doc.attribute(inputs[1], "value") == nullptr);
 }
 
@@ -73,7 +73,7 @@ test "is_numeric and loose equality, as PHP's"
 test "a long list of rating changes shows its first players and how many more"
 {
   Vector<String> lines;
-  for (int i = 0; i < 35; ++i)
+  for (i32 i = 0; i < 35; ++i)
     lines.push_back(format("player{}: 1000.0→1001.0", i));
   String text = limitedLines("Rating changes:", lines, 30, "players");
   check(text.starts_with("Rating changes:\nplayer0: 1000.0→1001.0\n"));

@@ -190,7 +190,7 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   response.body = layout(page, page.body, seconds);
 }
 
-int main(int argc, char** argv)
+i32 main(i32 argc, char** argv)
 {
   goratingConfig = goratingReadConfig();
   if (getenv("REQUEST_METHOD") != nullptr)
@@ -200,22 +200,22 @@ int main(int argc, char** argv)
     // --quiet: nothing printed when the job worked (the cron mails whatever a command prints).
     Vector<String> arguments;
     bool quiet = false;
-    for (int i = 2; i < argc; ++i)
+    for (i32 i = 2; i < argc; ++i)
       if (StringView(argv[i]) == "--quiet")
         quiet = true;
       else
         arguments.push_back(String(StringView(argv[i])));
     String output;
-    int code = jobCommand(arguments, output);
+    i32 code = jobCommand(arguments, output);
     if (code != 0 || !quiet)
       fputs(output.c_str(), code == 0 ? stdout : stderr);
     return code;
   }
   http::HttpServerOptions options;
   options.port = 8082;
-  for (int i = 1; i + 1 < argc; ++i)
+  for (i32 i = 1; i + 1 < argc; ++i)
     if (StringView(argv[i]) == "--port")
-      options.port = (int)stoll(String(StringView(argv[i + 1])));
+      options.port = (i32)stoll(String(StringView(argv[i + 1])));
   http::httpServe(options, handle);
   return 0;
 }

@@ -2,7 +2,7 @@
 
 constexpr html::HtmlTemplate h2Template{R"(<h2>{{text}}</h2>)"};
 
-html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
+html::SafeHtml latestGames(Page& page, Optional<i32> limit, StringView caption)
 {
   Table table(page, "game"
                     " JOIN user as winner ON game.winner_user_id = winner.id"
@@ -59,6 +59,6 @@ html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
 
 void homePage(Page& page)
 {
-  page.body << latestGames(page, Optional<int>(10), "Latest friendly games");
-  page.body << tournamentTable(page, Optional<int>(10), "Latest tournaments", "");
+  page.body << latestGames(page, Optional<i32>(10), "Latest friendly games");
+  page.body << tournamentTable(page, Optional<i32>(10), "Latest tournaments", "");
 }

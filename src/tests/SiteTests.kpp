@@ -164,8 +164,8 @@ test "a tournament whose games go past EGD's round count shows every round"
     players.push_back(goratingDbValue(config, String("SELECT id FROM user WHERE username='") + username + "'"));
   for (ContainerSize i = 0; i < players.size(); ++i)
     db.query(String("INSERT INTO egd_tournament_result(egd_tournament_id, user_id, placement) VALUES(") + tournament + "," + players[i] + "," +
-             format("{}", (int64_t)(i + 1)) + ")");
-  auto game = [&](StringView winner, StringView loser, int round) {
+             format("{}", (i64)(i + 1)) + ")");
+  auto game = [&](StringView winner, StringView loser, i32 round) {
     db.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
                     " loser_old_egd_rating, loser_new_egd_rating, egd_tournament_id, egd_tournament_round) VALUES(") +
              String(winner) + "," + String(loser) + "," + gameType + ",'2021-06-01 10:00:00',1500,1510,1500,1490," + tournament + "," +

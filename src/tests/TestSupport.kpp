@@ -25,7 +25,7 @@ struct TestPage
   http::HttpRequest request;
   Page page;
 
-  explicit TestPage(int level)
+  explicit TestPage(i32 level)
   {
     this->page.config = &this->config;
     this->page.request = &this->request;

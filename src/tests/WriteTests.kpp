@@ -33,7 +33,7 @@ String locationOf(const http::HttpResponse& response)
 // The rating update the change started, run to its end by its job (as the owner).
 void finishRatingUpdate(const GoratingConfig& config)
 {
-  for (int i = 0; i < 100; ++i)
+  for (i32 i = 0; i < 100; ++i)
     if (!siteRequest(config, "owner", "GET", "/update_rating").body.starts_with("Rating update:"))
       return;
   throw GoratingError("the rating update did not finish in 100 runs of its job");

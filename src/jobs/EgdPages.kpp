@@ -5,10 +5,10 @@
 // pages written in EGD's markup.
 
 // A cell's text as PHP compared it.
-String egdCell(const HtmlDocument& doc, const Vector<int>& cells, ContainerSize index)
+String egdCell(const HtmlDocument& doc, const Vector<i32>& cells, ContainerSize index)
 {
   if (index >= cells.size())
-    throw GoratingError(format("a game row with {} cells, not {} or more", (int64_t)cells.size(), (int64_t)index + 1));
+    throw GoratingError(format("a game row with {} cells, not {} or more", (i64)cells.size(), (i64)index + 1));
   return doc.text(cells[index]);
 }
 
@@ -40,7 +40,7 @@ struct EgdTournamentPlayer
 struct EgdTournamentPage
 {
   String nation;      // "Germany (DE)"
-  int gameType = 0;   // egdGameType of its class
+  i32 gameType = 0;   // egdGameType of its class
   String date;        // DD-MM-YYYY
   String city;
   String roundCount;
@@ -55,7 +55,7 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
   EgdTournamentPage page;
   Optional<String> nation;
   Optional<String> city;
-  for (int input : doc.elements(0, "input"))
+  for (i32 input : doc.elements(0, "input"))
   {
     const String* name = doc.attribute(input, "name");
     if (name == nullptr || name->empty() || *name == "0")
@@ -75,7 +75,7 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
     else if (*name == "total_player")
       page.playerCount = value;
   }
-  for (int span : doc.elements(0, "span"))
+  for (i32 span : doc.elements(0, "span"))
     if (doc.hasAttribute(span, "class", "plain5"))
     {
       page.name = Optional<String>(doc.text(span));
@@ -96,13 +96,13 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
   page.nation = *nation;
   page.city = *city;
 
-  for (int div : doc.elements(0, "div"))
+  for (i32 div : doc.elements(0, "div"))
   {
     if (!doc.hasAttribute(div, "class", "thisdiv"))
       continue;
-    Vector<int> bold = doc.elements(div, "b");
-    Vector<int> links = doc.elements(div, "a");
-    Vector<int> tables = doc.elements(div, "table");
+    Vector<i32> bold = doc.elements(div, "b");
+    Vector<i32> links = doc.elements(div, "a");
+    Vector<i32> tables = doc.elements(div, "table");
     if (bold.size() < 2 || links.empty() || tables.size() < 2)
       throw GoratingError(format("a player's block of tournament {} lacks its rating, link or games", key));
     EgdTournamentPlayer& player = page.players.emplace_back();
@@ -127,9 +127,9 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
     for (ContainerSize i = 4; i < pieces.size(); ++i)
       player.lastName << String(" ") + pieces[i];
 
-    for (int row : doc.elements(tables[1], "tr"))
+    for (i32 row : doc.elements(tables[1], "tr"))
     {
-      Vector<int> cells = doc.elements(row, "td");
+      Vector<i32> cells = doc.elements(row, "td");
       if (cells.empty())
         continue;
       EgdTournamentGame& game = player.games.emplace_back();
@@ -185,7 +185,7 @@ EgdPlayerCard readEgdPlayerCard(const HtmlDocument& doc, StringView url)
 {
   Optional<String> rating;
   Optional<String> country;
-  for (int input : doc.elements(0, "input"))
+  for (i32 input : doc.elements(0, "input"))
   {
     const String* name = doc.attribute(input, "name");
     const String* value = doc.attribute(input, "value");
@@ -210,13 +210,13 @@ EgdPlayerCard readEgdPlayerCard(const HtmlDocument& doc, StringView url)
 // The tournament search's keys, newest first: the first cell of each row of its results table.
 Vector<String> readEgdTournamentSearch(const HtmlDocument& doc)
 {
-  for (int table : doc.elements(0, "table"))
+  for (i32 table : doc.elements(0, "table"))
     if (doc.hasAttribute(table, "bordercolor", "#396B95"))
     {
       Vector<String> keys;
-      for (int row : doc.elements(table, "tr"))
+      for (i32 row : doc.elements(table, "tr"))
       {
-        Vector<int> cells = doc.elements(row, "td");
+        Vector<i32> cells = doc.elements(row, "td");
         if (!cells.empty())
           keys.push_back(doc.text(cells[0]));
       }

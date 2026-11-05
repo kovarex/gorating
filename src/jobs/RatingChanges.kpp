@@ -3,13 +3,13 @@
 // old EGD rating is not the previous game's new one, the jump is recorded as a rating change with
 // its likely reason; one that looks like an error has its tournaments processed again instead.
 
-constexpr int ratingChangeAutomaticOld = 1;
-constexpr int ratingChangeAutomaticNew = 2;
-constexpr int ratingChangeManualEgd = 4;
-constexpr int ratingChangeError = 6;
+constexpr i32 ratingChangeAutomaticOld = 1;
+constexpr i32 ratingChangeAutomaticNew = 2;
+constexpr i32 ratingChangeManualEgd = 4;
+constexpr i32 ratingChangeError = 6;
 
 // Why the EGD rating went from what the last tournament ended with to reported (getRatingJumpReason).
-int ratingJumpReason(double reported, bool firstRoundOfTheTournament, const Optional<double>& lastStart, const Optional<double>& lastEnd)
+i32 ratingJumpReason(double reported, bool firstRoundOfTheTournament, const Optional<double>& lastStart, const Optional<double>& lastEnd)
 {
   if (reported > 2700 && reported == floor((reported - 2700) / 30) * 30 + 2700)
     return ratingChangeManualEgd; // pro ranks
@@ -87,7 +87,7 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
         if (!thisIsJump)
         {
           out << format("Rating jumped from {} to {} in tournament {} round {}\n", *egdRating, egdOld, key, row["egd_tournament_round"]);
-          int type = lastStart.has_value() ? ratingJumpReason(reported, firstRound, lastStart, lastEnd) : ratingChangeError;
+          i32 type = lastStart.has_value() ? ratingJumpReason(reported, firstRound, lastStart, lastEnd) : ratingChangeError;
           if (type == ratingChangeError)
           {
             out << "Since this looks like an error, recomputing ";
@@ -132,12 +132,12 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
 String checkRatingChanges(Page& page)
 {
   mariadb::MariaDbResult users = page.query("SELECT id from user where rating_change_checked=false");
-  String out = format("Remaining {} users to check.\n", (int64_t)users.size());
+  String out = format("Remaining {} users to check.\n", (i64)users.size());
   for (ContainerSize i = 0; i < users.size() && i < 1000; ++i)
   {
     String userId = Row(users, i)["id"];
     bool checked = false;
-    for (int attempt = 0; attempt < 3 && !checked; ++attempt)
+    for (i32 attempt = 0; attempt < 3 && !checked; ++attempt)
       checked = checkUserRatingChanges(page, userId, out);
     if (!checked)
     {

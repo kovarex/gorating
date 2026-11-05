@@ -1683,7 +1683,7 @@ const double ratingFormulaVectors[][7] = {
   {2799.9000000000001, 2700, 1, 7, 0, -6, 2800.0655152220311},
   {2799.9000000000001, 2700, 1, 7, 1, 6.5, 2799.9047610378207},
 };
-const int ratingFormulaVectorCount = 1680;
+const i32 ratingFormulaVectorCount = 1680;
 
 // {rating, its rank as readableRank(rankFromRating(rating))}
 const char* rankVectors[][2] = {
@@ -1701,7 +1701,7 @@ const char* rankVectors[][2] = {
   {"2750", "8D"},
   {"3000", "10D"},
 };
-const int rankVectorCount = 13;
+const i32 rankVectorCount = 13;
 
 // {handicap, komi as the database writes them, showHandicap}
 const char* handicapVectors[][3] = {
@@ -1713,7 +1713,7 @@ const char* handicapVectors[][3] = {
   {"3", "5.5", "3h komi 5.5"},
   {"9", "0", "9h komi 0"},
 };
-const int handicapVectorCount = 7;
+const i32 handicapVectorCount = 7;
 
 // {reported, first round, last start (or -99999 for none), last end, getRatingJumpReason}
 const double jumpVectors[][5] = {
@@ -1728,7 +1728,7 @@ const double jumpVectors[][5] = {
   {1400, 1, 1100, 1350, 2},
   {1400, 1, 1150, 1351, 2},
 };
-const int jumpVectorCount = 10;
+const i32 jumpVectorCount = 10;
 
 // {a double as %.17g, as PHP writes it into SQL (precision 14)}
 const char* phpNumberVectors[][2] = {
@@ -1743,4 +1743,4 @@ const char* phpNumberVectors[][2] = {
   {"-1000000000000000", "-1.0E+15"},
   {"123456789012345.59", "1.2345678901235E+14"},
 };
-const int phpNumberVectorCount = 10;
+const i32 phpNumberVectorCount = 10;

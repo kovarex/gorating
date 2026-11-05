@@ -162,7 +162,7 @@ String editedGameRatings(Page& page, const Row& before, StringView id)
   return changed ? out + "." : String();
 }
 
-void addChange(Page& page, int type, StringView gameId, const Optional<String>& oldValue, const Optional<String>& newValue)
+void addChange(Page& page, i32 type, StringView gameId, const Optional<String>& oldValue, const Optional<String>& newValue)
 {
   String columns = "change_type_id, game_id, executed_by_user_id";
   String values = format("{},{},{}", type, quote(gameId), quote(userValue(page, "id")));
@@ -179,13 +179,13 @@ void addChange(Page& page, int type, StringView gameId, const Optional<String>& 
   page.query(String("INSERT INTO `change`(") + columns + ") VALUES(" + values + ")");
 }
 
-constexpr int changeGameWinner = 9;
-constexpr int changeGameBlackPlayer = 10;
-constexpr int changeGameHandicap = 11;
-constexpr int changeGameKomi = 12;
-constexpr int changeGameLocation = 13;
-constexpr int changeGameSgf = 16;
-constexpr int changeGameTimestamp = 17;
+constexpr i32 changeGameWinner = 9;
+constexpr i32 changeGameBlackPlayer = 10;
+constexpr i32 changeGameHandicap = 11;
+constexpr i32 changeGameKomi = 12;
+constexpr i32 changeGameLocation = 13;
+constexpr i32 changeGameSgf = 16;
+constexpr i32 changeGameTimestamp = 17;
 
 void editGameAction(Page& page, http::HttpResponse& response)
 {

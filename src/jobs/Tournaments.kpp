@@ -106,7 +106,7 @@ bool processTournament(Page& page, String key)
   mariadb::MariaDbResult existing = page.query(String("SELECT * FROM egd_tournament WHERE egd_key =") + quote(key));
   EgdTournamentPage egd = readEgdTournamentPage(readHtml(fetchEgd(*page.config, String(egdAddress) + "Tournament_ShowGoR.php?key=" + key)), key);
   Optional<EgdCountry> country = Optional<EgdCountry>(egdCountry(page, egd.nation));
-  int gameType = egd.gameType;
+  i32 gameType = egd.gameType;
   Optional<String> city = Optional<String>(egd.city);
   Optional<String> tournamentName = egd.name;
   String playerCount = egd.playerCount;
@@ -130,7 +130,7 @@ bool processTournament(Page& page, String key)
       tournamentId = Row(existing, 0)["id"];
     page.query(String("DELETE FROM egd_tournament_to_process WHERE egd_key=") + quote(key));
 
-    int placement = 1;
+    i32 placement = 1;
     Vector<ProcessedGame> processed;
     Vector<String> usersToUpdate;
     // Each player's rating before the tournament (gorating's, else EGD's), and whether a game was

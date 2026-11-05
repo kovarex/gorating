@@ -1,18 +1,18 @@
 // The rating formula (src/rating_helper.php): EGD's, with a modifier per game type and the
 // handicap and komi turned into rating points.
 
-constexpr int gameTypeEgdA = 1;
-constexpr int gameTypeEgdB = 2;
-constexpr int gameTypeEgdC = 3;
-constexpr int gameTypeEgdD = 4;
-constexpr int gameTypeSerious = 5;
-constexpr int gameTypeRapid = 6;
-constexpr int gameTypeBlitz = 7;
+constexpr i32 gameTypeEgdA = 1;
+constexpr i32 gameTypeEgdB = 2;
+constexpr i32 gameTypeEgdC = 3;
+constexpr i32 gameTypeEgdD = 4;
+constexpr i32 gameTypeSerious = 5;
+constexpr i32 gameTypeRapid = 6;
+constexpr i32 gameTypeBlitz = 7;
 
 constexpr double ratingRanksPerHandicap = 1.2;
 constexpr double ratingRanksPerKomi = 0.1;
 
-double gameTypeRatingModifier(int gameType)
+double gameTypeRatingModifier(i32 gameType)
 {
   switch (gameType)
   {
@@ -31,7 +31,7 @@ double ratingBeta(double rating) { return -7 * log(3300 - rating); }
 
 // The new rating after a game: result 1 a win, 0 a loss; extraHandicap and extraKomi are the
 // stones and komi this player got beyond an even game (negative when the opponent got them).
-double calculateNewRating(double rating, double opponentRating, double result, int gameType, double extraHandicap, double extraKomi)
+double calculateNewRating(double rating, double opponentRating, double result, i32 gameType, double extraHandicap, double extraKomi)
 {
   double adjustedRating = rating + 100 * (extraHandicap * ratingRanksPerHandicap + extraKomi * ratingRanksPerKomi);
   // The probability of winning takes the adjusted rating; the constant and the bonus the real one.

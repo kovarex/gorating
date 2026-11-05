@@ -75,7 +75,7 @@ void deletedGamesPage(Page& page)
   page.body << table.render();
 }
 
-constexpr int changeGameSgfType = 16;
+constexpr i32 changeGameSgfType = 16;
 
 void changesPage(Page& page)
 {
@@ -169,8 +169,8 @@ void ratingDiscrepanciesPage(Page& page)
   page.body << table.render();
 }
 
-constexpr int changeUserFirstName = 1;
-constexpr int changeUserLastName = 2;
+constexpr i32 changeUserFirstName = 1;
+constexpr i32 changeUserLastName = 2;
 
 void editPlayerNameAction(Page& page, http::HttpResponse& response)
 {
@@ -193,7 +193,7 @@ void editPlayerNameAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, back, "No change.");
   page.db->begin();
   page.query(String("UPDATE user SET first_name=") + quote(first) + ", last_name=" + quote(last) + " WHERE user.id=" + quote(id));
-  for (int type : {changeUserFirstName, changeUserLastName})
+  for (i32 type : {changeUserFirstName, changeUserLastName})
   {
     String oldValue = user[type == changeUserFirstName ? "first_name" : "last_name"];
     String newValue = type == changeUserFirstName ? first : last;

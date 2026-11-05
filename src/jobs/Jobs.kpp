@@ -4,7 +4,7 @@
 // --job NAME`, the cron's command: kovarex, 2026-11-05, "the whole job secret would be eradicated")
 // or for the logged-in owner, nobody else. They answer in plain text.
 
-constexpr int tournamentsPerBatch = 30;
+constexpr i32 tournamentsPerBatch = 30;
 
 // A job run from the command line (main's --job): whoever runs it is on the server already.
 bool jobFromCommandLine = false;
@@ -22,9 +22,9 @@ bool tournamentKnown(Page& page, StringView key)
 }
 
 // Queues keys, the last one first (EGD lists the newest first), skipping the known ones; how many.
-int queueTournaments(Page& page, const Vector<String>& keys)
+i32 queueTournaments(Page& page, const Vector<String>& keys)
 {
-  int queued = 0;
+  i32 queued = 0;
   for (ContainerSize i = keys.size(); i > 0; --i)
   {
     const String& key = keys[i - 1];
@@ -40,8 +40,8 @@ int queueTournaments(Page& page, const Vector<String>& keys)
 String processTournamentBatch(Page& page)
 {
   String out;
-  int done = 0;
-  for (int i = 0; i < tournamentsPerBatch; ++i)
+  i32 done = 0;
+  for (i32 i = 0; i < tournamentsPerBatch; ++i)
   {
     if (!processTournament(page, String()))
       break;
@@ -107,7 +107,7 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   }
   if (name == "update_tournament_list")
   {
-    int queued = queueTournaments(page, tournamentListKeys(fetchEgd(*page.config, String(egdAddress) + "EGD_2_0/downloads/tlist.html")));
+    i32 queued = queueTournaments(page, tournamentListKeys(fetchEgd(*page.config, String(egdAddress) + "EGD_2_0/downloads/tlist.html")));
     response.body = format("Queued {} tournaments.\n", queued) + processTournamentBatch(page);
     // The cron calls only this job: it also moves a rating update on, for up to ratingUpdateSeconds
     // (PHP's moved only when a game was deleted or edited, or update_rating called).
@@ -115,7 +115,7 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   }
   else if (name == "check_new_tournaments")
   {
-    int queued = queueTournaments(page, latestTournamentKeys(page));
+    i32 queued = queueTournaments(page, latestTournamentKeys(page));
     response.body = format("Added {} to be processed.\n", queued) + processTournamentBatch(page);
   }
   else if (name == "process_tournament")
@@ -138,7 +138,7 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
 // parameters its query's), its answer in output; 0 when it answered 200, 1 when it failed (what
 // went wrong in output), 2 for no such job. The cron's command (with --quiet: main prints nothing
 // when it worked, so the cron mails only failures).
-int jobCommand(const Vector<String>& arguments, String& output)
+i32 jobCommand(const Vector<String>& arguments, String& output)
 {
   const char* usage = "usage: gorating.cgi --job NAME [--quiet] [PARAMETER=VALUE...] (update_tournament_list, check_new_tournaments,"
                       " process_tournament, process_tournament_batch, update_rating, check_rating_changes, collect_manual_rating_changes)\n";

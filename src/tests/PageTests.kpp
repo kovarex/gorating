@@ -75,7 +75,7 @@ test "the pages, as visitor, user, admin and owner"
   GoratingConfig config = freshTestDatabase(*server);
   bool update = getenv("GORATING_UPDATE_PAGES") != nullptr;
   String list = goratingReadFile("testdata/pages.txt");
-  int pages = 0;
+  i32 pages = 0;
   for (ContainerSize at = 0; at < list.size();)
   {
     ContainerSize end = list.find('\n', at);
@@ -107,7 +107,7 @@ test "the pages, as visitor, user, admin and owner"
         ++i;
       ContainerSize lineStart = got.rfind('\n', i);
       lineStart = lineStart == String::npos ? 0 : lineStart + 1;
-      println(format("{} {}: differs from {} at byte {}: {}", who, path, file, (int64_t)i, StringView(got).substr(lineStart, 160)));
+      println(format("{} {}: differs from {} at byte {}: {}", who, path, file, (i64)i, StringView(got).substr(lineStart, 160)));
     }
     check(got == expected);
   }

@@ -4,7 +4,7 @@
 test "a session cookie is valid only as it was signed"
 {
   GoratingConfig config = testConfig();
-  int64_t now = 1800000000;
+  i64 now = 1800000000;
   String value = sessionCookieValue(config, "42", now + 3600, "$2y$10$hash");
   Optional<SessionCookie> cookie = parseSessionCookie(value);
   require(cookie.has_value());

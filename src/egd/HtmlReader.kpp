@@ -14,8 +14,8 @@ struct HtmlNode
   String tag; // lower case; empty for text
   String text;
   Vector<Pair<String, String>> attributes;
-  Vector<int> children;
-  int parent = -1;
+  Vector<i32> children;
+  i32 parent = -1;
 };
 
 struct HtmlDocument
@@ -23,16 +23,16 @@ struct HtmlDocument
   Vector<HtmlNode> nodes; // nodes[0] is the document
 
   // The elements named tag under node (not node itself), in document order.
-  Vector<int> elements(int node, StringView tag) const
+  Vector<i32> elements(i32 node, StringView tag) const
   {
-    Vector<int> found;
+    Vector<i32> found;
     this->collect(node, tag, found);
     return found;
   }
 
-  void collect(int node, StringView tag, Vector<int>& found) const
+  void collect(i32 node, StringView tag, Vector<i32>& found) const
   {
-    for (int child : this->nodes[node].children)
+    for (i32 child : this->nodes[node].children)
     {
       if (this->nodes[child].tag == tag)
         found.push_back(child);
@@ -41,24 +41,24 @@ struct HtmlDocument
   }
 
   // The text under node, all of it, as DOM's nodeValue of an element.
-  String text(int node) const
+  String text(i32 node) const
   {
     String out;
     this->appendText(node, out);
     return out;
   }
 
-  void appendText(int node, String& out) const
+  void appendText(i32 node, String& out) const
   {
     const HtmlNode& n = this->nodes[node];
     if (n.tag.empty())
       out << n.text;
-    for (int child : n.children)
+    for (i32 child : n.children)
       this->appendText(child, out);
   }
 
   // The attribute's value, or nullptr.
-  const String* attribute(int node, StringView name) const
+  const String* attribute(i32 node, StringView name) const
   {
     for (const Pair<String, String>& a : this->nodes[node].attributes)
       if (a.first == name)
@@ -66,7 +66,7 @@ struct HtmlDocument
     return nullptr;
   }
 
-  bool hasAttribute(int node, StringView name, StringView value) const
+  bool hasAttribute(i32 node, StringView name, StringView value) const
   {
     const String* found = this->attribute(node, name);
     return found != nullptr && *found == value;
@@ -100,7 +100,7 @@ String htmlLower(StringView text)
   return out;
 }
 
-void htmlAppendCodePoint(String& out, uint32_t c)
+void htmlAppendCodePoint(String& out, u32 c)
 {
   if (c == 0 || c > 0x10ffff || (c >= 0xd800 && c <= 0xdfff))
     c = 0xfffd;
@@ -148,16 +148,16 @@ String htmlDecode(StringView text)
     if (name.size() >= 2 && name[0] == '#')
     {
       bool hex = name[1] == 'x' || name[1] == 'X';
-      uint32_t value = 0;
+      u32 value = 0;
       bool ok = name.size() > (hex ? 2u : 1u);
       for (ContainerSize k = hex ? 2 : 1; k < name.size() && ok; ++k)
       {
         char c = name[k];
-        int digit = c >= '0' && c <= '9' ? c - '0' : hex && c >= 'a' && c <= 'f' ? c - 'a' + 10 : hex && c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
+        i32 digit = c >= '0' && c <= '9' ? c - '0' : hex && c >= 'a' && c <= 'f' ? c - 'a' + 10 : hex && c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
         if (digit < 0 || value > 0x10ffff)
           ok = false;
         else
-          value = value * (hex ? 16 : 10) + (uint32_t)digit;
+          value = value * (hex ? 16 : 10) + (u32)digit;
       }
       if (ok)
       {
@@ -180,7 +180,7 @@ String htmlDecode(StringView text)
 struct HtmlBuilder
 {
   HtmlDocument document;
-  Vector<int> open; // the open elements, the document first
+  Vector<i32> open; // the open elements, the document first
 
   HtmlBuilder()
   {
@@ -188,9 +188,9 @@ struct HtmlBuilder
     this->open.push_back(0);
   }
 
-  int add(HtmlNode node)
+  i32 add(HtmlNode node)
   {
-    int index = (int)this->document.nodes.size();
+    i32 index = (i32)this->document.nodes.size();
     node.parent = this->open.back();
     this->document.nodes.push_back(move(node));
     this->document.nodes[this->open.back()].children.push_back(index);
@@ -207,9 +207,9 @@ struct HtmlBuilder
   }
 
   // Whether an element named tag is open above the nearest one named by boundaries.
-  int openBefore(StringView tag, InitializerList<StringView> boundaries) const
+  i32 openBefore(StringView tag, InitializerList<StringView> boundaries) const
   {
-    for (int k = (int)this->open.size() - 1; k > 0; --k)
+    for (i32 k = (i32)this->open.size() - 1; k > 0; --k)
     {
       const String& name = this->document.nodes[this->open[k]].tag;
       if (name == tag)
@@ -221,7 +221,7 @@ struct HtmlBuilder
     return -1;
   }
 
-  void closeTo(int depth) { this->open.resize((ContainerSize)depth); }
+  void closeTo(i32 depth) { this->open.resize((ContainerSize)depth); }
 
   void start(const String& tag, Vector<Pair<String, String>> attributes, bool selfClosing)
   {
@@ -229,46 +229,46 @@ struct HtmlBuilder
     {
       for (StringView cell : {"td", "th"})
       {
-        int k = this->openBefore(cell, {"tr", "table"});
+        i32 k = this->openBefore(cell, {"tr", "table"});
         if (k > 0)
           this->closeTo(k);
       }
     }
     else if (tag == "tr")
     {
-      int k = this->openBefore("tr", {"table"});
+      i32 k = this->openBefore("tr", {"table"});
       if (k > 0)
         this->closeTo(k);
     }
     else if (tag == "li")
     {
-      int k = this->openBefore("li", {"ul", "ol"});
+      i32 k = this->openBefore("li", {"ul", "ol"});
       if (k > 0)
         this->closeTo(k);
     }
     else if (tag == "option")
     {
-      int k = this->openBefore("option", {"select"});
+      i32 k = this->openBefore("option", {"select"});
       if (k > 0)
         this->closeTo(k);
     }
     if (htmlClosesParagraph(tag))
     {
-      int k = this->openBefore("p", {"td", "th", "div", "table", "body"});
+      i32 k = this->openBefore("p", {"td", "th", "div", "table", "body"});
       if (k > 0)
         this->closeTo(k);
     }
     HtmlNode node;
     node.tag = tag;
     node.attributes = move(attributes);
-    int index = this->add(move(node));
+    i32 index = this->add(move(node));
     if (!selfClosing && !htmlIsVoid(tag))
       this->open.push_back(index);
   }
 
   void end(const String& tag)
   {
-    for (int k = (int)this->open.size() - 1; k > 0; --k)
+    for (i32 k = (i32)this->open.size() - 1; k > 0; --k)
       if (this->document.nodes[this->open[k]].tag == tag)
       {
         this->closeTo(k);

@@ -33,8 +33,8 @@ void tournamentPage(Page& page)
     return;
   }
   Row tournament(found, 0);
-  int rounds = (int)stoll(tournament["round_count"]);
-  int players = (int)stoll(tournament["player_count"]);
+  i32 rounds = (i32)stoll(tournament["round_count"]);
+  i32 players = (i32)stoll(tournament["player_count"]);
 
   mariadb::MariaDbResult games = page.query(
       String("SELECT game.id as game_id, game.winner_user_id as winner_id, winner.name as winner_name,"
@@ -57,8 +57,8 @@ void tournamentPage(Page& page)
   for (ContainerSize i = 0; i < games.size(); ++i)
   {
     Row row(games, i);
-    rounds = max(rounds, (int)stoll(row["round"]));
-    players = max(players, (int)max(stoll(row["winner_placement"]), stoll(row["loser_placement"])));
+    rounds = max(rounds, (i32)stoll(row["round"]));
+    players = max(players, (i32)max(stoll(row["winner_placement"]), stoll(row["loser_placement"])));
   }
 
   // cells[placement][round], placements[placement]: 1-based, as the PHP arrays.
@@ -67,9 +67,9 @@ void tournamentPage(Page& page)
   for (ContainerSize i = 0; i < games.size(); ++i)
   {
     Row row(games, i);
-    int round = (int)stoll(row["round"]);
-    int winnerPlacement = (int)stoll(row["winner_placement"]);
-    int loserPlacement = (int)stoll(row["loser_placement"]);
+    i32 round = (i32)stoll(row["round"]);
+    i32 winnerPlacement = (i32)stoll(row["winner_placement"]);
+    i32 loserPlacement = (i32)stoll(row["loser_placement"]);
     if (round < 1 || round > rounds || winnerPlacement < 1 || winnerPlacement > players || loserPlacement < 1 ||
         loserPlacement > players)
       throw GoratingError(format("the game {} of tournament {} is outside its rounds or placements", row["game_id"], id));
@@ -78,7 +78,7 @@ void tournamentPage(Page& page)
     PlayerRef loser = playerRef(row, "loser");
     for (bool winnersRow : {true, false})
     {
-      int placement = winnersRow ? winnerPlacement : loserPlacement;
+      i32 placement = winnersRow ? winnerPlacement : loserPlacement;
       TournamentCell& cell = cells[placement][round];
       cell.present = true;
       cell.opponent = winnersRow ? loser : winner;
@@ -90,15 +90,15 @@ void tournamentPage(Page& page)
   }
 
   html::SafeHtml roundHeaders;
-  for (int round = 1; round <= rounds; ++round)
+  for (i32 round = 1; round <= rounds; ++round)
     roundHeaders << roundHeaderTemplate.render({{"round", round}});
   html::SafeHtml rows;
-  for (int placement = 1; placement <= players; ++placement)
+  for (i32 placement = 1; placement <= players; ++placement)
   {
     if (!placements[placement].has_value())
       continue;
     html::SafeHtml roundCells;
-    for (int round = 1; round <= rounds; ++round)
+    for (i32 round = 1; round <= rounds; ++round)
     {
       const TournamentCell& cell = cells[placement][round];
       html::SafeHtml content;

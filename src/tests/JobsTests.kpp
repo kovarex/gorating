@@ -2,11 +2,11 @@
 // and the hourly update_tournament_list, which queues EGD's new tournaments and processes them.
 
 // A job as the server's shell runs it (gorating.cgi --job): its answer, its exit code checked.
-String job(const GoratingConfig& config, const Vector<String>& arguments, int expected = 0)
+String job(const GoratingConfig& config, const Vector<String>& arguments, i32 expected = 0)
 {
   goratingConfig = config;
   String output;
-  int code = jobCommand(arguments, output);
+  i32 code = jobCommand(arguments, output);
   if (code != expected)
     throw GoratingError(format("--job {} exited {}, not {}: {}", arguments.empty() ? String() : arguments[0], code, expected, output));
   return output;
@@ -56,13 +56,13 @@ void madeUpEgdGames(const GoratingConfig& config, StringView player, StringView 
   mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
   String gameType = db.query("SELECT game_type_id FROM egd_tournament ORDER BY id LIMIT 1").text(0, "game_type_id");
   db.query(String("INSERT INTO egd_tournament(egd_key, name, player_count, round_count, timestamp, country_id, game_type_id) VALUES(") + quote(key) +
-           ", 'Made-up', 2, " + format("{}", (int64_t)rounds.size()) + ", " + quote(time) + ", (SELECT MIN(id) FROM country), " + gameType + ")");
+           ", 'Made-up', 2, " + format("{}", (i64)rounds.size()) + ", " + quote(time) + ", (SELECT MIN(id) FROM country), " + gameType + ")");
   String tournament = db.query(String("SELECT id FROM egd_tournament WHERE egd_key=") + quote(key)).text(0, "id");
   for (ContainerSize i = 0; i < rounds.size(); ++i)
     db.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
                     " loser_old_egd_rating, loser_new_egd_rating, egd_tournament_id, egd_tournament_round) VALUES(") +
              String(player) + "," + String(opponent) + "," + gameType + "," + quote(time) + "," + rounds[i].first + "," + rounds[i].second +
-             ",1500,1490," + tournament + "," + format("{}", (int64_t)(i + 1)) + ")");
+             ",1500,1490," + tournament + "," + format("{}", (i64)(i + 1)) + ")");
 }
 
 test "EGD rating jumps between tournaments: check_rating_changes and collect_manual_rating_changes"
@@ -85,7 +85,7 @@ test "EGD rating jumps between tournaments: check_rating_changes and collect_man
   madeUpEgdGames(config, player, opponent, "TJUMP1", "2021-01-10 10:00:00", {{String("1950"), String("2060")}, {String("2060"), String("2160")}});
   madeUpEgdGames(config, player, opponent, "TJUMP2", "2021-03-10 10:00:00", {{String("2200"), String("2210")}});
   madeUpEgdGames(config, player, opponent, "TJUMP3", "2021-05-10 10:00:00", {{String("2760"), String("2765")}});
-  int firstJump = ratingJumpReason(2200, true, Optional<double>(1950.0), Optional<double>(2160.0));
+  i32 firstJump = ratingJumpReason(2200, true, Optional<double>(1950.0), Optional<double>(2160.0));
   require(firstJump != ratingChangeError && ratingJumpReason(2760, true, Optional<double>(2200.0), Optional<double>(2210.0)) == ratingChangeManualEgd);
   {
     mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);

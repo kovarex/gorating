@@ -372,8 +372,8 @@ constexpr html::HtmlTemplate resetConfirmTemplate{R"(Now you can set a new passw
 
 void resetPasswordPage(Page& page) { page.body << resetPasswordTemplate.render({}); }
 
-constexpr int64_t resetSeconds = 3600;
-constexpr int64_t resetInterval = 600;
+constexpr i64 resetSeconds = 3600;
+constexpr i64 resetInterval = 600;
 
 void resetPasswordAction(Page& page, http::HttpResponse& response)
 {
