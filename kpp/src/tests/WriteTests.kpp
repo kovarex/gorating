@@ -141,3 +141,40 @@ test "a rating update moved on for a time: how far it got, then what it changed"
   check(done.find("\nRating changes:\n") != String::npos);
   check(processRating(page, ratingUpdateSeconds) == "No rating changes to process.");
 }
+
+test "a player who joins a rating update has their games computed again from that game on, not before"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
+  Page page;
+  page.config = &config;
+  page.db = &db;
+  Vector<String> ids;
+  for (StringView username : {"player11", "player12", "player13", "player14"})
+    ids.push_back(goratingDbValue(config, String("SELECT id FROM user WHERE username='") + username + "'"));
+  // After every game of the made-up data: player11 beats player12 (the game deleted below), then
+  // player13 beats player14 (no one the update changed), then player11 beats player13, which brings
+  // player13 into the update.
+  auto game = [&](StringView winner, StringView loser, StringView time) {
+    db.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_rating, winner_new_rating, loser_old_rating,"
+                    " loser_new_rating) VALUES(") +
+             String(winner) + "," + String(loser) + ",5," + quote(time) + ",1500,1510,1500,1490)");
+    return goratingDbValue(config, "SELECT MAX(id) FROM game");
+  };
+  String first = game(ids[0], ids[1], "2030-01-01 10:00:00");
+  String unrelated = game(ids[2], ids[3], "2030-02-01 10:00:00");
+  String joining = game(ids[0], ids[2], "2030-03-01 10:00:00");
+  String before = goratingDbValue(config, String("SELECT CONCAT(rating_update_version, ' ', winner_new_rating, ' ', loser_new_rating) FROM game WHERE id=") + unrelated);
+  db.query(String("UPDATE game SET deleted=true WHERE id=") + first);
+  check(processRating(page, ratingUpdateSeconds).starts_with("Rating update finished after "));
+  String version = goratingDbValue(config, "SELECT value FROM variable WHERE name='rating_update_version'");
+  check(goratingDbValue(config, String("SELECT rating_update_version FROM game WHERE id=") + joining) == version);
+  // player13's earlier game is the update's business only through player13, who entered it later.
+  check(goratingDbValue(config, String("SELECT CONCAT(rating_update_version, ' ', winner_new_rating, ' ', loser_new_rating) FROM game WHERE id=") + unrelated) == before);
+}

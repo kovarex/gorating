@@ -83,19 +83,29 @@ String ratingToUse(const Optional<String>& rating, const Optional<String>& ratin
 String ratingForCalculation(Page& page, StringView userId, StringView gameTimestamp, const Optional<String>& tournament,
                             const Optional<String>& gameOldRating)
 {
-  Optional<String> before = fetchUserRatingBefore(page, userId, Optional<String>(String(gameTimestamp)), tournament);
+  // A tournament's games all start from the ratings before it, which tournamentSide asks for again
+  // for every game and opponent (5 rounds: 6 lookups a game): looked up once per request. An update
+  // goes on in time order, so what is before the tournament no longer changes when it is reached.
+  Optional<String> before;
+  String key = phpTrue(tournament) ? format("{} {} {}", userId, *tournament, gameTimestamp) : String();
+  auto cached = key.empty() ? page.ratingsBeforeTournament.end() : page.ratingsBeforeTournament.find(key);
+  if (cached != page.ratingsBeforeTournament.end())
+    before = cached->second;
+  else
+  {
+    before = fetchUserRatingBefore(page, userId, Optional<String>(String(gameTimestamp)), tournament);
+    if ((!before.has_value() || before->empty()) && phpTrue(tournament))
+    {
+      String id(userId);
+      before = page.db->scalar(String("SELECT IF(winner_user_id=") + id +
+                               ", winner_old_egd_rating, loser_old_egd_rating) FROM game WHERE egd_tournament_id=" + quote(*tournament) +
+                               " and (winner_user_id=" + quote(id) + " or loser_user_id=" + quote(id) + ") ORDER BY egd_tournament_round LIMIT 1");
+    }
+    if (!key.empty())
+      page.ratingsBeforeTournament[key] = before;
+  }
   if (before.has_value() && !before->empty())
     return *before;
-  if (phpTrue(tournament))
-  {
-    String id(userId);
-    Optional<String> egd = page.db->scalar(
-        String("SELECT IF(winner_user_id=") + id + ", winner_old_egd_rating, loser_old_egd_rating) FROM game WHERE egd_tournament_id=" +
-        quote(*tournament) + " and (winner_user_id=" + quote(id) + " or loser_user_id=" + quote(id) +
-        ") ORDER BY egd_tournament_round LIMIT 1");
-    if (egd.has_value() && !egd->empty())
-      return *egd;
-  }
   if (gameOldRating.has_value() && !gameOldRating->empty())
     return *gameOldRating;
   throw GoratingError(format("no rating to recompute user {}'s game from", userId));
@@ -188,8 +198,14 @@ bool processRatingIteration(Page& page, String& finishedReport, String& reached)
   String version = variable(page, "rating_update_version");
   String since = variable(page, "rating_update_timestamp");
   String part = String(" FROM rating_update_value JOIN game ON rating_update_value.user_id=game.");
+  // A player's games count from the time they entered the update (kovarex, 2026-11-05): one who
+  // joins it at a later game (an opponent of a player it changed) has their games from that game on
+  // computed again, not their earlier ones, so the update goes forward in time and a tournament's
+  // ratings before it are fixed once it is reached. PHP took every game of theirs since the update's
+  // start, going back in time after later games (a tournament's rounds then started from different
+  // ratings, and the result depended on the order).
   String common = String(" WHERE game.deleted = false and game.rating_update_version < ") + version +
-                  " and game.timestamp >= " + quote(since);
+                  " and game.timestamp >= " + quote(since) + " and game.timestamp >= rating_update_value.timestamp";
   mariadb::MariaDbResult found = page.query(
       String("SELECT game_id, winner_user_id, loser_user_id, MAX(winner_rating) as winner_rating,"
              " MAX(winner_rating_timestamp) as winner_rating_timestamp, game_winner_rating, MAX(loser_rating) as loser_rating,"
@@ -315,6 +331,8 @@ String processRating(Page& page, int seconds)
   String reached;
   for (;;)
   {
+    // Kept for one transaction: another request's edit may start the update again in between.
+    page.ratingsBeforeTournament.clear();
     page.db->begin();
     if (variable(page, "rating_update_in_progress") != "1")
     {
