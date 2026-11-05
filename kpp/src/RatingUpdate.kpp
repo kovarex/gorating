@@ -38,7 +38,8 @@ Optional<String> fetchUserRatingBefore(Page& page, const Row& user, StringView u
     sql.append(String(" and (game.egd_tournament_id is null or game.egd_tournament_id != ") + quote(*tournamentId) + ")");
   if (egdOnly)
     sql.append(String(" and IF(game.winner_user_id=") + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) is not null");
-  sql.append(" ORDER BY game.timestamp DESC, game.egd_tournament_round DESC LIMIT 1");
+  // (the id last: two games of one time and round, two reports of the same second, in one order)
+  sql.append(" ORDER BY game.timestamp DESC, game.egd_tournament_round DESC, game.id DESC LIMIT 1");
   mariadb::MariaDbResult last = page.query(sql);
   if (last.empty())
   {
@@ -99,7 +100,7 @@ String ratingForCalculation(Page& page, StringView userId, StringView gameTimest
       String id(userId);
       before = page.db->scalar(String("SELECT IF(winner_user_id=") + id +
                                ", winner_old_egd_rating, loser_old_egd_rating) FROM game WHERE egd_tournament_id=" + quote(*tournament) +
-                               " and (winner_user_id=" + quote(id) + " or loser_user_id=" + quote(id) + ") ORDER BY egd_tournament_round LIMIT 1");
+                               " and (winner_user_id=" + quote(id) + " or loser_user_id=" + quote(id) + ") ORDER BY egd_tournament_round, id LIMIT 1");
     }
     if (!key.empty())
       page.ratingsBeforeTournament[key] = before;
@@ -129,7 +130,7 @@ TournamentSide tournamentSide(Page& page, StringView userId, StringView gameId, 
   mariadb::MariaDbResult games = page.query(
       String("SELECT id, winner_user_id, loser_user_id, winner_old_rating, loser_old_rating, game_type_id, handicap, komi, winner_is_black,"
              " jigo FROM game WHERE deleted = false and egd_tournament_id=") +
-      quote(tournament) + " and (winner_user_id=" + quote(id) + " or loser_user_id=" + quote(id) + ") ORDER BY egd_tournament_round");
+      quote(tournament) + " and (winner_user_id=" + quote(id) + " or loser_user_id=" + quote(id) + ") ORDER BY egd_tournament_round, id");
   String startText = ratingForCalculation(page, userId, gameTimestamp, tournamentId, Optional<String>());
   double start = ratingValue(startText);
   double running = start;
@@ -227,7 +228,7 @@ bool processRatingIteration(Page& page, String& finishedReport, String& reached)
       " game.egd_tournament_id as game_egd_tournament_id, game.egd_tournament_round as game_egd_tournament_round,"
       " game.jigo as game_jigo" +
       part + "loser_user_id" + common +
-      ") as tmp GROUP BY game_id ORDER BY game_timestamp, game_egd_tournament_id, game_egd_tournament_round LIMIT 1");
+      ") as tmp GROUP BY game_id ORDER BY game_timestamp, game_egd_tournament_id, game_egd_tournament_round, game_id LIMIT 1");
   if (found.empty())
   {
     // Each player's rating from their latest game, as processing a tournament sets it (PHP copied
