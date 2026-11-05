@@ -116,7 +116,7 @@ The site uses no other files and writes none: sessions are signed cookies, mail 
 
 - The cron job (NFS panel, Scheduled Tasks) that calls `update_tournament_list` hourly gets
   a command instead of an address: `cd /home/public && GORATING_CONFIG=/home/protected/gorating-config.json ./gorating.cgi --job update_tournament_list` (the jobs' addresses answer only the
-  logged-in owner, or a jobSecret if the configuration has one; PHP's were open).
+  logged-in owner; PHP's were open).
 - Then: `migrations/` on the production database (PHP keeps working on it, so this can come
   first), the same files on the gorating.com site, its config pointing at the production database,
   and the PHP files moved aside (kept, so going back is renaming them).

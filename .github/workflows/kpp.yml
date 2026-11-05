@@ -10,6 +10,10 @@ name: kpp
 on:
   push:
     branches: [master]
+  # A pull request into master: built and tested as a push is (no release: the release job takes
+  # pushes to master only).
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
 permissions:

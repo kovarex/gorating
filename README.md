@@ -22,8 +22,7 @@ MariaDB database (setup.sql: the schema, its triggers and procedures; migrations
 - `src/jobs/`: the background jobs: update_tournament_list (hourly), check_new_tournaments,
   process_tournament(_batch), update_rating, check_rating_changes, collect_manual_rating_changes.
   They run from the server's shell, `gorating.cgi --job NAME [PARAMETER=VALUE...]` (the cron's
-  command, no secret), for the logged-in owner, or with `?secret=` the configuration's `jobSecret`
-  when it has one (PHP's were open to anyone). They fetch EGD's pages through scrape.do with the
+  command), or for the logged-in owner, nobody else (PHP's were open to anyone). They fetch EGD's pages through scrape.do with the
   configuration's `scrapeDoToken`, as PHP did (EGD's front end answers 403 to a plain client).
   `src/egd/`: the reader of EGD's pages.
 - `migrations/`: the kpp version's changes to the database, run once in order (DEPLOY.md): the

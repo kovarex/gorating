@@ -1,8 +1,8 @@
 // The background jobs (update_tournament_list.php, check_new_tournaments.php, process_tournament.php,
 // process_tournament_batch.php, update_rating.php): the cron calls update_tournament_list hourly.
 // PHP's job addresses were open to anyone; here they run from the server's shell (`gorating.cgi
-// --job NAME`, the cron's command: kovarex, 2026-11-05, no secret needed), for the logged-in owner,
-// or with ?secret= the configuration's jobSecret when it has one. They answer in plain text.
+// --job NAME`, the cron's command: kovarex, 2026-11-05, "the whole job secret would be eradicated")
+// or for the logged-in owner, nobody else. They answer in plain text.
 
 constexpr int tournamentsPerBatch = 30;
 
@@ -11,10 +11,7 @@ bool jobFromCommandLine = false;
 
 bool mayRunJobs(const Page& page)
 {
-  if (jobFromCommandLine || canShowStatistics(page))
-    return true;
-  String secret = page.get("secret");
-  return !page.config->jobSecret.empty() && sha256::Sha256::constantTimeEqual(secret, page.config->jobSecret);
+  return jobFromCommandLine || canShowStatistics(page);
 }
 
 // The tournaments already stored or queued (getTournamentsToIgnore).
