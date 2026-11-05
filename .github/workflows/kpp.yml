@@ -221,10 +221,15 @@ jobs:
           if-no-files-found: error
 
   # A push to kpp that passed: the package as the release kpp-<run number> (its tag made here, at
-  # the commit built), GitHub's latest, which kpp-deploy.sh downloads without a token.
+  # the commit built), GitHub's latest, which kpp-deploy.sh downloads without a token. Two pushes'
+  # runs can finish in either order (kpp-14 finished after kpp-15 and became the latest): one
+  # release job at a time, and only the highest run number is made the latest.
   release:
     needs: [package, test-freebsd]
     if: github.event_name == 'push' && github.ref == 'refs/heads/kpp'
+    concurrency:
+      group: kpp-release
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -238,7 +243,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           tag="kpp-$GITHUB_RUN_NUMBER"
-          gh release create "$tag" gorating-site.tar.gz gorating-site.tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+          gh release create "$tag" gorating-site.tar.gz gorating-site.tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest=false \
             --title "$tag (${GITHUB_SHA:0:10})" \
             --notes "The kpp version's site package (kpp/DEPLOY.md), commit $GITHUB_SHA, built by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Install: kpp-deploy.sh (the latest) or kpp-deploy.sh $tag."
+          newest=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName -q '.[].tagName' | sed -n 's/^kpp-\([0-9][0-9]*\)$/\1/p' | sort -n | tail -n 1)
+          if [ "$newest" = "$GITHUB_RUN_NUMBER" ]; then
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --latest
+          else
+            echo "kpp-$newest is newer: $tag is not made the latest"
+          fi
