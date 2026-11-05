@@ -39,7 +39,8 @@ It checks the configuration, the database client and the PHP version (changing n
 yes, moves the PHP files (`*.php`, `src/`, `.htaccess`) to /home/protected/php-site, runs
 `kpp-deploy.sh --migrate` (migrations 001 and 002, the latest release, its smoke tests) and puts the
 PHP version back when anything fails. `sh switch-to-kpp.sh --back-to-php` puts it back later. Then the
-hourly task's address gets `?secret=<jobSecret>`.
+hourly scheduled task becomes a command (user web):
+`cd /home/public && GORATING_CONFIG=/home/protected/gorating-config.json ./gorating.cgi --job update_tournament_list`.
 
 ## Installing a release with kpp-deploy.sh (kovarex, over SSH)
 
@@ -95,7 +96,6 @@ placeholders replaced:
  "secureCookies": true,
  "siteAddress": "https://gorating-test.nfshost.com",
  "mailCommand": "/usr/sbin/sendmail -t -i",
- "jobSecret": "<64 random hex characters, also in the cron's address: ...?secret=...>",
  "scrapeDoToken": "<the scrape.do token, as config.php has it>"}
 ```
 
@@ -115,7 +115,8 @@ The site uses no other files and writes none: sessions are signed cookies, mail 
 ## 4. The switch (kovarex decides when)
 
 - The cron job (NFS panel, Scheduled Tasks) that calls `update_tournament_list` hourly gets
-  `?secret=<jobSecret>` added to its address: the kpp version's jobs need it (PHP's were open).
+  a command instead of an address: `cd /home/public && GORATING_CONFIG=/home/protected/gorating-config.json ./gorating.cgi --job update_tournament_list` (the jobs' addresses answer only the
+  logged-in owner, or a jobSecret if the configuration has one; PHP's were open).
 - Then: `migrations/` on the production database (PHP keeps working on it, so this can come
   first), the same files on the gorating.com site, its config pointing at the production database,
   and the PHP files moved aside (kept, so going back is renaming them).

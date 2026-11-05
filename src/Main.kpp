@@ -195,6 +195,16 @@ int main(int argc, char** argv)
   goratingConfig = goratingReadConfig();
   if (getenv("REQUEST_METHOD") != nullptr)
     return http::httpCgi(handle);
+  if (argc >= 2 && StringView(argv[1]) == "--job")
+  {
+    Vector<String> arguments;
+    for (int i = 2; i < argc; ++i)
+      arguments.push_back(String(StringView(argv[i])));
+    String output;
+    int code = jobCommand(arguments, output);
+    fputs(output.c_str(), code == 0 ? stdout : stderr);
+    return code;
+  }
   http::HttpServerOptions options;
   options.port = 8082;
   for (int i = 1; i + 1 < argc; ++i)

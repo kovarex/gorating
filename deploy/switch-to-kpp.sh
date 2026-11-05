@@ -16,7 +16,7 @@
 #  4. runs kpp-deploy.sh --migrate: migrations 001 and 002 on the database, the latest kpp release
 #     installed (program, CSS, JS, images, .htaccess), its smoke tests (/about, /players);
 #  5. if that fails, puts the PHP version back and says so.
-# Then: the cron's address gets ?secret=<jobSecret>, and everyone logs in again.
+# Then: the hourly task runs `gorating.cgi --job update_tournament_list`, and everyone logs in again.
 #
 # The paths are kpp-deploy.sh's (its first lines, or DEPLOY_CONF's file), which the tests change.
 
@@ -56,7 +56,7 @@ fi
 [ ! -e "$ASIDE" ] || fail "$ASIDE exists: switched already? (--back-to-php puts the PHP version back)"
 [ -f "$PUBLIC/start.php" ] || say "no $PUBLIC/start.php: the PHP version is not there (removed already?), so there is no going back to it from here"
 [ -f "$CONFIG" ] || fail "no $CONFIG: copy gorating-config.example.json (in the package, or deploy/ in git) there and fill it in (DEPLOY-CHECKLIST.md)"
-for field in '"database"' '"sessionSecret"' '"jobSecret"' '"siteAddress"' '"mailCommand"'; do
+for field in '"database"' '"sessionSecret"' '"siteAddress"' '"mailCommand"'; do
   grep -q "$field" "$CONFIG" || fail "$CONFIG has no $field (DEPLOY-CHECKLIST.md)"
 done
 grep -q '": *"<' "$CONFIG" && fail "$CONFIG still has a placeholder (\"<...>\")"
@@ -107,6 +107,7 @@ if ! sh "$DEPLOY" --migrate "$@"; then
 fi
 
 say "gorating.com runs the kpp version. Now:"
-echo "  - the hourly scheduled task's address: add ?secret=<jobSecret> (as in $CONFIG); its next run also finishes the rating update in progress"
+echo "  - the hourly scheduled task, a command (user web): cd $PUBLIC && GORATING_CONFIG=$CONFIG ./gorating.cgi --job update_tournament_list"
+echo "    (its next run also finishes the rating update in progress)"
 echo "  - check in a browser: the home page, a player, the players' search, a tournament, a game; log in (everyone logs in again)"
 echo "  - back to PHP: sh $0 --back-to-php"

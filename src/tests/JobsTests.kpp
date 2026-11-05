@@ -18,7 +18,7 @@ test "the jobs: who may run them, and the tournament list"
   for (StringView who : {"visitor", "player2"})
   {
     http::HttpResponse refused = siteRequest(config, who, "GET", "/update_rating");
-    check(refused.status == 403 && refused.body == "The jobs take the configuration's secret.\n");
+    check(refused.status == 403 && refused.body == "The jobs run from the server's shell (gorating.cgi --job NAME), or for the owner.\n");
   }
   check(siteRequest(config, "visitor", "GET", "/update_rating?secret=wrong").status == 403);
   check(siteRequest(config, "visitor", "GET", "/update_rating?secret=a-job-secret-for-the-tests").status == 200);
@@ -115,4 +115,27 @@ test "EGD rating jumps between tournaments: check_rating_changes and collect_man
         "User with id=\"999999\" doesn't exist.\n");
   check(siteRequest(config, "visitor", "GET", "/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&username=nobody-here").body ==
         "User with username=\"nobody-here\" doesn't exist.\n");
+}
+
+test "the jobs from the server's shell: gorating.cgi --job NAME, no secret"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  config.jobSecret = String();
+  goratingConfig = config;
+  String output;
+  check(jobCommand({String("update_rating")}, output) == 0 && output == "No rating changes to process.\n");
+  check(jobCommand({String("collect_manual_rating_changes")}, output) == 0 && output == "User id nor username provided\n");
+  check(jobCommand({String("collect_manual_rating_changes"), String("id=999999")}, output) == 0 && output == "User with id=\"999999\" doesn't exist.\n");
+  check(jobCommand(Vector<String>(), output) == 2 && output.starts_with("usage: gorating.cgi --job NAME"));
+  check(jobCommand({String("about")}, output) == 2 && output.starts_with("no job about\n"));
+  check(jobCommand({String("no_such_page")}, output) == 2 && output.starts_with("no job no_such_page\n"));
+  // Over HTTP, without a jobSecret in the configuration, only the owner runs them.
+  check(siteRequest(config, "visitor", "GET", "/update_rating?secret=").status == 403);
+  check(siteRequest(config, "owner", "GET", "/update_rating").body == "No rating changes to process.\n");
 }

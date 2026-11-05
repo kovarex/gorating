@@ -60,7 +60,7 @@ In the MariaDB process (NFS panel > MySQL Processes; its host name is on that pa
 | `secureCookies` | `true` (the site is HTTPS) |
 | `siteAddress` | `https://gorating-test.nfshost.com` (links in mails) |
 | `mailCommand` | `/usr/sbin/sendmail -t -i` |
-| `jobSecret` | 64 random hex characters: the jobs' `?secret=` (empty: only the owner, logged in, runs them) |
+| `jobSecret` | optional: 64 random hex characters for the jobs' `?secret=` addresses; the cron runs `gorating.cgi --job update_tournament_list` and needs none |
 | `scrapeDoToken` | the scrape.do token, as the PHP version's config.php has it (empty: EGD directly) |
 
 ## 4. Upload (scp or WinSCP)

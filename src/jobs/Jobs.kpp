@@ -1,13 +1,17 @@
 // The background jobs (update_tournament_list.php, check_new_tournaments.php, process_tournament.php,
 // process_tournament_batch.php, update_rating.php): the cron calls update_tournament_list hourly.
-// PHP's job addresses were open to anyone; here they take ?secret= with the configuration's
-// jobSecret (the cron's address carries it) or the owner's login. They answer in plain text.
+// PHP's job addresses were open to anyone; here they run from the server's shell (`gorating.cgi
+// --job NAME`, the cron's command: kovarex, 2026-11-05, no secret needed), for the logged-in owner,
+// or with ?secret= the configuration's jobSecret when it has one. They answer in plain text.
 
 constexpr int tournamentsPerBatch = 30;
 
+// A job run from the command line (main's --job): whoever runs it is on the server already.
+bool jobFromCommandLine = false;
+
 bool mayRunJobs(const Page& page)
 {
-  if (canShowStatistics(page))
+  if (jobFromCommandLine || canShowStatistics(page))
     return true;
   String secret = page.get("secret");
   return !page.config->jobSecret.empty() && sha256::Sha256::constantTimeEqual(secret, page.config->jobSecret);
@@ -101,7 +105,7 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   if (!mayRunJobs(page))
   {
     response.status = 403;
-    response.body = "The jobs take the configuration's secret.\n";
+    response.body = "The jobs run from the server's shell (gorating.cgi --job NAME), or for the owner.\n";
     return true;
   }
   if (name == "update_tournament_list")
@@ -131,4 +135,36 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   else
     response.body = processRating(page, ratingUpdateSeconds) + "\n";
   return true;
+}
+
+// `gorating.cgi --job NAME [PARAMETER=VALUE...]`: the job NAME run as its address would run it (the
+// parameters its query's), its answer in output; 0 when it answered 200. The cron's command.
+int jobCommand(const Vector<String>& arguments, String& output)
+{
+  const char* usage = "usage: gorating.cgi --job NAME [PARAMETER=VALUE...] (update_tournament_list, check_new_tournaments,"
+                      " process_tournament, process_tournament_batch, update_rating, check_rating_changes, collect_manual_rating_changes)\n";
+  if (arguments.empty())
+  {
+    output = usage;
+    return 2;
+  }
+  String target = String("/") + arguments[0];
+  for (ContainerSize i = 1; i < arguments.size(); ++i)
+    target.append(String(i == 1 ? "?" : "&") + arguments[i]);
+  http::HttpRequest request;
+  request.method = "GET";
+  http::httpSetTarget(request, target);
+  request.remoteAddress = "command line";
+  http::HttpResponse response;
+  jobFromCommandLine = true;
+  handle(request, response);
+  jobFromCommandLine = false;
+  if (response.header("Content-Type") == nullptr || *response.header("Content-Type") != "text/plain; charset=utf-8" ||
+      response.status == 404 || response.status == 501)
+  {
+    output = String("no job ") + arguments[0] + "\n" + usage;
+    return 2;
+  }
+  output = response.body;
+  return response.status == 200 ? 0 : 1;
 }

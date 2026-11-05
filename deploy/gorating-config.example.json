@@ -5,5 +5,4 @@
  "secureCookies": true,
  "siteAddress": "https://gorating-test.nfshost.com",
  "mailCommand": "/usr/sbin/sendmail -t -i",
- "jobSecret": "<64 random hex characters, also in the cron's address: ...?secret=...>",
  "scrapeDoToken": "<the scrape.do token, as config.php has it>"}
