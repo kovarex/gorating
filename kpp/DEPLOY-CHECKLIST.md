@@ -130,8 +130,8 @@ git clone --depth 1 --branch v0.2.229 https://github.com/kovarex/kpp kpp-source
 :: headers and libraries (251 MB) into kpp-source\compiler\build\sysroots\freebsd-x86_64.
 powershell -ExecutionPolicy Bypass -File kpp-source\tools\sysroot\freebsd.ps1
 
-:: gorating's kpp branch; the libraries come from the checkout (no registry yet)
-git clone --branch kpp https://github.com/kovarex/gorating
+:: gorating (master); the libraries come from the checkout (no registry yet)
+git clone https://github.com/kovarex/gorating
 cd gorating\kpp
 mklink /J libraries ..\..\kpp-source\libraries
 kpp --release --target freebsd --sysroot ..\..\kpp-source\compiler\build\sysroots\freebsd-x86_64 gorating

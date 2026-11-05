@@ -2,14 +2,14 @@
 # alone, its FreeBSD sysroot and official libraries included), tested on Windows and in a FreeBSD
 # 14.3 VM against a MariaDB with the made-up data, and packed as the site's release
 # (gorating-site.tar.gz, kpp/DEPLOY.md), whose install kpp's tools/deploy/test-deploy.sh checks in
-# the VM. Every push to kpp that passes publishes the package as the GitHub Release kpp-<run>
+# the VM. Every push to master that passes publishes the package as the GitHub Release kpp-<run>
 # (kovarex, 2026-11-04: "just take the latest"), which `kpp-deploy.sh` alone installs on the server
 # (kpp-deploy.sh kpp-<run> an older one). Nothing here deploys, holds a secret or connects to the site.
 name: kpp
 
 on:
   push:
-    branches: [kpp]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -220,13 +220,13 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-  # A push to kpp that passed: the package as the release kpp-<run number> (its tag made here, at
+  # A push to master that passed: the package as the release kpp-<run number> (its tag made here, at
   # the commit built), GitHub's latest, which kpp-deploy.sh downloads without a token. Two pushes'
   # runs can finish in either order (kpp-14 finished after kpp-15 and became the latest): one
   # release job at a time, and only the highest run number is made the latest.
   release:
     needs: [package, test-freebsd]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/kpp'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     concurrency:
       group: kpp-release
       cancel-in-progress: false

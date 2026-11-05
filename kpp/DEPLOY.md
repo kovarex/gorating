@@ -31,7 +31,7 @@ With the database backed up, production's `/home/protected/gorating-config.json`
 web) and `/home/protected/deploy/my.cnf` (below) written:
 
 ```sh
-fetch -o /home/protected/switch-to-kpp.sh https://raw.githubusercontent.com/kovarex/gorating/kpp/kpp/deploy/switch-to-kpp.sh
+fetch -o /home/protected/switch-to-kpp.sh https://raw.githubusercontent.com/kovarex/gorating/master/kpp/deploy/switch-to-kpp.sh
 sh /home/protected/switch-to-kpp.sh
 ```
 
@@ -43,7 +43,7 @@ hourly task's address gets `?secret=<jobSecret>`.
 
 ## Installing a release with kpp-deploy.sh (kovarex, over SSH)
 
-Every push to the kpp branch that passes CI is published as the GitHub Release `kpp-<run>`, the
+Every push to master that passes CI is published as the GitHub Release `kpp-<run>`, the
 latest; `kpp-deploy.sh` installs it (the files below, laid out as there). Once per site:
 
 ```sh
