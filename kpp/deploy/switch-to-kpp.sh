@@ -54,7 +54,7 @@ fi
 
 # 1. Checks.
 [ ! -e "$ASIDE" ] || fail "$ASIDE exists: switched already? (--back-to-php puts the PHP version back)"
-[ -f "$PUBLIC/start.php" ] || fail "no $PUBLIC/start.php: is the PHP version in $PUBLIC?"
+[ -f "$PUBLIC/start.php" ] || say "no $PUBLIC/start.php: the PHP version is not there (removed already?), so there is no going back to it from here"
 [ -f "$CONFIG" ] || fail "no $CONFIG: copy gorating-config.example.json (in the package, or kpp/deploy/ in git) there and fill it in (DEPLOY-CHECKLIST.md)"
 for field in '"database"' '"sessionSecret"' '"jobSecret"' '"siteAddress"' '"mailCommand"'; do
   grep -q "$field" "$CONFIG" || fail "$CONFIG has no $field (DEPLOY-CHECKLIST.md)"
@@ -94,6 +94,7 @@ read -r answer
 # 3. The PHP version aside.
 mkdir -p "$ASIDE" || fail "cannot make $ASIDE"
 echo "$moving" | while read -r f; do
+  [ -n "$f" ] || continue
   mv "$PUBLIC/$f" "$ASIDE/$f" || exit 1
 done || { back_to_php; fail "moving the PHP files to $ASIDE failed: the PHP version is back"; }
 say "the PHP version is in $ASIDE"
