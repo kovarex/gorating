@@ -70,14 +70,14 @@ html::SafeHtml menu(const Page& page)
 String secondsText(double seconds)
 {
   i64 tenThousandths = (i64)floor(seconds * 10000 + 0.5);
-  String out = format("{}", tenThousandths / 10000);
+  String out = toString(tenThousandths / 10000);
   i64 fraction = tenThousandths % 10000;
   if (fraction != 0)
   {
-    String digits = format("{}", fraction + 10000).substr(1);
+    String digits = toString(fraction + 10000).substr(1);
     while (!digits.empty() && digits[digits.size() - 1] == '0')
       digits.pop_back();
-    out << String(".") + digits;
+    out << "." << digits;
   }
   return out;
 }
@@ -122,6 +122,6 @@ String layout(const Page& page, const html::SafeHtml& content, double seconds)
                {"menu", menu(page)},
                {"message", message.empty() ? html::SafeHtml() : messageTemplate.render({{"message", messageLines(message)}})},
                {"content", content},
-               {"generated", String(" - Page generated in ") + secondsText(seconds) + " seconds"}})
+               {"generated", toString(" - Page generated in ", secondsText(seconds), " seconds")}})
       .str();
 }

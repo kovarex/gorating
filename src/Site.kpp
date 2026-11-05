@@ -47,13 +47,15 @@ struct Page
   bool statistics = false;
   Vector<Pair<String, double>> queries;
 
-  mariadb::MariaDbResult query(StringView sql)
+  // A statement given as pieces: page.query("UPDATE user SET rating=", rating, " WHERE id=", quote(id)).
+  mariadb::MariaDbResult query(Text sql)
   {
     if (!this->statistics)
       return this->db->query(sql);
+    String statement = toString(sql);
     auto start = SteadyClock::now();
-    mariadb::MariaDbResult result = this->db->query(sql);
-    this->queries.push_back(Pair<String, double>(String(sql), (double)durationCast<Microseconds>(SteadyClock::now() - start).count() / 1e6));
+    mariadb::MariaDbResult result = this->db->query(statement);
+    this->queries.push_back(Pair<String, double>(statement, (double)durationCast<Microseconds>(SteadyClock::now() - start).count() / 1e6));
     return result;
   }
 
@@ -84,8 +86,8 @@ bool isPageName(StringView name)
 String playerPath(StringView id, StringView username)
 {
   if (!username.empty() && !isPageName(username))
-    return String("/") + String(username);
-  return String("/player?id=") + String(id);
+    return toString("/", username);
+  return toString("/player?id=", id);
 }
 
 // --- ranks (src/rating_helper.php) ---
@@ -100,8 +102,8 @@ i32 rankFromRating(double rating)
 String readableRank(i32 rank)
 {
   if (rank <= 30)
-    return format("{}k", 31 - rank);
-  return format("{}D", rank - 30);
+    return toString(31 - rank, "k");
+  return toString(rank - 30, "D");
 }
 
 double ratingValue(StringView text) { return text.empty() ? 0.0 : stod(String(text)); }
@@ -174,11 +176,11 @@ html::SafeHtml sgfLink(StringView gameId) { return sgfLinkTemplate.render({{"id"
 i32 ratingDigits = 0;
 
 // A rating with the viewer's decimals, as %.Nf rounds.
-String showRating(StringView rating) { return format("{}", fixed(ratingValue(rating), ratingDigits)); }
+String showRating(StringView rating) { return toString(fixed(ratingValue(rating), ratingDigits)); }
 
 html::SafeHtml tournamentLink(StringView id, StringView name)
 {
-  return link(String("/tournament?id=") + String(id), name.empty() ? StringView("[no name]") : name);
+  return link(toString("/tournament?id=", id), name.empty() ? StringView("[no name]") : name);
 }
 
 constexpr html::HtmlTemplate resultImageTemplate{R"(<img class="result-image" src="{{resources}}/img/{{result}}.png"/>)"};
@@ -199,8 +201,8 @@ String showHandicap(StringView handicap, StringView komi)
   if (handicap == "0" && (k == 6.5 || k == 7.5))
     return "Even";
   if (handicap == "0")
-    return String("komi ") + String(komi);
-  return String(handicap) + "h" + (k == 0.5 ? String(" ") : String(" komi ") + String(komi));
+    return toString("komi ", komi);
+  return String(handicap) + "h" + (k == 0.5 ? String(" ") : toString(" komi ", komi));
 }
 
 // "2026-11-02 13:45:07" as "02. 11. 2026 13:45" (withTime) or "02. 11. 2026".
@@ -210,6 +212,6 @@ String showDate(StringView timestamp, bool withTime)
     return String(timestamp);
   String out = String(timestamp.substr(8, 2)) + ". " + String(timestamp.substr(5, 2)) + ". " + String(timestamp.substr(0, 4));
   if (withTime)
-    out << String(" ") + String(timestamp.substr(11, 5));
+    out << " " << String(timestamp.substr(11, 5));
   return out;
 }

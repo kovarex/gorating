@@ -23,33 +23,31 @@ void tournamentPage(Page& page)
     page.body << html::SafeHtml::escape("ID not specified.");
     return;
   }
-  mariadb::MariaDbResult found = page.query(
-      String("SELECT egd_tournament.*, country.name as country_name, game_type.name as game_type_name"
-             " FROM egd_tournament JOIN country ON egd_tournament.country_id = country.id"
-             " JOIN game_type ON egd_tournament.game_type_id = game_type.id WHERE egd_tournament.id=") + quote(id));
+  mariadb::MariaDbResult found = page.query("SELECT egd_tournament.*, country.name as country_name, game_type.name as game_type_name"
+                                            " FROM egd_tournament JOIN country ON egd_tournament.country_id = country.id"
+                                            " JOIN game_type ON egd_tournament.game_type_id = game_type.id WHERE egd_tournament.id=", quote(id));
   if (found.empty())
   {
-    page.body << html::SafeHtml::escape(String("Tournament with id=") + id + " not found.");
+    page.body << html::SafeHtml::escape(toString("Tournament with id=", id, " not found."));
     return;
   }
   Row tournament(found, 0);
   i32 rounds = (i32)stoll(tournament["round_count"]);
   i32 players = (i32)stoll(tournament["player_count"]);
 
-  mariadb::MariaDbResult games = page.query(
-      String("SELECT game.id as game_id, game.winner_user_id as winner_id, winner.name as winner_name,"
-             " winner.username as winner_username, game.winner_old_rating as winner_rating,"
-             " game.winner_old_egd_rating as winner_egd_rating, game.loser_user_id as loser_id,"
-             " loser.name as loser_name, loser.username as loser_username, game.loser_old_rating as loser_rating,"
-             " game.loser_old_egd_rating as loser_egd_rating, game.egd_tournament_round as round,"
-             " winner_result.placement as winner_placement, loser_result.placement as loser_placement,"
-             " game.jigo as jigo, length(game.sgf) > 0 as has_sgf"
-             " FROM game, user as loser, user as winner, egd_tournament_result as winner_result,"
-             " egd_tournament_result as loser_result"
-             " WHERE game.deleted = false and game.egd_tournament_id=") + quote(id) +
-      " and game.winner_user_id = winner.id and winner_result.user_id = winner.id and winner_result.egd_tournament_id =" +
-      quote(id) + " and game.loser_user_id = loser.id and loser_result.user_id = loser.id and loser_result.egd_tournament_id =" +
-      quote(id) + " ORDER BY LEAST(winner_result.placement, loser_result.placement), game.egd_tournament_round");
+  mariadb::MariaDbResult games = page.query("SELECT game.id as game_id, game.winner_user_id as winner_id, winner.name as winner_name,"
+                                            " winner.username as winner_username, game.winner_old_rating as winner_rating,"
+                                            " game.winner_old_egd_rating as winner_egd_rating, game.loser_user_id as loser_id,"
+                                            " loser.name as loser_name, loser.username as loser_username, game.loser_old_rating as loser_rating,"
+                                            " game.loser_old_egd_rating as loser_egd_rating, game.egd_tournament_round as round,"
+                                            " winner_result.placement as winner_placement, loser_result.placement as loser_placement,"
+                                            " game.jigo as jigo, length(game.sgf) > 0 as has_sgf"
+                                            " FROM game, user as loser, user as winner, egd_tournament_result as winner_result,"
+                                            " egd_tournament_result as loser_result"
+                                            " WHERE game.deleted = false and game.egd_tournament_id=", quote(id),
+      " and game.winner_user_id = winner.id and winner_result.user_id = winner.id and winner_result.egd_tournament_id =",
+      quote(id), " and game.loser_user_id = loser.id and loser_result.user_id = loser.id and loser_result.egd_tournament_id =",
+      quote(id), " ORDER BY LEAST(winner_result.placement, loser_result.placement), game.egd_tournament_round");
 
   // EGD's round count is below its games' rounds for about 2,000 tournaments (T261101A: "1 round",
   // games in round 2): the table has a column for every round a game was played in (PHP left the
@@ -72,7 +70,7 @@ void tournamentPage(Page& page)
     i32 loserPlacement = (i32)stoll(row["loser_placement"]);
     if (round < 1 || round > rounds || winnerPlacement < 1 || winnerPlacement > players || loserPlacement < 1 ||
         loserPlacement > players)
-      throw GoratingError(format("the game {} of tournament {} is outside its rounds or placements", row["game_id"], id));
+      throw GoratingError(toString("the game ", row["game_id"], " of tournament ", id, " is outside its rounds or placements"));
     bool jigo = row["jigo"] == "1";
     PlayerRef winner = playerRef(row, "winner");
     PlayerRef loser = playerRef(row, "loser");
@@ -106,7 +104,7 @@ void tournamentPage(Page& page)
       {
         if (canEditAnyGame(page))
         {
-          content << editGameLinkTemplate.render({{"id", cell.gameId}, {"redirect", String("/tournament?id=") + id}});
+          content << editGameLinkTemplate.render({{"id", cell.gameId}, {"redirect", toString("/tournament?id=", id)}});
           content << html::SafeHtml::trusted(" ");
         }
         content << resultImage(page, cell.result);

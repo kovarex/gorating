@@ -17,8 +17,8 @@ bool mayRunJobs(const Page& page)
 // The tournaments already stored or queued (getTournamentsToIgnore).
 bool tournamentKnown(Page& page, StringView key)
 {
-  return !page.query(String("SELECT egd_key FROM egd_tournament WHERE egd_key=") + quote(key) +
-                     " UNION SELECT egd_key FROM egd_tournament_to_process WHERE egd_key=" + quote(key)).empty();
+  return !page.query("SELECT egd_key FROM egd_tournament WHERE egd_key=", quote(key),
+                     " UNION SELECT egd_key FROM egd_tournament_to_process WHERE egd_key=", quote(key)).empty();
 }
 
 // Queues keys, the last one first (EGD lists the newest first), skipping the known ones; how many.
@@ -30,7 +30,7 @@ i32 queueTournaments(Page& page, const Vector<String>& keys)
     const String& key = keys[i - 1];
     if (!isTournamentKey(key) || tournamentKnown(page, key))
       continue;
-    page.query(String("INSERT INTO egd_tournament_to_process(egd_key) VALUES(") + quote(key) + ")");
+    page.query("INSERT INTO egd_tournament_to_process(egd_key) VALUES(", quote(key), ")");
     ++queued;
   }
   return queued;
@@ -50,7 +50,7 @@ String processTournamentBatch(Page& page)
       thisThread::sleepFor(Milliseconds(500));
   }
   String remaining = page.db->scalar("SELECT COUNT(*) FROM egd_tournament_to_process").value_or(String("0"));
-  out << format("Processed {} tournaments, {} remaining.\n", done, remaining);
+  out << "Processed " << done << " tournaments, " << remaining << " remaining.\n";
   return out;
 }
 
@@ -108,7 +108,7 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   if (name == "update_tournament_list")
   {
     i32 queued = queueTournaments(page, tournamentListKeys(fetchEgd(*page.config, String(egdAddress) + "EGD_2_0/downloads/tlist.html")));
-    response.body = format("Queued {} tournaments.\n", queued) + processTournamentBatch(page);
+    response.body = toString("Queued ", queued, " tournaments.\n") + processTournamentBatch(page);
     // The cron calls only this job: it also moves a rating update on, for up to ratingUpdateSeconds
     // (PHP's moved only when a game was deleted or edited, or update_rating called).
     response.body << processRating(page, ratingUpdateSeconds) + "\n";
@@ -116,7 +116,7 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   else if (name == "check_new_tournaments")
   {
     i32 queued = queueTournaments(page, latestTournamentKeys(page));
-    response.body = format("Added {} to be processed.\n", queued) + processTournamentBatch(page);
+    response.body = toString("Added ", queued, " to be processed.\n") + processTournamentBatch(page);
   }
   else if (name == "process_tournament")
   {
@@ -147,7 +147,7 @@ i32 jobCommand(const Vector<String>& arguments, String& output)
     output = usage;
     return 2;
   }
-  String target = String("/") + arguments[0];
+  String target = toString("/", arguments[0]);
   for (ContainerSize i = 1; i < arguments.size(); ++i)
     target << String(i == 1 ? "?" : "&") + arguments[i];
   http::HttpRequest request;
@@ -163,14 +163,14 @@ i32 jobCommand(const Vector<String>& arguments, String& output)
   catch (const Exception& e)
   {
     jobFromCommandLine = false;
-    output = format("{} failed: {}\n", arguments[0], StringView(e.what()));
+    output = toString(arguments[0], " failed: ", StringView(e.what()), "\n");
     return 1;
   }
   jobFromCommandLine = false;
   if (response.header("Content-Type") == nullptr || *response.header("Content-Type") != "text/plain; charset=utf-8" ||
       response.status == 404 || response.status == 501)
   {
-    output = String("no job ") + arguments[0] + "\n" + usage;
+    output = toString("no job ", arguments[0], "\n", StringView(usage));
     return 2;
   }
   output = response.body;

@@ -46,7 +46,7 @@ i32 runWithInput(StringView command, StringView text)
   else
     pipe = popen(line.c_str(), "w");
   if (pipe == nullptr)
-    throw GoratingError(format("cannot run {}", command));
+    throw GoratingError(toString("cannot run ", command));
   fwrite(text.data(), 1, text.size(), pipe);
   if constexpr (config::platform == Platform::Windows)
     return _pclose(pipe);

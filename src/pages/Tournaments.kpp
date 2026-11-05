@@ -23,7 +23,7 @@ html::SafeHtml tournamentTable(Page& page, Optional<i32> limit, StringView capti
   String from = "egd_tournament, country, game_type"
                 " WHERE egd_tournament.country_id=country.id and egd_tournament.game_type_id=game_type.id";
   if (!country.empty())
-    from << String(" and country.code=") + quote(country);
+    from << " and country.code=" << quote(country);
   Table table(page, from);
   table.limit = limit;
   if (!caption.empty())

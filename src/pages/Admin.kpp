@@ -14,8 +14,8 @@ String deletedGameHandicap(StringView handicap, StringView komi)
   if (h == 0 && (k == 6.5 || k == 7.5))
     return "Even";
   if (h != 0)
-    return String(handicap) + "h" + (k != 0.5 ? String(" komi ") + String(komi) : String());
-  return String("komi ") + String(komi);
+    return String(handicap) + "h" + (k != 0.5 ? toString(" komi ", komi) : String());
+  return toString("komi ", komi);
 }
 
 void deletedGamesPage(Page& page)
@@ -40,9 +40,9 @@ void deletedGamesPage(Page& page)
   {
     String s(side);
     table.addColumn(s + "_name", side == "winner" ? "Winner" : "Loser",
-                    {{s + ".name", s + "_name"}, {s + ".username", s + "_username"}, {String("game.") + s + "_user_id", s + "_id"},
-                     {s + ".egd_pin", s + "_egd_pin"}, {String("game.") + s + "_new_rating", s + "_rating"},
-                     {String("game.") + s + "_new_egd_rating", s + "_egd_rating"}},
+                    {{s + ".name", s + "_name"}, {s + ".username", s + "_username"}, {toString("game.", s, "_user_id"), s + "_id"},
+                     {s + ".egd_pin", s + "_egd_pin"}, {toString("game.", s, "_new_rating"), s + "_rating"},
+                     {toString("game.", s, "_new_egd_rating"), s + "_egd_rating"}},
                     [s](const Row& row) { return playerLink(row, s); });
   }
   table.addColumn("game_type_name", "Game type", {{"game_type.name", "game_type_name"}},
@@ -111,11 +111,11 @@ void changesPage(Page& page)
   for (StringView side : {"old", "new"})
   {
     String s(side);
-    table.addColumn(side == "old" ? "from" : "to", side == "old" ? "From" : "To", {{String("change.") + s + "_value", String("change_") + s + "_value"}},
+    table.addColumn(side == "old" ? "from" : "to", side == "old" ? "From" : "To", {{toString("change.", s, "_value"), toString("change_", s, "_value")}},
                     [s](const Row& row) {
-                      String value = row[String("change_") + s + "_value"];
-                      if (row["change_type_id"] == format("{}", changeGameSgfType) && !value.empty())
-                        return changeSgfLinkTemplate.render({{"from", String("change_") + s}, {"id", row["change_id"]},
+                      String value = row[toString("change_", s, "_value")];
+                      if (row["change_type_id"] == toString(changeGameSgfType) && !value.empty())
+                        return changeSgfLinkTemplate.render({{"from", toString("change_", s)}, {"id", row["change_id"]},
                                                              {"text", s == "old" ? "Old SGF" : "New SGF"}});
                       return html::SafeHtml::escape(value);
                     });
@@ -157,7 +157,7 @@ void ratingDiscrepanciesPage(Page& page)
     String c(column);
     table.addColumn(c, column == "stored_old" ? "Stored before" : column == "stored_new" ? "Stored after"
                        : column == "computed_old" ? "Now before" : "Now after",
-                    {{String("rating_discrepancy.") + c, c}}, [c](const Row& row) { return html::SafeHtml::escape(row[c]); },
+                    {{toString("rating_discrepancy.", c), c}}, [c](const Row& row) { return html::SafeHtml::escape(row[c]); },
                     Align::center);
   }
   table.addColumn("corrected", "Corrected", {{"rating_discrepancy.corrected", "corrected"}},
@@ -182,25 +182,25 @@ void editPlayerNameAction(Page& page, http::HttpResponse& response)
   String id = formValue(form, "id");
   String first = formValue(form, "first_name");
   String last = formValue(form, "last_name");
-  String back = String("/player?id=") + url::urlEncode(id);
-  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE user.id=") + quote(id));
+  String back = toString("/player?id=", url::urlEncode(id));
+  mariadb::MariaDbResult found = page.query("SELECT * FROM user WHERE user.id=", quote(id));
   if (found.empty())
-    return redirectWithMessage(response, "/", String("No player with id=") + id);
+    return redirectWithMessage(response, "/", toString("No player with id=", id));
   if (first.empty() || last.empty())
     return redirectWithMessage(response, back, "A first and a last name are needed");
   Row user(found, 0);
   if (user["first_name"] == first && user["last_name"] == last)
     return redirectWithMessage(response, back, "No change.");
   page.db->begin();
-  page.query(String("UPDATE user SET first_name=") + quote(first) + ", last_name=" + quote(last) + " WHERE user.id=" + quote(id));
+  page.query("UPDATE user SET first_name=", quote(first), ", last_name=", quote(last), " WHERE user.id=", quote(id));
   for (i32 type : {changeUserFirstName, changeUserLastName})
   {
     String oldValue = user[type == changeUserFirstName ? "first_name" : "last_name"];
     String newValue = type == changeUserFirstName ? first : last;
     if (oldValue != newValue)
-      page.query(format("INSERT INTO `change`(change_type_id, user_id, executed_by_user_id, old_value, new_value) VALUES({},{},{},{},{})",
-                        type, quote(user["id"]), quote(userValue(page, "id")), quote(oldValue), quote(newValue)));
+      page.query("INSERT INTO `change`(change_type_id, user_id, executed_by_user_id, old_value, new_value) VALUES(", type, ",",
+                 quote(user["id"]), ",", quote(userValue(page, "id")), ",", quote(oldValue), ",", quote(newValue), ")");
   }
   page.db->commit();
-  redirectWithMessage(response, back, String("Changed name from ") + user["first_name"] + " " + user["last_name"] + " to " + first + " " + last);
+  redirectWithMessage(response, back, toString("Changed name from ", user["first_name"], " ", user["last_name"], " to ", first, " ", last));
 }

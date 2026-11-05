@@ -45,9 +45,9 @@ void playersPage(Page& page)
     if (!text.empty())
       text << " or ";
     if (isEgdPin(part))
-      text << String("user.egd_pin=") + quote(part);
+      text << "user.egd_pin=" << quote(part);
     else
-      text << String("MATCH(user.name) AGAINST(") + quote(part + "*") + " IN BOOLEAN MODE)";
+      text << "MATCH(user.name) AGAINST(" << quote(part + "*") << " IN BOOLEAN MODE)";
   }
   String where;
   auto add = [&where](StringView condition) {
@@ -55,15 +55,15 @@ void playersPage(Page& page)
     where << condition;
   };
   if (!text.empty())
-    add(String("(") + text + ")");
+    add(toString("(", text, ")"));
   if (!country.empty())
-    add(String("country.code=") + quote(country));
+    add(toString("country.code=", quote(country)));
   if (registeredOnly)
     add("user.register_timestamp IS NOT NULL");
 
-  Table table(page, String("user LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id"
-                           " JOIN admin_level ON admin_level.id = user.admin_level_id"
-                           " JOIN country ON country.id = user.country_id") + where);
+  Table table(page, toString("user LEFT JOIN user as inviter ON inviter.id = user.invited_by_user_id"
+                             " JOIN admin_level ON admin_level.id = user.admin_level_id"
+                             " JOIN country ON country.id = user.country_id", where));
   Sort primary;
   primary.column = search.empty() ? "rating" : "name";
   primary.ascending = !search.empty();
@@ -97,7 +97,7 @@ void playersPage(Page& page)
     StringView caption = column == "overall_game_count" ? "Games"
                          : column == "overall_win_count" ? "Wins"
                          : column == "overall_loss_count" ? "Losses" : "Friendly Games";
-    table.addColumn(name, caption, {{String("user.") + name, name}},
+    table.addColumn(name, caption, {{toString("user.", name), name}},
                     [name](const Row& row) { return html::SafeHtml::escape(row[name]); }, Align::right, false);
   }
   page.body << table.render();

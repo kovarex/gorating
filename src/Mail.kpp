@@ -27,29 +27,29 @@ String mailHeaderText(StringView text)
       ascii = false;
   if (ascii)
     return String(text);
-  return String("=?UTF-8?B?") + base64::base64Encode(text) + "?=";
+  return toString("=?UTF-8?B?", base64::base64Encode(text), "?=");
 }
 
 void sendMail(const GoratingConfig& config, StringView to, StringView subject, const html::SafeHtml& body)
 {
   if (!isMailAddress(to))
-    throw GoratingError(format("not a mail address: {}", to));
-  String message = String("To: ") + String(to) + "\r\nFrom: " + String(mailFrom) + "\r\nReply-To: " + String(mailFrom) +
-                   "\r\nSubject: " + mailHeaderText(subject) +
-                   "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n" + body.str() + "\r\n";
+    throw GoratingError(toString("not a mail address: ", to));
+  String message = toString("To: ", to, "\r\nFrom: ", mailFrom, "\r\nReply-To: ", mailFrom,
+                   "\r\nSubject: ", mailHeaderText(subject),
+                   "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n", body.str(), "\r\n");
   if (!config.mailCommand.empty())
   {
     i32 status = runWithInput(config.mailCommand, message);
     if (status != 0)
-      throw GoratingError(format("{} exited with {}", config.mailCommand, status));
+      throw GoratingError(toString(config.mailCommand, " exited with ", status));
     return;
   }
   if (!config.mailDirectory.empty())
   {
-    String name = config.mailDirectory + "/" + format("{}-{}.eml", unixNow(), secureRandomSecret());
+    String name = config.mailDirectory + "/" + toString(unixNow(), "-", secureRandomSecret(), ".eml");
     FILE* file = fopen(name.c_str(), "wb");
     if (!file)
-      throw GoratingError(format("cannot write {}", name));
+      throw GoratingError(toString("cannot write ", name));
     fwrite(message.data(), 1, message.size(), file);
     fclose(file);
     return;

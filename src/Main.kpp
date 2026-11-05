@@ -76,7 +76,7 @@ bool serveStatic(const http::HttpRequest& request, http::HttpResponse& response)
     return false;
   StringView path = request.path;
   String file;
-  if (path == String("/") + config::siteCss || path == String("/") + config::siteJs)
+  if (path == toString("/", StringView(config::siteCss)) || path == toString("/", StringView(config::siteJs)))
     file = goratingConfig.staticDirectory + "/build/assets" + String(path);
   else if (path.starts_with("/img/") && path.ends_with(".png") && path.find("..") == StringView::npos &&
            path.find('/', 5) == StringView::npos)
@@ -96,7 +96,7 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(goratingConfig.database);
   const String* forwarded = request.header("x-forwarded-for");
   String source = forwarded != nullptr ? *forwarded : request.remoteAddress;
-  db.query(String("INSERT INTO visit (`url`, `source`) VALUES (") + quote(request.target) + "," + quote(source) + ")");
+  db.query("INSERT INTO visit (`url`, `source`) VALUES (", quote(request.target), ",", quote(source), ")");
 
   Page page;
   page.config = &goratingConfig;
@@ -176,14 +176,14 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
   {
     response.status = 404;
     response.setHeader("Content-Type", "text/plain; charset=utf-8");
-    response.body = format("Unknown page:{}", name);
+    response.body = toString("Unknown page:", name);
     return;
   }
   if (!routed)
   {
     response.status = 501;
     response.setHeader("Content-Type", "text/plain; charset=utf-8");
-    response.body = format("The page {} is not in the kpp version yet.\n", request.path);
+    response.body = toString("The page ", request.path, " is not in the kpp version yet.\n");
     return;
   }
   double seconds = (double)durationCast<Microseconds>(SteadyClock::now() - start).count() / 1e6;

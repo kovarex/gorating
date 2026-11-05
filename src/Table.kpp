@@ -136,14 +136,14 @@ struct Table
           if (!second.empty())
             second << ",\n";
           second << (column.hasSecondary ? column.secondarySql[i].sql + " as " + column.secondarySql[i].as
-                                            : String("NULL as ") + column.sql[i].as);
+                                            : toString("NULL as ", column.sql[i].as));
         }
       sql << (" UNION ALL SELECT " + second + " FROM " + *this->secondaryFrom);
     }
     sql << (this->orderBy());
-    sql << format(" LIMIT {}", this->limit.has_value() ? *this->limit : tablePageSize);
+    sql << toString(" LIMIT ", this->limit.has_value() ? *this->limit : tablePageSize);
     if (this->start() > 1)
-      sql << format(" OFFSET {}", this->start() - 1);
+      sql << toString(" OFFSET ", this->start() - 1);
     return sql;
   }
 
@@ -242,9 +242,9 @@ struct Table
     if (!this->limit.has_value())
     {
       // The second query's rows count too (PHP counted the first's only).
-      i64 total = stoll(*this->page->db->scalar(String("SELECT COUNT(*) FROM ") + this->from));
+      i64 total = stoll(*this->page->db->scalar("SELECT COUNT(*) FROM ", this->from));
       if (this->secondaryFrom.has_value())
-        total += stoll(*this->page->db->scalar(String("SELECT COUNT(*) FROM ") + *this->secondaryFrom));
+        total += stoll(*this->page->db->scalar("SELECT COUNT(*) FROM ", *this->secondaryFrom));
       i64 first = this->start();
       i64 shown = (i64)data.size();
       if (shown < total)
@@ -253,16 +253,16 @@ struct Table
         if (first > 1)
         {
           i64 previous = first - tablePageSize < 1 ? 1 : first - tablePageSize;
-          captionContent << link(this->address("start", format("{}", previous)), "Previous");
+          captionContent << link(this->address("start", toString(previous)), "Previous");
           captionContent << html::SafeHtml::trusted(" ");
         }
         // PHP showed first + shown, one past the last row.
         i64 last = first + shown - 1 < total ? first + shown - 1 : total;
-        captionContent << html::SafeHtml::escape(format("{}-{} of {}", first, last, total));
+        captionContent << html::SafeHtml::escape(toString(first, "-", last, " of ", total));
         if (first + shown <= total && shown == tablePageSize)
         {
           captionContent << html::SafeHtml::trusted(" ");
-          captionContent << link(this->address("start", format("{}", first + tablePageSize)), "Next");
+          captionContent << link(this->address("start", toString(first + tablePageSize)), "Next");
         }
       }
     }

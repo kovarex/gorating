@@ -23,9 +23,9 @@ void setGameDeleted(Page& page, http::HttpResponse& response, bool deleted)
     return redirectWithMessage(response, redirect, "Game id not specified");
   for (char c : id)
     if (c < '0' || c > '9')
-      return redirectWithMessage(response, redirect, String("Game id is not numeric:") + id);
-  page.query(String("UPDATE game SET deleted=") + (deleted ? "true" : "false") + " WHERE id=" + quote(id));
-  String message = String("Game with id=") + id + (deleted ? " deleted.\n" : " restored.\n") + processRating(page, ratingUpdateSeconds);
+      return redirectWithMessage(response, redirect, toString("Game id is not numeric:", id));
+  page.query("UPDATE game SET deleted=", deleted, " WHERE id=", quote(id));
+  String message = toString("Game with id=", id, (deleted ? StringView(" deleted.\n") : StringView(" restored.\n")), processRating(page, ratingUpdateSeconds));
   redirectWithMessage(response, redirect, message);
 }
 

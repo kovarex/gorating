@@ -82,10 +82,10 @@ void reportPage(Page& page)
     return;
   }
   String id = page.get("id");
-  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
+  mariadb::MariaDbResult found = page.query("SELECT * FROM user WHERE id=", quote(id));
   if (found.empty())
   {
-    page.body << html::SafeHtml::escape(String("User with id=") + id + " doesn't exist");
+    page.body << html::SafeHtml::escape(toString("User with id=", id, " doesn't exist"));
     return;
   }
   Row opponent(found, 0);
@@ -93,7 +93,7 @@ void reportPage(Page& page)
                                           {"opponentRating", opponent["rating"]},
                                           {"role", canReportWin(page) ? "Opponent" : "Winner"},
                                           {"opponent", playerLink(opponent, "")},
-                                          {"opponentRounded", format("{}", fixed(ratingValue(opponent["rating"]), 0))},
+                                          {"opponentRounded", toString(fixed(ratingValue(opponent["rating"]), 0))},
                                           {"win", canReportWin(page) ? winRadioTemplate.render({}) : html::SafeHtml()},
                                           {"opponentId", opponent["id"]}});
 }
@@ -170,17 +170,17 @@ void reportAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/", "A game is reported with the report form.");
   ReportForm form = readGameForm(*page.request);
   String opponentId = formValue(form.fields, "winner_user_id");
-  String back = String("/report?id=") + url::urlEncode(opponentId);
-  mariadb::MariaDbResult opponents = page.query(String("SELECT * FROM user WHERE id=") + quote(opponentId));
+  String back = toString("/report?id=", url::urlEncode(opponentId));
+  mariadb::MariaDbResult opponents = page.query("SELECT * FROM user WHERE id=", quote(opponentId));
   if (opponents.empty())
-    return redirectWithMessage(response, "/", String("User with id=") + opponentId + " doesn't exist");
+    return redirectWithMessage(response, "/", toString("User with id=", opponentId, " doesn't exist"));
   Row opponent(opponents, 0);
   String userId = userValue(page, "id");
   if (opponent["id"] == userId)
     return redirectWithMessage(response, back, "A game is reported against someone else");
   String gameType = formValue(form.fields, "game_type");
   if (gameType != "5" && gameType != "6" && gameType != "7")
-    return redirectWithMessage(response, back, String("Invalid game type:") + gameType);
+    return redirectWithMessage(response, back, toString("Invalid game type:", gameType));
   String handicapText = formValue(form.fields, "handicap");
   Optional<double> handicap = number(handicapText);
   if (!handicap.has_value() || *handicap != floor(*handicap))
@@ -195,7 +195,7 @@ void reportAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, back, "Komi value must be numeric");
   String color = formValue(form.fields, "color");
   if (color != "black" && color != "white")
-    return redirectWithMessage(response, back, String("Invalid color value:") + color);
+    return redirectWithMessage(response, back, toString("Invalid color value:", color));
   bool opponentIsBlack = color == "white";
   bool reportingWin = formValue(form.fields, "result") == "win";
   if (reportingWin && !canReportWin(page))
@@ -216,20 +216,20 @@ void reportAction(Page& page, http::HttpResponse& response)
   String location = formValue(form.fields, "location");
 
   page.db->begin();
-  page.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, location, winner_comment, loser_comment,"
-                    " winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating, sgf, winner_is_black, handicap, komi)"
-                    " VALUES(") +
-             (reportingWin ? userId : opponent["id"]) + "," + (reportingWin ? opponent["id"] : userId) + "," + gameType + "," +
-             quoteOrNull(location) + "," + quoteOrNull(reportingWin ? comment : String()) + "," +
-             quoteOrNull(reportingWin ? String() : comment) + "," +
-             quote(reportingWin ? myOldText : opponentOldText) + "," +
-             quote(phpNumber(reportingWin ? myNewRating : opponentNewRating)) + "," +
-             quote(reportingWin ? opponentOldText : myOldText) + "," +
-             quote(phpNumber(reportingWin ? opponentNewRating : myNewRating)) + "," +
-             (form.sgf.has_value() && !form.sgf->empty() ? quote(*form.sgf) : String("NULL")) + "," +
-             (opponentIsBlack != reportingWin ? "true" : "false") + "," + quote(handicapText) + "," + quote(komiText) + ")");
-  page.query(String("UPDATE user set rating=") + phpNumber(myNewRating) + " WHERE id=" + quote(userId));
-  page.query(String("UPDATE user set rating=") + phpNumber(opponentNewRating) + " WHERE id=" + quote(opponent["id"]));
+  page.query("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, location, winner_comment, loser_comment,"
+             " winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating, sgf, winner_is_black, handicap, komi)"
+             " VALUES(",
+             (reportingWin ? userId : opponent["id"]), ",", (reportingWin ? opponent["id"] : userId), ",", gameType, ",",
+             quoteOrNull(location), ",", quoteOrNull(reportingWin ? comment : String()), ",",
+             quoteOrNull(reportingWin ? String() : comment), ",",
+             quote(reportingWin ? myOldText : opponentOldText), ",",
+             quote(phpNumber(reportingWin ? myNewRating : opponentNewRating)), ",",
+             quote(reportingWin ? opponentOldText : myOldText), ",",
+             quote(phpNumber(reportingWin ? opponentNewRating : myNewRating)), ",",
+             (form.sgf.has_value() && !form.sgf->empty() ? quote(*form.sgf) : String("NULL")), ",",
+             opponentIsBlack != reportingWin, ",", quote(handicapText), ",", quote(komiText), ")");
+  page.query("UPDATE user set rating=", phpNumber(myNewRating), " WHERE id=", quote(userId));
+  page.query("UPDATE user set rating=", phpNumber(opponentNewRating), " WHERE id=", quote(opponent["id"]));
   page.db->commit();
-  redirectWithMessage(response, String("/player?id=") + userId, "Game added");
+  redirectWithMessage(response, toString("/player?id=", userId), "Game added");
 }

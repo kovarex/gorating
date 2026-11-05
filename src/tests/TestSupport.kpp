@@ -30,7 +30,7 @@ struct TestPage
     this->page.config = &this->config;
     this->page.request = &this->request;
     if (level != 0)
-      this->page.user = Optional<mariadb::MariaDbResult>(testRow({"id", "username", "admin_level_id"}, {some("7"), some("tester"), some(format("{}", level))}));
+      this->page.user = Optional<mariadb::MariaDbResult>(testRow({"id", "username", "admin_level_id"}, {some("7"), some("tester"), some(toString(level))}));
   }
 };
 

@@ -16,9 +16,9 @@ http::HttpResponse siteRequest(const GoratingConfig& config, StringView who, Str
   if (who != "visitor")
   {
     mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
-    mariadb::MariaDbResult user = db.query(String("SELECT id, password FROM user WHERE username=") + quote(who));
+    mariadb::MariaDbResult user = db.query("SELECT id, password FROM user WHERE username=", quote(who));
     if (user.empty())
-      throw GoratingError(format("the test data has no user {}", who));
+      throw GoratingError(toString("the test data has no user ", who));
     String cookie = sessionCookieValue(config, user.text(0, "id"), unixNow() + 3600, user.text(0, "password"));
     request.headers.push_back(http::HttpHeader{String("cookie"), String(sessionCookie) + "=" + cookie});
   }
@@ -52,14 +52,14 @@ String expectedPagePath(StringView who, StringView path)
   String name;
   for (char c : path.substr(1))
     name.push_back((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ? c : '_');
-  return format("testdata/pages/{}/{}.html", who, name.empty() ? StringView("home") : StringView(name));
+  return toString("testdata/pages/", who, "/", name.empty() ? StringView("home") : StringView(name), ".html");
 }
 
 void writeTestFile(StringView path, StringView text)
 {
   FILE* file = fopen(String(path).c_str(), "wb");
   if (!file)
-    throw GoratingError(format("cannot write {} (does its directory exist?)", path));
+    throw GoratingError(toString("cannot write ", path, " (does its directory exist?)"));
   fwrite(text.data(), 1, text.size(), file);
   fclose(file);
 }
@@ -90,7 +90,7 @@ test "the pages, as visitor, user, admin and owner"
     StringView who = line.substr(0, space);
     StringView path = line.substr(space + 1);
     http::HttpResponse response = siteRequest(config, who, "GET", path);
-    String got = format("{}\n{}", response.status, stablePage(response.body));
+    String got = toString(response.status, "\n", stablePage(response.body));
     String file = expectedPagePath(who, path);
     ++pages;
     if (update)
@@ -107,7 +107,7 @@ test "the pages, as visitor, user, admin and owner"
         ++i;
       ContainerSize lineStart = got.rfind('\n', i);
       lineStart = lineStart == String::npos ? 0 : lineStart + 1;
-      println(format("{} {}: differs from {} at byte {}: {}", who, path, file, (i64)i, StringView(got).substr(lineStart, 160)));
+      println(toString(who, " ", path, ": differs from ", file, " at byte ", (i64)i, ": ", StringView(got).substr(lineStart, 160)));
     }
     check(got == expected);
   }

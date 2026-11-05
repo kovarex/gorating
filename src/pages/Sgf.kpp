@@ -12,7 +12,7 @@ String attachmentHeader(StringView name)
     u8 u = (u8)c;
     ascii << (u < 0x20 || u >= 0x7f || c == '"' || c == '\\' ? '_' : c);
   }
-  return String("attachment; filename=\"") + ascii + ".sgf\"; filename*=UTF-8''" + url::urlEncode(String(name) + ".sgf");
+  return toString("attachment; filename=\"", ascii, ".sgf\"; filename*=UTF-8''", url::urlEncode(String(name) + ".sgf"));
 }
 
 void sgfDownload(Page& page, http::HttpResponse& response)
@@ -34,11 +34,11 @@ void sgfDownload(Page& page, http::HttpResponse& response)
       return;
     }
     String column = from == "change_old" ? "old_value" : "new_value";
-    mariadb::MariaDbResult change = page.query(String("SELECT ") + column + " as sgf FROM `change` WHERE id=" + quote(id));
+    mariadb::MariaDbResult change = page.query("SELECT ", column, " as sgf FROM `change` WHERE id=", quote(id));
     if (change.empty())
     {
       response.status = 404;
-      response.body = String("Change with id=") + id + " not found.";
+      response.body = toString("Change with id=", id, " not found.");
       return;
     }
     response.setHeader("Content-Description", "File Transfer");
@@ -47,13 +47,13 @@ void sgfDownload(Page& page, http::HttpResponse& response)
     response.body = Row(change, 0)["sgf"];
     return;
   }
-  mariadb::MariaDbResult found = page.query(String("SELECT sgf, winner.name as winner_name, loser.name as loser_name FROM game"
-                                                   " JOIN user as winner ON game.winner_user_id=winner.id"
-                                                   " JOIN user as loser ON game.loser_user_id=loser.id WHERE game.id=") + quote(id));
+  mariadb::MariaDbResult found = page.query("SELECT sgf, winner.name as winner_name, loser.name as loser_name FROM game"
+                                            " JOIN user as winner ON game.winner_user_id=winner.id"
+                                            " JOIN user as loser ON game.loser_user_id=loser.id WHERE game.id=", quote(id));
   if (found.empty())
   {
     response.status = 404;
-    response.body = String("Game with id=") + id + " not found.";
+    response.body = toString("Game with id=", id, " not found.");
     return;
   }
   Row game(found, 0);

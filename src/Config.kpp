@@ -30,7 +30,7 @@ String goratingReadFile(const String& path)
 {
   FILE* file = fopen(path.c_str(), "rb");
   if (!file)
-    throw GoratingError(format("cannot read {}", path));
+    throw GoratingError(toString("cannot read ", path));
   String text;
   char buffer[65536];
   for (;;)
@@ -61,7 +61,7 @@ GoratingConfig goratingReadConfig()
     config.staticDirectory = directory->asString();
   config.sessionSecret = root["sessionSecret"].asString();
   if (config.sessionSecret.size() < 32)
-    throw GoratingError(format("{}: sessionSecret has {} characters; it needs 32 or more", path, (i64)config.sessionSecret.size()));
+    throw GoratingError(toString(path, ": sessionSecret has ", (i64)config.sessionSecret.size(), " characters; it needs 32 or more"));
   if (const json::JsonValue* secure = root.find("secureCookies"))
     config.secureCookies = secure->asBool();
   for (auto [name, field] : {Pair<const char*, String*>{"siteAddress", &config.siteAddress},

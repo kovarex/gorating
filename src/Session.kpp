@@ -21,12 +21,12 @@ i64 unixNow() { return durationCast<Seconds>(SystemClock::now().time_since_epoch
 
 String sessionSignature(const GoratingConfig& config, StringView id, i64 expires, StringView passwordHash)
 {
-  return sha256::hmacSha256(config.sessionSecret, format("{}.{}.{}", id, expires, passwordHash)).hex();
+  return sha256::hmacSha256(config.sessionSecret, toString(id, ".", expires, ".", passwordHash)).hex();
 }
 
 String sessionCookieValue(const GoratingConfig& config, StringView id, i64 expires, StringView passwordHash)
 {
-  return format("{}.{}.{}", id, expires, sessionSignature(config, id, expires, passwordHash));
+  return toString(id, ".", expires, ".", sessionSignature(config, id, expires, passwordHash));
 }
 
 // A session cookie's parts; nothing when it is malformed (the id and the expiry are digits, at most 10
@@ -76,7 +76,7 @@ void readSession(Page& page)
   Optional<SessionCookie> cookie = parseSessionCookie(*value);
   if (!cookie.has_value() || cookie->expires < unixNow())
     return;
-  mariadb::MariaDbResult user = page.query(String("SELECT * FROM user WHERE id=") + quote(cookie->id));
+  mariadb::MariaDbResult user = page.query("SELECT * FROM user WHERE id=", quote(cookie->id));
   if (user.empty() || !user.at(0, "password").has_value() || !sessionValid(*page.config, *cookie, *user.at(0, "password"), unixNow()))
     return;
   page.user = Optional<mariadb::MariaDbResult>(move(user));
@@ -167,7 +167,7 @@ String formValue(const Vector<url::UrlQueryParameter>& form, StringView name)
     if (p.name == name)
     {
       if (!isUtf8(p.value))
-        throw http::HttpError(format("the field {} is not UTF-8 text", name), 400);
+        throw http::HttpError(toString("the field ", name, " is not UTF-8 text"), 400);
       return p.value;
     }
   return String();
@@ -178,7 +178,7 @@ void redirectWithMessage(http::HttpResponse& response, StringView target, String
 {
   String location(target);
   location << (location.find('?') == String::npos ? StringView("?") : StringView("&"));
-  location << String("message=") + url::urlEncode(message);
+  location << "message=" << url::urlEncode(message);
   response.redirect(location);
 }
 
@@ -196,7 +196,7 @@ void loginAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/login", "username not provided");
   if (password.empty())
     return redirectWithMessage(response, "/login", "password not provided");
-  mariadb::MariaDbResult user = page.query(String("SELECT id, username, password FROM user WHERE username=") + quote(username));
+  mariadb::MariaDbResult user = page.query("SELECT id, username, password FROM user WHERE username=", quote(username));
   // One message for both, so the form does not tell which usernames exist (PHP said "not found").
   if (user.empty() || !user.at(0, "password").has_value() || !bcrypt::bcryptVerify(password, *user.at(0, "password")))
     return redirectWithMessage(response, "/login", "Wrong username or password!");

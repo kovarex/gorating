@@ -10,15 +10,14 @@ constexpr html::HtmlTemplate pageMessageTemplate{R"(<div class="message-div"><h3
 void gamePage(Page& page)
 {
   String id = page.get("id");
-  mariadb::MariaDbResult result = page.query(
-      String("SELECT winner.id as winner_id, winner.name as winner_name, winner.username as winner_username,"
-             " winner.rating as winner_rating, loser.id as loser_id, loser.name as loser_name,"
-             " loser.username as loser_username, loser.rating as loser_rating, game.id as game_id,"
-             " game.location as game_location, game.winner_comment as game_winner_comment,"
-             " game.loser_comment as game_loser_comment, game.handicap as game_handicap, game.komi as game_komi,"
-             " game.timestamp as game_timestamp, length(game.sgf) > 0 as has_sgf"
-             " FROM game JOIN user AS winner ON game.winner_user_id=winner.id JOIN user AS loser ON game.loser_user_id=loser.id"
-             " WHERE game.id=") + quote(id));
+  mariadb::MariaDbResult result = page.query("SELECT winner.id as winner_id, winner.name as winner_name, winner.username as winner_username,"
+                                             " winner.rating as winner_rating, loser.id as loser_id, loser.name as loser_name,"
+                                             " loser.username as loser_username, loser.rating as loser_rating, game.id as game_id,"
+                                             " game.location as game_location, game.winner_comment as game_winner_comment,"
+                                             " game.loser_comment as game_loser_comment, game.handicap as game_handicap, game.komi as game_komi,"
+                                             " game.timestamp as game_timestamp, length(game.sgf) > 0 as has_sgf"
+                                             " FROM game JOIN user AS winner ON game.winner_user_id=winner.id JOIN user AS loser ON game.loser_user_id=loser.id"
+                                             " WHERE game.id=", quote(id));
   if (result.empty())
   {
     page.body << pageMessageTemplate.render({{"message", "Game not found"}});
@@ -27,7 +26,7 @@ void gamePage(Page& page)
   Row game(result, 0);
   page.body << gameTemplate.render(
       {{"id", game["game_id"]},
-       {"redirect", String("/game?id=") + game["game_id"]},
+       {"redirect", toString("/game?id=", game["game_id"])},
        {"winner", playerLink(game, "winner")},
        {"loser", playerLink(game, "loser")},
        {"location", game["game_location"]},

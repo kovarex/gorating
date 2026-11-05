@@ -59,25 +59,24 @@ bool mayEditGame(Page& page, StringView winnerId, StringView loserId, StringView
   String userId = userValue(page, "id");
   if (!loggedIn(page) || (userId != winnerId && userId != loserId))
     return false;
-  Optional<String> age = page.db->scalar(String("SELECT TIMESTAMPDIFF(SECOND, timestamp, NOW()) FROM game WHERE id=") + quote(gameId));
+  Optional<String> age = page.db->scalar("SELECT TIMESTAMPDIFF(SECOND, timestamp, NOW()) FROM game WHERE id=", quote(gameId));
   return age.has_value() && stoll(*age) < 24 * 3600;
 }
 
 void editGamePage(Page& page)
 {
   String id = page.get("id");
-  mariadb::MariaDbResult found = page.query(
-      String("SELECT winner.id as winner_id, winner.name as winner_name, winner.username as winner_username,"
-             " game.winner_old_rating as winner_rating, game.winner_old_egd_rating as winner_egd_rating,"
-             " loser.id as loser_id, loser.name as loser_name, loser.username as loser_username,"
-             " game.loser_old_rating as loser_rating, game.loser_old_egd_rating as loser_egd_rating,"
-             " game.winner_is_black as winner_is_black, game.handicap as handicap, game.komi as komi,"
-             " game.location as location, game.timestamp as timestamp, length(game.sgf) > 0 has_sgf"
-             " FROM game JOIN user as winner ON game.winner_user_id = winner.id JOIN user as loser ON game.loser_user_id = loser.id"
-             " WHERE game.id=") + quote(id));
+  mariadb::MariaDbResult found = page.query("SELECT winner.id as winner_id, winner.name as winner_name, winner.username as winner_username,"
+                                            " game.winner_old_rating as winner_rating, game.winner_old_egd_rating as winner_egd_rating,"
+                                            " loser.id as loser_id, loser.name as loser_name, loser.username as loser_username,"
+                                            " game.loser_old_rating as loser_rating, game.loser_old_egd_rating as loser_egd_rating,"
+                                            " game.winner_is_black as winner_is_black, game.handicap as handicap, game.komi as komi,"
+                                            " game.location as location, game.timestamp as timestamp, length(game.sgf) > 0 has_sgf"
+                                            " FROM game JOIN user as winner ON game.winner_user_id = winner.id JOIN user as loser ON game.loser_user_id = loser.id"
+                                            " WHERE game.id=", quote(id));
   if (found.empty())
   {
-    page.body << html::SafeHtml::escape(String("Unknown game with id=") + id);
+    page.body << html::SafeHtml::escape(toString("Unknown game with id=", id));
     return;
   }
   Row row(found, 0);
@@ -102,7 +101,7 @@ void editGamePage(Page& page)
        {"sgfState", hasSgf ? "" : "not "},
        {"deleteSgf", hasSgf ? deleteSgfTemplate.render({}) : html::SafeHtml()},
        {"id", id},
-       {"redirect", localRedirect(page.get("redirect"), String("/game?id=") + id)}});
+       {"redirect", localRedirect(page.get("redirect"), toString("/game?id=", id))}});
 }
 
 // "YYYY-MM-DD HH:MM:SS", the form MariaDB writes a timestamp in.
@@ -136,9 +135,9 @@ String gameRatingChange(const Row& game, StringView userId)
 // ratings did not change; that the update has not reached it yet when it has not.
 String editedGameRatings(Page& page, const Row& before, StringView id)
 {
-  mariadb::MariaDbResult found = page.query(String("SELECT game.*, winner.name AS winner_name, loser.name AS loser_name FROM game"
-                                                   " JOIN user AS winner ON winner.id = game.winner_user_id"
-                                                   " JOIN user AS loser ON loser.id = game.loser_user_id WHERE game.id=") +
+  mariadb::MariaDbResult found = page.query("SELECT game.*, winner.name AS winner_name, loser.name AS loser_name FROM game"
+                                            " JOIN user AS winner ON winner.id = game.winner_user_id"
+                                            " JOIN user AS loser ON loser.id = game.loser_user_id WHERE game.id=",
                                             quote(id));
   if (found.empty())
     return String();
@@ -157,7 +156,7 @@ String editedGameRatings(Page& page, const Row& before, StringView id)
       continue;
     changed = changed || now != then;
     out << String(out.empty() ? "This game: " : "; ") + after[String(side) + "_name"] + " " + now +
-               (then.empty() ? String() : String(" (before the edit ") + then + ")");
+               (then.empty() ? String() : toString(" (before the edit ", then, ")"));
   }
   return changed ? out + "." : String();
 }
@@ -165,18 +164,18 @@ String editedGameRatings(Page& page, const Row& before, StringView id)
 void addChange(Page& page, i32 type, StringView gameId, const Optional<String>& oldValue, const Optional<String>& newValue)
 {
   String columns = "change_type_id, game_id, executed_by_user_id";
-  String values = format("{},{},{}", type, quote(gameId), quote(userValue(page, "id")));
+  String values = toString(type, ",", quote(gameId), ",", quote(userValue(page, "id")));
   if (oldValue.has_value())
   {
     columns << ",old_value";
-    values << String(",") + quoteOrNull(*oldValue);
+    values << "," << quoteOrNull(*oldValue);
   }
   if (newValue.has_value())
   {
     columns << ",new_value";
-    values << String(",") + quoteOrNull(*newValue);
+    values << "," << quoteOrNull(*newValue);
   }
-  page.query(String("INSERT INTO `change`(") + columns + ") VALUES(" + values + ")");
+  page.query("INSERT INTO `change`(", columns, ") VALUES(", values, ")");
 }
 
 constexpr i32 changeGameWinner = 9;
@@ -193,8 +192,8 @@ void editGameAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/", "A game is edited with the edit form.");
   ReportForm form = readGameForm(*page.request);
   String id = formValue(form.fields, "id");
-  String redirect = localRedirect(formValue(form.fields, "redirect"), String("/game?id=") + url::urlEncode(id));
-  mariadb::MariaDbResult found = page.query(String("SELECT * FROM game WHERE id=") + quote(id));
+  String redirect = localRedirect(formValue(form.fields, "redirect"), toString("/game?id=", url::urlEncode(id)));
+  mariadb::MariaDbResult found = page.query("SELECT * FROM game WHERE id=", quote(id));
   if (found.empty())
     return redirectWithMessage(response, "/", "Game to update doesn't exist.");
   Row game(found, 0);
@@ -231,24 +230,24 @@ void editGameAction(Page& page, http::HttpResponse& response)
   bool deleteSgf = !formValue(form.fields, "delete-sgf").empty();
 
   page.db->begin();
-  String set = String("winner_user_id=") + quote(winnerId) + ",loser_user_id=" + quote(loserId) +
-               ",winner_is_black=" + (winnerIsBlack ? "true" : "false") + ",handicap=" + quote(handicap) + ",komi=" + quote(komi) +
-               ",location=" + quoteOrNull(location) + ",timestamp=" + quote(timestamp);
+  String set = toString("winner_user_id=", quote(winnerId), ",loser_user_id=", quote(loserId),
+               ",winner_is_black=", winnerIsBlack, ",handicap=", quote(handicap), ",komi=", quote(komi),
+               ",location=", quoteOrNull(location), ",timestamp=", quote(timestamp));
   if (switched)
   {
     // The two players' rating columns change places (as PHP did: the new ones become the old ones
     // until the rating update recomputes them).
     auto value = [&game](StringView column) { return game.isNull(column) ? String("NULL") : quoteOrNull(game[column]); };
-    set << String(", winner_old_egd_rating=") + value("loser_old_egd_rating") + ", winner_old_rating=" + value("loser_old_rating") +
-               ", winner_new_egd_rating=" + value("loser_old_egd_rating") + ", winner_new_rating=" + value("loser_old_rating") +
-               ", loser_old_egd_rating=" + value("winner_old_egd_rating") + ", loser_old_rating=" + value("winner_old_rating") +
-               ", loser_new_egd_rating=" + value("winner_new_egd_rating") + ", loser_new_rating=" + value("winner_new_rating");
+    set << ", winner_old_egd_rating=" << value("loser_old_egd_rating") << ", winner_old_rating=" << value("loser_old_rating") <<
+               ", winner_new_egd_rating=" << value("loser_old_egd_rating") << ", winner_new_rating=" << value("loser_old_rating") <<
+               ", loser_old_egd_rating=" << value("winner_old_egd_rating") << ", loser_old_rating=" << value("winner_old_rating") <<
+               ", loser_new_egd_rating=" << value("winner_new_egd_rating") << ", loser_new_rating=" << value("winner_new_rating");
   }
   if (form.sgf.has_value())
-    set << String(", sgf=") + quoteOrNull(*form.sgf);
+    set << ", sgf=" << quoteOrNull(*form.sgf);
   else if (deleteSgf)
     set << ",sgf=null";
-  page.query(String("UPDATE game SET ") + set + " WHERE game.id=" + quote(id));
+  page.query("UPDATE game SET ", set, " WHERE game.id=", quote(id));
 
   Vector<String> changes;
   if (game["winner_user_id"] != winnerId)
@@ -264,22 +263,22 @@ void editGameAction(Page& page, http::HttpResponse& response)
   // Compared as numbers, as PHP compared numeric strings ("2" is "2.0").
   if (ratingValue(game["handicap"]) != *handicapValue)
   {
-    changes.push_back(String("Handicap was changed from ") + game["handicap"] + " to " + handicap);
+    changes.push_back(toString("Handicap was changed from ", game["handicap"], " to ", handicap));
     addChange(page, changeGameHandicap, id, Optional<String>(game["handicap"]), Optional<String>(handicap));
   }
   if (ratingValue(game["komi"]) != *number(komi))
   {
-    changes.push_back(String("Komi was changed from ") + game["komi"] + " to " + komi);
+    changes.push_back(toString("Komi was changed from ", game["komi"], " to ", komi));
     addChange(page, changeGameKomi, id, Optional<String>(game["komi"]), Optional<String>(komi));
   }
   if (game["location"] != location)
   {
-    changes.push_back(String("Location was changed from ") + game["location"] + " to " + location);
+    changes.push_back(toString("Location was changed from ", game["location"], " to ", location));
     addChange(page, changeGameLocation, id, Optional<String>(game["location"]), Optional<String>(location));
   }
   if (game["timestamp"] != timestamp)
   {
-    changes.push_back(String("Timestamp was changed from ") + game["timestamp"] + " to " + timestamp);
+    changes.push_back(toString("Timestamp was changed from ", game["timestamp"], " to ", timestamp));
     addChange(page, changeGameTimestamp, id, Optional<String>(game["timestamp"]), Optional<String>(timestamp));
   }
   bool hadSgf = !game["sgf"].empty();
@@ -295,12 +294,12 @@ void editGameAction(Page& page, http::HttpResponse& response)
   }
   page.db->commit();
   // A line each, as PHP's message had (its <br/>).
-  String message = String("Game id=") + id + ":";
+  String message = toString("Game id=", id, ":");
   for (const String& change : changes)
-    message << String("\n") + change;
-  message << String("\n") + processRating(page, ratingUpdateSeconds);
+    message << "\n" << change;
+  message << "\n" << processRating(page, ratingUpdateSeconds);
   String ratings = editedGameRatings(page, game, id);
   if (!ratings.empty())
-    message << String("\n") + ratings;
+    message << "\n" << ratings;
   redirectWithMessage(response, redirect, message);
 }

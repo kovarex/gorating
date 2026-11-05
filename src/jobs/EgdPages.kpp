@@ -8,7 +8,7 @@
 String egdCell(const HtmlDocument& doc, const Vector<i32>& cells, ContainerSize index)
 {
   if (index >= cells.size())
-    throw GoratingError(format("a game row with {} cells, not {} or more", (i64)cells.size(), (i64)index + 1));
+    throw GoratingError(toString("a game row with ", (i64)cells.size(), " cells, not ", (i64)index + 1, " or more"));
   return doc.text(cells[index]);
 }
 
@@ -82,17 +82,17 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
       break;
     }
   if (!nation.has_value())
-    throw GoratingError(format("Tournament country info couldn't be determined. key={}", key));
+    throw GoratingError(toString("Tournament country info couldn't be determined. key=", key));
   if (page.gameType == 0)
-    throw GoratingError(format("Game type info couldn't be determined. key={}", key));
+    throw GoratingError(toString("Game type info couldn't be determined. key=", key));
   if (page.date.empty())
-    throw GoratingError(format("Tournament date couldn't be determined. key={}", key));
+    throw GoratingError(toString("Tournament date couldn't be determined. key=", key));
   if (!city.has_value())
-    throw GoratingError(format("Tournament city couldn't be determined. key={}", key));
+    throw GoratingError(toString("Tournament city couldn't be determined. key=", key));
   if (page.playerCount.empty() || page.playerCount == "0")
-    throw GoratingError(format("Player count couldn't be determined. key={}", key));
+    throw GoratingError(toString("Player count couldn't be determined. key=", key));
   if (page.roundCount.empty() || page.roundCount == "0")
-    throw GoratingError(format("Round count couldn't be determined. key={}", key));
+    throw GoratingError(toString("Round count couldn't be determined. key=", key));
   page.nation = *nation;
   page.city = *city;
 
@@ -104,11 +104,11 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
     Vector<i32> links = doc.elements(div, "a");
     Vector<i32> tables = doc.elements(div, "table");
     if (bold.size() < 2 || links.empty() || tables.size() < 2)
-      throw GoratingError(format("a player's block of tournament {} lacks its rating, link or games", key));
+      throw GoratingError(toString("a player's block of tournament ", key, " lacks its rating, link or games"));
     EgdTournamentPlayer& player = page.players.emplace_back();
     player.gor = doc.text(bold[1]);
     if (!phpIsNumeric(player.gor))
-      throw GoratingError(format("The value of gor before tournament: \"{} is not a number.", player.gor));
+      throw GoratingError(toString("The value of gor before tournament: \"", player.gor, " is not a number."));
     Vector<String> pieces;
     String link = doc.text(links[0]);
     for (ContainerSize at = 0;;)
@@ -121,11 +121,11 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
     }
     player.pin = pieces[0];
     if (!phpIsNumeric(player.pin) || pieces.size() < 4)
-      throw GoratingError(format("Pin {} isn't numeric", player.pin));
+      throw GoratingError(toString("Pin ", player.pin, " isn't numeric"));
     player.firstName = pieces[2];
     player.lastName = pieces[3];
     for (ContainerSize i = 4; i < pieces.size(); ++i)
-      player.lastName << String(" ") + pieces[i];
+      player.lastName << " " << pieces[i];
 
     for (i32 row : doc.elements(tables[1], "tr"))
     {
@@ -135,23 +135,23 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
       EgdTournamentGame& game = player.games.emplace_back();
       game.round = egdCell(doc, cells, 0);
       if (!phpIsNumeric(game.round))
-        throw GoratingError(format("Round should be numeric, but is \"{}\"", game.round));
+        throw GoratingError(toString("Round should be numeric, but is \"", game.round, "\""));
       game.gorChange = egdCell(doc, cells, 1);
       if (!phpIsNumeric(game.gorChange))
-        throw GoratingError(format("gor change isn't numeric: \"{}\"", game.gorChange));
+        throw GoratingError(toString("gor change isn't numeric: \"", game.gorChange, "\""));
       game.color = egdCell(doc, cells, 3);
       if (game.color.empty())
         game.color = "b"; // some old tournaments don't have the colour
       if (game.color != "w" && game.color != "b")
-        throw GoratingError(format("Color value unexpected:\"{}\"", game.color));
+        throw GoratingError(toString("Color value unexpected:\"", game.color, "\""));
       String handicapText = egdCell(doc, cells, 4);
       game.handicap = handicapText.substr(0, handicapText.find(' '));
       game.result = egdCell(doc, cells, 5);
       if (game.result != "Win" && game.result != "Loss" && game.result != "Jigo")
-        throw GoratingError(format("Result text has unexpected value:\"{}\"", game.result));
+        throw GoratingError(toString("Result text has unexpected value:\"", game.result, "\""));
       game.opponentPin = egdCell(doc, cells, 6);
       if (!phpIsNumeric(game.opponentPin))
-        throw GoratingError(format("Opponent pin {} isn't numeric.", game.opponentPin));
+        throw GoratingError(toString("Opponent pin ", game.opponentPin, " isn't numeric."));
       String opponentName = egdCell(doc, cells, 7);
       ContainerSize space = opponentName.find(' ');
       // The first word is the first name, the rest the last name, as for the players' own blocks
@@ -196,14 +196,14 @@ EgdPlayerCard readEgdPlayerCard(const HtmlDocument& doc, StringView url)
       ContainerSize space = value->find(' ');
       String gor = space == String::npos ? *value : value->substr(0, space);
       if (!phpIsNumeric(gor))
-        throw GoratingError(format("The provided rating from egd ({}) doesn't seem to be a number.", gor));
+        throw GoratingError(toString("The provided rating from egd (", gor, ") doesn't seem to be a number."));
       rating = Optional<String>(gor);
     }
     else if (*name == "country")
       country = Optional<String>(*value);
   }
   if (!rating.has_value() || rating->empty() || !country.has_value())
-    throw GoratingError(format("Couldn't determine the rating from the EGD page. Link:{}", url));
+    throw GoratingError(toString("Couldn't determine the rating from the EGD page. Link:", url));
   return EgdPlayerCard{*rating, *country};
 }
 

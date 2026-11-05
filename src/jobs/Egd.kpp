@@ -15,7 +15,7 @@ String egdPageName(StringView url, StringView form)
 // the token in clear.
 String scrapeDoAddress(StringView token, StringView url)
 {
-  return String("https://api.scrape.do/?url=") + url::urlEncode(url) + "&token=" + url::urlEncode(token);
+  return toString("https://api.scrape.do/?url=", url::urlEncode(url), "&token=", url::urlEncode(token));
 }
 
 String fetchEgd(const GoratingConfig& config, StringView url, StringView form = "")
@@ -35,7 +35,7 @@ String fetchEgd(const GoratingConfig& config, StringView url, StringView form = 
   }
   httpclient::HttpClientResponse page = httpclient::fetch(request);
   if (page.status != 200)
-    throw GoratingError(format("{} answered {} for {}", StringView(config.scrapeDoToken.empty() ? "EGD" : "scrape.do"), page.status, url));
+    throw GoratingError(toString(StringView(config.scrapeDoToken.empty() ? "EGD" : "scrape.do"), " answered ", page.status, " for ", url));
   return page.body;
 }
 
@@ -95,9 +95,9 @@ EgdCountry egdCountry(Page& page, StringView country)
   ContainerSize space = country.rfind(' ');
   StringView last = space == StringView::npos ? country : country.substr(space + 1);
   String code = last.size() >= 2 ? String(last.substr(1, last.size() - 2)) : String();
-  mariadb::MariaDbResult found = page.query(String("SELECT id FROM country WHERE code=") + quote(code));
+  mariadb::MariaDbResult found = page.query("SELECT id FROM country WHERE code=", quote(code));
   if (found.empty())
-    throw GoratingError(format("Couldn't find country with code:{} complete name:{}", code, country));
+    throw GoratingError(toString("Couldn't find country with code:", code, " complete name:", country));
   return EgdCountry{Row(found, 0)["id"], code};
 }
 
@@ -112,7 +112,7 @@ i32 egdGameType(StringView text)
     return gameTypeEgdC;
   if (text.starts_with("D"))
     return gameTypeEgdD;
-  throw GoratingError(format("Couldn't determine egd tournament class from the string:{}", text));
+  throw GoratingError(toString("Couldn't determine egd tournament class from the string:", text));
 }
 
 // T, W, E or G and 3 to 9 more characters (isTournamentKey).
@@ -140,12 +140,12 @@ EgdPlayerInfo egdPlayerInfo(Page& page, StringView pin)
 // The user with this EGD pin, made from their card when there is none yet (addEGDPlayerIfNotPresent).
 String addEgdPlayerIfNotPresent(Page& page, StringView pin, StringView firstName, StringView lastName)
 {
-  mariadb::MariaDbResult found = page.query(String("SELECT id FROM user WHERE egd_pin =") + quote(pin));
+  mariadb::MariaDbResult found = page.query("SELECT id FROM user WHERE egd_pin =", quote(pin));
   if (!found.empty())
     return Row(found, 0)["id"];
   EgdPlayerInfo info = egdPlayerInfo(page, pin);
-  page.query(String("INSERT INTO user(first_name, last_name, egd_pin, egd_rating, rating, country_id, admin_level_id) VALUES(") +
-             quoteOrNull(firstName) + "," + quoteOrNull(lastName) + "," + quote(pin) + "," + quote(info.rating) + "," +
-             quote(info.rating) + "," + quote(info.country.id) + ",6)");
+  page.query("INSERT INTO user(first_name, last_name, egd_pin, egd_rating, rating, country_id, admin_level_id) VALUES(",
+             quoteOrNull(firstName), ",", quoteOrNull(lastName), ",", quote(pin), ",", quote(info.rating), ",",
+             quote(info.rating), ",", quote(info.country.id), ",6)");
   return *page.db->scalar("SELECT LAST_INSERT_ID()");
 }

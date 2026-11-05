@@ -12,7 +12,7 @@ String goratingDbValue(const GoratingConfig& config, StringView sql)
 
 double userRating(const GoratingConfig& config, StringView username)
 {
-  return ratingValue(goratingDbValue(config, String("SELECT rating FROM user WHERE username=") + quote(username)));
+  return ratingValue(goratingDbValue(config, toString("SELECT rating FROM user WHERE username=", quote(username))));
 }
 
 bool nearly(double a, double b) { return a - b < 1e-9 && b - a < 1e-9; }
@@ -55,49 +55,49 @@ test "a game reported, edited, deleted and restored"
   double opponentBefore = userRating(config, "player2");
 
   // A plain user may not report a win; nothing is written.
-  String form = String("winner_user_id=") + opponent + "&game_type=5&handicap=0&komi=6.5&color=black&location=Brno&comment=gg";
+  String form = toString("winner_user_id=", opponent, "&game_type=5&handicap=0&komi=6.5&color=black&location=Brno&comment=gg");
   http::HttpResponse refused = postForm(config, "player11", "/report_action", form + "&result=win");
   check(locationOf(refused).find("Only%20trusted%20users%20report%20their%20wins") != String::npos);
   check(goratingDbValue(config, "SELECT MAX(id) FROM game") == lastGame);
   // The loss, as black, even.
   http::HttpResponse reported = postForm(config, "player11", "/report_action", form + "&result=loss");
-  check(locationOf(reported) == String("/player?id=") + me + "&message=Game%20added");
+  check(locationOf(reported) == toString("/player?id=", me, "&message=Game%20added"));
   String game = goratingDbValue(config, "SELECT MAX(id) FROM game");
   require(game != lastGame);
   double meAfter = calculateNewRating(meBefore, opponentBefore, 0, 5, 0, 0);
   double opponentAfter = calculateNewRating(opponentBefore, meBefore, 1, 5, 0, 0);
-  check(goratingDbValue(config, String("SELECT CONCAT(winner_user_id, ' ', loser_user_id, ' ', winner_is_black, ' ', handicap, ' ', komi, ' ', location, ' ', loser_comment) FROM game WHERE id=") + game) ==
+  check(goratingDbValue(config, toString("SELECT CONCAT(winner_user_id, ' ', loser_user_id, ' ', winner_is_black, ' ', handicap, ' ', komi, ' ', location, ' ', loser_comment) FROM game WHERE id=", game)) ==
         opponent + " " + me + " 0 0 6.5 Brno gg");
-  check(nearly(ratingValue(goratingDbValue(config, String("SELECT winner_new_rating FROM game WHERE id=") + game)), opponentAfter));
-  check(nearly(ratingValue(goratingDbValue(config, String("SELECT loser_new_rating FROM game WHERE id=") + game)), meAfter));
+  check(nearly(ratingValue(goratingDbValue(config, toString("SELECT winner_new_rating FROM game WHERE id=", game))), opponentAfter));
+  check(nearly(ratingValue(goratingDbValue(config, toString("SELECT loser_new_rating FROM game WHERE id=", game))), meAfter));
   check(nearly(userRating(config, "player11"), meAfter) && nearly(userRating(config, "player2"), opponentAfter));
   check(meAfter < meBefore && opponentAfter > opponentBefore);
 
   // The admin edits it: 2 handicap stones and komi 0.5 for black (player11). The rating update the
   // edit starts computes it again from the ratings before it.
-  String timestamp = goratingDbValue(config, String("SELECT timestamp FROM game WHERE id=") + game);
-  String edit = String("id=") + game + "&redirect=%2F&original_winner=winner&original_winner_color=white&handicap=2&komi=0.5&location=Brno&timestamp=" +
-                url::urlEncode(timestamp);
+  String timestamp = goratingDbValue(config, toString("SELECT timestamp FROM game WHERE id=", game));
+  String edit = toString("id=", game, "&redirect=%2F&original_winner=winner&original_winner_color=white&handicap=2&komi=0.5&location=Brno&timestamp=",
+                url::urlEncode(timestamp));
   // A user who did not play it may not (one who did may, while it is recent).
   check(locationOf(postForm(config, "player12", "/edit_game_action", edit)).find("You%20can") != String::npos);
-  check(goratingDbValue(config, String("SELECT CONCAT(handicap, ' ', komi) FROM game WHERE id=") + game) == "0 6.5");
+  check(goratingDbValue(config, toString("SELECT CONCAT(handicap, ' ', komi) FROM game WHERE id=", game)) == "0 6.5");
   // The update finishes in the edit's request, whose message says what the edit did to this game's
   // ratings: player11's, then and now.
   String edited = locationOf(postForm(config, "player2", "/edit_game_action", edit));
-  check(goratingDbValue(config, String("SELECT CONCAT(handicap, ' ', komi) FROM game WHERE id=") + game) == "2 0.5");
+  check(goratingDbValue(config, toString("SELECT CONCAT(handicap, ' ', komi) FROM game WHERE id=", game)) == "2 0.5");
   check(edited.find("Rating%20update%20finished%20after%20") != String::npos);
   check(edited.find("%0AThis%20game%3A%20") != String::npos && edited.find("before%20the%20edit%20") != String::npos);
   finishRatingUpdate(config);
   double meEdited = calculateNewRating(meBefore, opponentBefore, 0, 5, 2, 6);
   double opponentEdited = calculateNewRating(opponentBefore, meBefore, 1, 5, -2, -6);
-  check(nearly(ratingValue(goratingDbValue(config, String("SELECT loser_new_rating FROM game WHERE id=") + game)), meEdited));
-  check(nearly(ratingValue(goratingDbValue(config, String("SELECT winner_new_rating FROM game WHERE id=") + game)), opponentEdited));
+  check(nearly(ratingValue(goratingDbValue(config, toString("SELECT loser_new_rating FROM game WHERE id=", game))), meEdited));
+  check(nearly(ratingValue(goratingDbValue(config, toString("SELECT winner_new_rating FROM game WHERE id=", game))), opponentEdited));
   check(nearly(userRating(config, "player11"), meEdited) && nearly(userRating(config, "player2"), opponentEdited));
-  check(goratingDbValue(config, String("SELECT COUNT(*) FROM `change` WHERE game_id=") + game) != "0");
+  check(goratingDbValue(config, toString("SELECT COUNT(*) FROM `change` WHERE game_id=", game)) != "0");
 
   // Deleted: the two players' ratings are as before the game; restored: as edited.
-  check(locationOf(postForm(config, "player11", "/delete_game_action", String("id=") + game)).find("No%20rights") != String::npos);
-  http::HttpResponse deletedResponse = postForm(config, "player2", "/delete_game_action", String("id=") + game);
+  check(locationOf(postForm(config, "player11", "/delete_game_action", toString("id=", game))).find("No%20rights") != String::npos);
+  http::HttpResponse deletedResponse = postForm(config, "player2", "/delete_game_action", toString("id=", game));
   // The update finishes in that request: its message lists each player's rating before and after
   // (PHP's "Rating changes" table), a line each on the page it goes to.
   String where = locationOf(deletedResponse);
@@ -107,11 +107,11 @@ test "a game reported, edited, deleted and restored"
   check(shown.find("<br/>Rating changes:<br/>") != String::npos && shown.find("Marek Weiß: ") != String::npos);
   check(shown.find("→") != String::npos);
   finishRatingUpdate(config);
-  check(goratingDbValue(config, String("SELECT deleted FROM game WHERE id=") + game) == "1");
+  check(goratingDbValue(config, toString("SELECT deleted FROM game WHERE id=", game)) == "1");
   check(nearly(userRating(config, "player11"), meBefore) && nearly(userRating(config, "player2"), opponentBefore));
-  postForm(config, "player2", "/restore_game_action", String("id=") + game);
+  postForm(config, "player2", "/restore_game_action", toString("id=", game));
   finishRatingUpdate(config);
-  check(goratingDbValue(config, String("SELECT deleted FROM game WHERE id=") + game) == "0");
+  check(goratingDbValue(config, toString("SELECT deleted FROM game WHERE id=", game)) == "0");
   check(nearly(userRating(config, "player11"), meEdited) && nearly(userRating(config, "player2"), opponentEdited));
 }
 
@@ -131,7 +131,7 @@ test "a rating update moved on for a time: how far it got, then what it changed"
   check(processRating(page, ratingUpdateSeconds) == "No rating changes to process.");
   // The first game deleted: its players' later games, and their opponents', are computed again.
   String first = goratingDbValue(config, "SELECT id FROM game WHERE deleted = false ORDER BY timestamp, id LIMIT 1");
-  db.query(String("UPDATE game SET deleted=true WHERE id=") + first);
+  db.query("UPDATE game SET deleted=true WHERE id=", first);
   // No time and a window of 50 games read: one window, what it computed of them, and where it stopped.
   ratingUpdateWindowGames = 50;
   String progress = processRating(page, 0);
@@ -159,24 +159,24 @@ test "a player who joins a rating update has their games computed again from tha
   page.db = &db;
   Vector<String> ids;
   for (StringView username : {"player11", "player12", "player13", "player14"})
-    ids.push_back(goratingDbValue(config, String("SELECT id FROM user WHERE username='") + username + "'"));
+    ids.push_back(goratingDbValue(config, toString("SELECT id FROM user WHERE username='", username, "'")));
   // After every game of the made-up data: player11 beats player12 (the game deleted below), then
   // player13 beats player14 (no one the update changed), then player11 beats player13, which brings
   // player13 into the update.
   auto game = [&](StringView winner, StringView loser, StringView time) {
-    db.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_rating, winner_new_rating, loser_old_rating,"
-                    " loser_new_rating) VALUES(") +
-             String(winner) + "," + String(loser) + ",5," + quote(time) + ",1500,1510,1500,1490)");
+    db.query("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_rating, winner_new_rating, loser_old_rating,"
+             " loser_new_rating) VALUES(",
+             String(winner), ",", loser, ",5,", quote(time), ",1500,1510,1500,1490)");
     return goratingDbValue(config, "SELECT MAX(id) FROM game");
   };
   String first = game(ids[0], ids[1], "2030-01-01 10:00:00");
   String unrelated = game(ids[2], ids[3], "2030-02-01 10:00:00");
   String joining = game(ids[0], ids[2], "2030-03-01 10:00:00");
-  String before = goratingDbValue(config, String("SELECT CONCAT(rating_update_version, ' ', winner_new_rating, ' ', loser_new_rating) FROM game WHERE id=") + unrelated);
-  db.query(String("UPDATE game SET deleted=true WHERE id=") + first);
+  String before = goratingDbValue(config, toString("SELECT CONCAT(rating_update_version, ' ', winner_new_rating, ' ', loser_new_rating) FROM game WHERE id=", unrelated));
+  db.query("UPDATE game SET deleted=true WHERE id=", first);
   check(processRating(page, ratingUpdateSeconds).starts_with("Rating update finished after "));
   String version = goratingDbValue(config, "SELECT value FROM variable WHERE name='rating_update_version'");
-  check(goratingDbValue(config, String("SELECT rating_update_version FROM game WHERE id=") + joining) == version);
+  check(goratingDbValue(config, toString("SELECT rating_update_version FROM game WHERE id=", joining)) == version);
   // player13's earlier game is the update's business only through player13, who entered it later.
-  check(goratingDbValue(config, String("SELECT CONCAT(rating_update_version, ' ', winner_new_rating, ' ', loser_new_rating) FROM game WHERE id=") + unrelated) == before);
+  check(goratingDbValue(config, toString("SELECT CONCAT(rating_update_version, ' ', winner_new_rating, ' ', loser_new_rating) FROM game WHERE id=", unrelated)) == before);
 }

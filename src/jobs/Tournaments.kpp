@@ -15,7 +15,7 @@
 String egdTimestamp(StringView date)
 {
   if (date.size() != 10 || date[2] != '-' || date[5] != '-')
-    throw GoratingError(format("Tournament date \"{}\" is not DD-MM-YYYY", date));
+    throw GoratingError(toString("Tournament date \"", date, "\" is not DD-MM-YYYY"));
   return String(date.substr(6, 4)) + "-" + String(date.substr(3, 2)) + "-" + String(date.substr(0, 2)) + " 00:00:00";
 }
 
@@ -56,11 +56,11 @@ void noteRatingDiscrepancy(Page& page, StringView gameId, StringView userId, Str
                            const Optional<String>& storedNew, const Optional<PhpNumber>& computedOld,
                            const Optional<PhpNumber>& computedNew, bool corrected)
 {
-  page.query(String("INSERT INTO rating_discrepancy(game_id, user_id, kind, stored_old, stored_new, computed_old, computed_new, corrected)"
-                    " VALUES(") +
-             quote(gameId) + "," + quote(userId) + "," + quote(kind) + "," + mariadb::mariaDbQuoteOrNull(storedOld) + "," +
-             mariadb::mariaDbQuoteOrNull(storedNew) + "," + sqlOrNull(computedOld) + "," + sqlOrNull(computedNew) + "," +
-             (corrected ? "true" : "false") +
+  page.query("INSERT INTO rating_discrepancy(game_id, user_id, kind, stored_old, stored_new, computed_old, computed_new, corrected)"
+             " VALUES(",
+             quote(gameId), ",", quote(userId), ",", quote(kind), ",", mariadb::mariaDbQuoteOrNull(storedOld), ",",
+             mariadb::mariaDbQuoteOrNull(storedNew), ",", sqlOrNull(computedOld), ",", sqlOrNull(computedNew), ",",
+             corrected,
              ") ON DUPLICATE KEY UPDATE stored_old=VALUES(stored_old), stored_new=VALUES(stored_new), computed_old=VALUES(computed_old),"
              " computed_new=VALUES(computed_new), corrected=VALUES(corrected), last_seen=CURRENT_TIMESTAMP");
 }
@@ -80,8 +80,8 @@ bool checkStoredGame(Page& page, bool& written, const mariadb::MariaDbResult& st
   if (egdChanged)
   {
     written = true;
-    page.query(String("UPDATE game SET ") + String(prefix) + "old_egd_rating=" + oldGor.sql() + ", " + String(prefix) +
-               "new_egd_rating=" + newGor.sql() + (deleted ? String() : String(ownRatings)) + " WHERE id=" + String(gameId));
+    page.query("UPDATE game SET ", prefix, "old_egd_rating=", oldGor.sql(), ", ", prefix,
+               "new_egd_rating=", newGor.sql(), (deleted ? String() : String(ownRatings)), " WHERE id=", gameId);
     noteRatingDiscrepancy(page, gameId, userId, "egd", stored.at(0, "old_egd"), stored.at(0, "new_egd"), Optional<PhpNumber>(oldGor),
                           Optional<PhpNumber>(newGor), true);
   }
@@ -103,7 +103,7 @@ bool processTournament(Page& page, String key)
       return false;
     key = Row(queued, 0)["egd_key"];
   }
-  mariadb::MariaDbResult existing = page.query(String("SELECT * FROM egd_tournament WHERE egd_key =") + quote(key));
+  mariadb::MariaDbResult existing = page.query("SELECT * FROM egd_tournament WHERE egd_key =", quote(key));
   EgdTournamentPage egd = readEgdTournamentPage(readHtml(fetchEgd(*page.config, String(egdAddress) + "Tournament_ShowGoR.php?key=" + key)), key);
   Optional<EgdCountry> country = Optional<EgdCountry>(egdCountry(page, egd.nation));
   i32 gameType = egd.gameType;
@@ -120,15 +120,15 @@ bool processTournament(Page& page, String key)
     String tournamentId;
     if (!existed)
     {
-      page.query(String("INSERT INTO egd_tournament(egd_key, timestamp, country_id, game_type_id, city, name, player_count, round_count) VALUES(") +
-                 quote(key) + "," + quote(timestamp) + "," + quote(country->id) + "," + quote(format("{}", gameType)) + "," +
-                 quoteOrNull(*city) + "," + (tournamentName.has_value() ? quoteOrNull(*tournamentName) : String("NULL")) + "," +
-                 quoteOrNull(playerCount) + "," + quoteOrNull(roundCount) + ")");
+      page.query("INSERT INTO egd_tournament(egd_key, timestamp, country_id, game_type_id, city, name, player_count, round_count) VALUES(",
+                 quote(key), ",", quote(timestamp), ",", quote(country->id), ",", quote(toString(gameType)), ",",
+                 quoteOrNull(*city), ",", (tournamentName.has_value() ? quoteOrNull(*tournamentName) : String("NULL")), ",",
+                 quoteOrNull(playerCount), ",", quoteOrNull(roundCount), ")");
       tournamentId = *page.db->scalar("SELECT LAST_INSERT_ID()");
     }
     else
       tournamentId = Row(existing, 0)["id"];
-    page.query(String("DELETE FROM egd_tournament_to_process WHERE egd_key=") + quote(key));
+    page.query("DELETE FROM egd_tournament_to_process WHERE egd_key=", quote(key));
 
     i32 placement = 1;
     Vector<ProcessedGame> processed;
@@ -143,11 +143,11 @@ bool processTournament(Page& page, String key)
       PhpNumber currentGor = PhpNumber::read(gorText);
       String playerPin = player.pin;
       String userId = addEgdPlayerIfNotPresent(page, playerPin, player.firstName, player.lastName);
-      mariadb::MariaDbResult userResult = page.query(String("SELECT * from user WHERE user.id=") + quote(userId));
+      mariadb::MariaDbResult userResult = page.query("SELECT * from user WHERE user.id=", quote(userId));
       Row user(userResult, 0);
       if (!existed)
-        page.query(format("INSERT INTO egd_tournament_result(egd_tournament_id, user_id, placement) VALUES({},{},{})", quote(tournamentId),
-                          quote(userId), quote(format("{}", placement))));
+        page.query("INSERT INTO egd_tournament_result(egd_tournament_id, user_id, placement) VALUES(", quote(tournamentId), ",",
+                   quote(userId), ",", quote(toString(placement)), ")");
       // gorating's own rating moves only for players registered before the tournament.
       Optional<PhpNumber> userRating;
       Optional<String> userStartRating;
@@ -203,8 +203,7 @@ bool processTournament(Page& page, String key)
           userRating = Optional<PhpNumber>(PhpNumber::of(userRating->value + delta));
         }
         String ownRatings = userRating.has_value()
-                                ? String(",") + prefix + "old_rating=" + oldUserRating->sql() + "," + prefix + "new_rating=" + userRating->sql()
-                                : String();
+                                ? toString(",", prefix, "old_rating=", oldUserRating->sql(), ",", prefix, "new_rating=", userRating->sql()) : String();
         PhpNumber newGor = currentGor + gorChange;
         String gameId;
         if (const String* seen = processedGame(processed, opponentPin, playerPin, round))
@@ -212,11 +211,11 @@ bool processTournament(Page& page, String key)
           // The opponent's block came first and stored the game: this player's side of it.
           String id = *seen;
           if (!existed)
-            page.query(String("UPDATE game SET ") + prefix + "old_egd_rating=" + currentGor.sql() + "," + prefix + "new_egd_rating=" +
-                       newGor.sql() + ownRatings + " WHERE id=" + id);
+            page.query("UPDATE game SET ", prefix, "old_egd_rating=", currentGor.sql(), ",", prefix, "new_egd_rating=",
+                       newGor.sql(), ownRatings, " WHERE id=", id);
           else if (checkStoredGame(page, written,
-                                   page.query(String("SELECT ") + prefix + "old_rating as old, " + prefix + "new_rating as new, " + prefix +
-                                              "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd, deleted FROM game WHERE id=" + id),
+                                   page.query("SELECT ", prefix, "old_rating as old, ", prefix, "new_rating as new, ", prefix,
+                                              "old_egd_rating as old_egd, ", prefix, "new_egd_rating as new_egd, deleted FROM game WHERE id=", id),
                                    id, userId, prefix, currentGor, newGor, oldUserRating, userRating, ownRatings))
             userRating = oldUserRating;
           gameId = id;
@@ -225,20 +224,20 @@ bool processTournament(Page& page, String key)
         {
           mariadb::MariaDbResult stored;
           if (existed)
-            stored = page.query(String("SELECT id, ") + prefix + "old_rating as old, " + prefix + "new_rating as new, " + prefix +
-                                "old_egd_rating as old_egd, " + prefix + "new_egd_rating as new_egd, deleted FROM game WHERE egd_tournament_id=" +
-                                quote(tournamentId) + " and egd_tournament_round=" + quote(round) + " and winner_user_id=" + quote(winnerId));
+            stored = page.query("SELECT id, ", prefix, "old_rating as old, ", prefix, "new_rating as new, ", prefix,
+                                "old_egd_rating as old_egd, ", prefix, "new_egd_rating as new_egd, deleted FROM game WHERE egd_tournament_id=",
+                                quote(tournamentId), " and egd_tournament_round=", quote(round), " and winner_user_id=", quote(winnerId));
           if (!existed || stored.empty())
           {
-            page.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
-                              " loser_old_egd_rating, loser_new_egd_rating,") +
-                       (userRating.has_value() ? (userWon ? " winner_old_rating, winner_new_rating," : " loser_old_rating, loser_new_rating,") : "") +
-                       " winner_is_black, handicap, komi, egd_tournament_id, egd_tournament_round, jigo) VALUES(" + winnerId + "," + loserId +
-                       "," + format("{}", gameType) + "," + quote(timestamp) + "," + quote(winnerOldGor.sql()) + "," +
-                       quote(winnerNewGor.sql()) + "," + quote(loserOldGor.sql()) + "," + quote(loserNewGor.sql()) + "," +
-                       (userRating.has_value() ? oldUserRating->sql() + "," + userRating->sql() + "," : String()) +
-                       (winnerIsBlack ? "true" : "false") + "," + quoteOrNull(handicap) + "," + quote(phpNumber(komi)) + "," +
-                       quote(tournamentId) + "," + quote(round) + "," + (jigo ? "true" : "false") + ")");
+            page.query("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
+                       " loser_old_egd_rating, loser_new_egd_rating,",
+                       StringView(userRating.has_value() ? (userWon ? " winner_old_rating, winner_new_rating," : " loser_old_rating, loser_new_rating,") : ""),
+                       " winner_is_black, handicap, komi, egd_tournament_id, egd_tournament_round, jigo) VALUES(", winnerId, ",", loserId,
+                       ",", toString(gameType), ",", quote(timestamp), ",", quote(winnerOldGor.sql()), ",",
+                       quote(winnerNewGor.sql()), ",", quote(loserOldGor.sql()), ",", quote(loserNewGor.sql()), ",",
+                       (userRating.has_value() ? oldUserRating->sql() + "," + userRating->sql() + "," : String()),
+                       winnerIsBlack, ",", quoteOrNull(handicap), ",", quote(phpNumber(komi)), ",",
+                       quote(tournamentId), ",", quote(round), ",", jigo, ")");
             gameId = *page.db->scalar("SELECT LAST_INSERT_ID()");
             written = true;
             if (existed)
@@ -271,12 +270,12 @@ bool processTournament(Page& page, String key)
     // or edited game starts, from each player's rating before the tournament.
     if (written)
       for (const Pair<String, String>& start : starts)
-        if (!page.query(String("SELECT id FROM game WHERE deleted = false and timestamp >= ") + quote(timestamp) +
-                        " and (egd_tournament_id is null or egd_tournament_id != " + quote(tournamentId) + ") and (winner_user_id=" +
-                        quote(start.first) + " or loser_user_id=" + quote(start.first) + ") LIMIT 1")
+        if (!page.query("SELECT id FROM game WHERE deleted = false and timestamp >= ", quote(timestamp),
+                        " and (egd_tournament_id is null or egd_tournament_id != ", quote(tournamentId), ") and (winner_user_id=",
+                        quote(start.first), " or loser_user_id=", quote(start.first), ") LIMIT 1")
                  .empty())
-          page.query(String("CALL start_rating_update(") + start.first + "," + start.second + "," + start.first + "," + start.second +
-                     ",STR_TO_DATE(" + quote(timestamp) + ",'%Y-%m-%d %H:%i:%s'))");
+          page.query("CALL start_rating_update(", start.first, ",", start.second, ",", start.first, ",", start.second,
+                     ",STR_TO_DATE(", quote(timestamp), ",'%Y-%m-%d %H:%i:%s'))");
     page.db->commit();
   }
   catch (const Exception& e)
@@ -290,13 +289,13 @@ bool processTournament(Page& page, String key)
 // The user's rating and EGD rating from their latest game (src/rating_helper.php's updateFinalRating).
 void updateFinalRating(Page& page, StringView userId)
 {
-  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user where id=") + quote(userId));
+  mariadb::MariaDbResult found = page.query("SELECT * FROM user where id=", quote(userId));
   Row user(found, 0);
   Optional<String> rating = fetchUserRatingBefore(page, user, userId, Optional<String>(), Optional<String>(), Optional<String>(), false);
   Optional<String> egdRating = fetchUserRatingBefore(page, user, userId, Optional<String>(), Optional<String>(), Optional<String>(), true);
   Optional<String> current = found.at(0, "rating");
   Optional<String> currentEgd = found.at(0, "egd_rating");
   if (!phpLooseEqual(current, rating) || !phpLooseEqual(currentEgd, egdRating))
-    page.query(String("UPDATE user SET  rating=") + mariadb::mariaDbQuoteOrNull(rating) + ",egd_rating=" +
-               mariadb::mariaDbQuoteOrNull(egdRating) + " WHERE user.id=" + quote(userId));
+    page.query("UPDATE user SET  rating=", mariadb::mariaDbQuoteOrNull(rating), ",egd_rating=",
+               mariadb::mariaDbQuoteOrNull(egdRating), " WHERE user.id=", quote(userId));
 }

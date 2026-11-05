@@ -24,7 +24,7 @@ double gameTypeRatingModifier(i32 gameType)
   case gameTypeRapid: return 0.25;
   case gameTypeBlitz: return 0.1;
   }
-  throw GoratingError(format("no game type {}", gameType));
+  throw GoratingError(toString("no game type ", gameType));
 }
 
 double ratingBeta(double rating) { return -7 * log(3300 - rating); }

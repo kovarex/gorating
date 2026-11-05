@@ -102,7 +102,7 @@ Optional<mariadb::MariaDbOptions> testDatabaseServer()
     at = colon + 1;
   }
   if (parts.size() < 3)
-    throw GoratingError(format("GORATING_TEST_DB is \"{}\", not host:port:user[:password]", text));
+    throw GoratingError(toString("GORATING_TEST_DB is \"", text, "\", not host:port:user[:password]"));
   mariadb::MariaDbOptions options;
   options.host = parts[0];
   options.port = (i32)stoll(parts[1]);
@@ -118,8 +118,8 @@ constexpr StringView testDatabaseName = "gorating_kpp_tests";
 GoratingConfig freshTestDatabase(const mariadb::MariaDbOptions& server)
 {
   mariadb::MariaDbConnection admin = mariadb::MariaDbConnection::connect(server);
-  admin.query(format("DROP DATABASE IF EXISTS {}", testDatabaseName));
-  admin.query(format("CREATE DATABASE {} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", testDatabaseName));
+  admin.query(toString("DROP DATABASE IF EXISTS ", testDatabaseName));
+  admin.query(toString("CREATE DATABASE ", testDatabaseName, " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"));
   GoratingConfig config = testConfig();
   config.database = server;
   config.database.database = String(testDatabaseName);

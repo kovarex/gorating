@@ -33,17 +33,16 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
 {
   String id = quote(userId);
   page.db->begin();
-  out << format("user_id={}\n", userId);
-  mariadb::MariaDbResult rows = page.query(
-      String("SELECT IF(game.winner_user_id=") + id + ", game.winner_old_egd_rating, game.loser_old_egd_rating) as old_egd_rating,"
-      " IF(game.winner_user_id=" + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) as new_egd_rating,"
-      " egd_tournament.egd_key as egd_tournament_key, game.egd_tournament_round as egd_tournament_round,"
-      " egd_tournament.timestamp as timestamp, NULL as rating_change_id"
-      " FROM game LEFT JOIN egd_tournament ON game.egd_tournament_id=egd_tournament.id"
-      " WHERE game.deleted = false AND (game.winner_user_id=" + id + " or game.loser_user_id=" + id + ") AND winner_old_egd_rating IS NOT NULL"
-      " UNION ALL SELECT rating_change.old_egd_rating as old_egd_rating, rating_change.new_egd_rating as new_egd_rating,"
-      " 'z' as egd_tournament_key, NULL as egd_tournament_round, rating_change.timestamp as timestamp, rating_change.id as rating_change_id"
-      " FROM rating_change WHERE rating_change.user_id=" + id + " ORDER BY timestamp, egd_tournament_key, egd_tournament_round");
+  out << "user_id=" << userId << "\n";
+  mariadb::MariaDbResult rows = page.query("SELECT IF(game.winner_user_id=", id, ", game.winner_old_egd_rating, game.loser_old_egd_rating) as old_egd_rating,"
+                                           " IF(game.winner_user_id=", id, ", game.winner_new_egd_rating, game.loser_new_egd_rating) as new_egd_rating,"
+                                           " egd_tournament.egd_key as egd_tournament_key, game.egd_tournament_round as egd_tournament_round,"
+                                           " egd_tournament.timestamp as timestamp, NULL as rating_change_id"
+                                           " FROM game LEFT JOIN egd_tournament ON game.egd_tournament_id=egd_tournament.id"
+                                           " WHERE game.deleted = false AND (game.winner_user_id=", id, " or game.loser_user_id=", id, ") AND winner_old_egd_rating IS NOT NULL"
+                                           " UNION ALL SELECT rating_change.old_egd_rating as old_egd_rating, rating_change.new_egd_rating as new_egd_rating,"
+                                           " 'z' as egd_tournament_key, NULL as egd_tournament_round, rating_change.timestamp as timestamp, rating_change.id as rating_change_id"
+                                           " FROM rating_change WHERE rating_change.user_id=", id, " ORDER BY timestamp, egd_tournament_key, egd_tournament_round");
   Optional<String> egdRating;
   Optional<String> lastKey;
   Optional<double> tournamentStart;
@@ -86,7 +85,7 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
       {
         if (!thisIsJump)
         {
-          out << format("Rating jumped from {} to {} in tournament {} round {}\n", *egdRating, egdOld, key, row["egd_tournament_round"]);
+          out << "Rating jumped from " << *egdRating << " to " << egdOld << " in tournament " << key << " round " << row["egd_tournament_round"] << "\n";
           i32 type = lastStart.has_value() ? ratingJumpReason(reported, firstRound, lastStart, lastEnd) : ratingChangeError;
           if (type == ratingChangeError)
           {
@@ -103,7 +102,7 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
               }
               catch (const Exception& e)
               {
-                out << String("Error: ") + String(StringView(e.what())) + "\n";
+                out << "Error: " << String(StringView(e.what())) << "\n";
               }
               out << *again + " ";
             }
@@ -111,19 +110,19 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
             page.db->rollback();
             return false;
           }
-          page.query(String("INSERT INTO rating_change(old_egd_rating, new_egd_rating, user_id, timestamp, rating_change_type_id) VALUES(") +
-                     quoteOrNull(*egdRating) + "," + quoteOrNull(egdOld) + "," + id + "," +
-                     (lastTimestamp.has_value() ? quoteOrNull(*lastTimestamp) : String("NULL")) + "," + format("{}", type) + ")");
+          page.query("INSERT INTO rating_change(old_egd_rating, new_egd_rating, user_id, timestamp, rating_change_type_id) VALUES(",
+                     quoteOrNull(*egdRating), ",", quoteOrNull(egdOld), ",", id, ",",
+                     (lastTimestamp.has_value() ? quoteOrNull(*lastTimestamp) : String("NULL")), ",", toString(type), ")");
         }
         else
-          page.query(String("UPDATE rating_change SET old_egd_rating=") + quoteOrNull(egdOld) + " WHERE id=" + quote(row["rating_change_id"]));
+          page.query("UPDATE rating_change SET old_egd_rating=", quoteOrNull(egdOld), " WHERE id=", quote(row["rating_change_id"]));
       }
       previousKey = Optional<String>(key);
     }
     egdRating = egdNew.has_value() && !egdNew->empty() ? egdNew : Optional<String>();
     firstRound = false;
   }
-  page.query(String("UPDATE user SET rating_change_checked=true WHERE id=") + id);
+  page.query("UPDATE user SET rating_change_checked=true WHERE id=", id);
   page.db->commit();
   return true;
 }
@@ -132,7 +131,7 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
 String checkRatingChanges(Page& page)
 {
   mariadb::MariaDbResult users = page.query("SELECT id from user where rating_change_checked=false");
-  String out = format("Remaining {} users to check.\n", (i64)users.size());
+  String out = toString("Remaining ", (i64)users.size(), " users to check.\n");
   for (ContainerSize i = 0; i < users.size() && i < 1000; ++i)
   {
     String userId = Row(users, i)["id"];
@@ -157,13 +156,13 @@ String collectManualRatingChanges(Page& page)
     String username = page.get("username");
     if (username.empty())
       return "User id nor username provided\n";
-    mariadb::MariaDbResult found = page.query(String("SELECT id FROM user WHERE username=") + quote(username));
+    mariadb::MariaDbResult found = page.query("SELECT id FROM user WHERE username=", quote(username));
     if (found.empty())
-      return format("User with username=\"{}\" doesn't exist.\n", username);
+      return toString("User with username=\"", username, "\" doesn't exist.\n");
     id = Row(found, 0)["id"];
   }
-  else if (page.query(String("SELECT id FROM user WHERE id=") + quote(id)).empty())
-    return format("User with id=\"{}\" doesn't exist.\n", id);
+  else if (page.query("SELECT id FROM user WHERE id=", quote(id)).empty())
+    return toString("User with id=\"", id, "\" doesn't exist.\n");
   String out;
   checkUserRatingChanges(page, id, out);
   return out;

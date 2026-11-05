@@ -48,7 +48,7 @@ String madeUpTournament()
       const MadeUpPlayer& other = madeUpPlayers[first ? g.b : g.a];
       StringView result = first ? StringView(g.result) : StringView(g.result) == "Win" ? StringView("Loss") : StringView(g.result) == "Loss" ? StringView("Win") : StringView("Jigo");
       StringView color = first ? StringView(g.color) : StringView(g.color) == "w" ? StringView("b") : StringView("w");
-      rows << egdGameRow(format("{}", g.round), first ? g.changeA : g.changeB, color, g.handicap, result, other.pin, other.name, other.gor,
+      rows << egdGameRow(toString(g.round), first ? g.changeA : g.changeB, color, g.handicap, result, other.pin, other.name, other.gor,
                              first ? g.changeB : g.changeA);
     }
     blocks << egdPlayerBlock(p + 1, madeUpPlayers[p].pin, madeUpPlayers[p].name, madeUpPlayers[p].gor, rows);
@@ -66,7 +66,7 @@ void saveMadeUpPages()
   writeTestFile(String(egdWork) + "/" + egdPageName(String(egdAddress) + "Tournament_ShowGoR.php?key=" + madeUpKey, ""), madeUpTournament());
   for (const MadeUpPlayer& p : madeUpPlayers)
     writeTestFile(String(egdWork) + "/" + egdPageName(String(egdAddress) + "Player_Card.php?&key=" + p.pin, ""),
-                  format("<form><input name=\"gor\" value=\"{} (x)\"><input name=\"country\" value=\"Czechia (CZ)\"></form>", StringView(p.gor)));
+                  toString("<form><input name=\"gor\" value=\"", StringView(p.gor), " (x)\"><input name=\"country\" value=\"Czechia (CZ)\"></form>"));
 }
 
 String dbValue(const GoratingConfig& config, StringView sql) { return goratingDbValue(config, sql); }
@@ -79,15 +79,15 @@ void dbRun(const GoratingConfig& config, StringView sql)
 
 String processMadeUpTournament(const GoratingConfig& config)
 {
-  return siteRequest(config, "owner", "GET", String("/process_tournament?egd_tournament_key=") + madeUpKey).body;
+  return siteRequest(config, "owner", "GET", toString("/process_tournament?egd_tournament_key=", madeUpKey)).body;
 }
 
 // The tournament's games' gorating ratings, a line each.
 String madeUpRatings(const GoratingConfig& config, StringView tournament)
 {
   mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
-  mariadb::MariaDbResult games = db.query(String("SELECT id, winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating FROM game"
-                                                 " WHERE egd_tournament_id=") + tournament + " ORDER BY id");
+  mariadb::MariaDbResult games = db.query("SELECT id, winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating FROM game"
+                                          " WHERE egd_tournament_id=", tournament, " ORDER BY id");
   String out;
   for (ContainerSize i = 0; i < games.size(); ++i)
   {
@@ -121,30 +121,30 @@ test "recomputing agrees with processing a tournament"
   saveMadeUpPages();
   config.egdPageDirectory = String(egdWork);
   check(processMadeUpTournament(config).find("Processed") != String::npos);
-  String t = dbValue(config, String("SELECT id FROM egd_tournament WHERE egd_key=") + quote(madeUpKey));
+  String t = dbValue(config, toString("SELECT id FROM egd_tournament WHERE egd_key=", quote(madeUpKey)));
   require(!t.empty());
-  check(dbValue(config, String("SELECT COUNT(*) FROM game WHERE egd_tournament_id=") + t) == "6");
-  check(dbValue(config, String("SELECT COUNT(*) FROM game WHERE jigo AND egd_tournament_id=") + t) == "1");
+  check(dbValue(config, toString("SELECT COUNT(*) FROM game WHERE egd_tournament_id=", t)) == "6");
+  check(dbValue(config, toString("SELECT COUNT(*) FROM game WHERE jigo AND egd_tournament_id=", t)) == "1");
 
   // Every other player registered before it, from EGD's rating; processed again from nothing, their
   // games get gorating ratings.
-  dbRun(config, String("UPDATE user SET register_timestamp='2026-01-01 00:00:00', register_rating=egd_rating, rating=egd_rating"
-                       " WHERE egd_pin IN ('19990001', '19990003');"
-                       "DELETE FROM game WHERE egd_tournament_id=") + t + "; DELETE FROM egd_tournament_result WHERE egd_tournament_id=" + t +
-                 "; DELETE FROM egd_tournament WHERE id=" + t);
+  dbRun(config, toString("UPDATE user SET register_timestamp='2026-01-01 00:00:00', register_rating=egd_rating, rating=egd_rating"
+                         " WHERE egd_pin IN ('19990001', '19990003');"
+                         "DELETE FROM game WHERE egd_tournament_id=", t, "; DELETE FROM egd_tournament_result WHERE egd_tournament_id=", t,
+                 "; DELETE FROM egd_tournament WHERE id=", t));
   check(processMadeUpTournament(config).find("Processed") != String::npos);
-  t = dbValue(config, String("SELECT id FROM egd_tournament WHERE egd_key=") + quote(madeUpKey));
-  check(dbValue(config, String("SELECT COUNT(*) FROM game WHERE egd_tournament_id=") + t +
-                         " AND (winner_old_rating IS NOT NULL OR loser_old_rating IS NOT NULL)") == "5");
+  t = dbValue(config, toString("SELECT id FROM egd_tournament WHERE egd_key=", quote(madeUpKey)));
+  check(dbValue(config, toString("SELECT COUNT(*) FROM game WHERE egd_tournament_id=", t,
+                         " AND (winner_old_rating IS NOT NULL OR loser_old_rating IS NOT NULL)")) == "5");
   String processed = madeUpRatings(config, t);
 
   // A recompute from the tournament's start moves no game.
   for (StringView pin : {"19990001", "19990003"})
   {
-    String id = dbValue(config, String("SELECT id FROM user WHERE egd_pin=") + quote(pin));
-    String rating = String("(SELECT register_rating FROM user WHERE id=") + id + ")";
-    dbRun(config, String("CALL start_rating_update(") + id + ", " + rating + ", " + id + ", " + rating +
-                      ", (SELECT timestamp FROM egd_tournament WHERE id=" + t + "))");
+    String id = dbValue(config, toString("SELECT id FROM user WHERE egd_pin=", quote(pin)));
+    String rating = toString("(SELECT register_rating FROM user WHERE id=", id, ")");
+    dbRun(config, toString("CALL start_rating_update(", id, ", ", rating, ", ", id, ", ", rating,
+                      ", (SELECT timestamp FROM egd_tournament WHERE id=", t, "))"));
   }
   check(dbValue(config, "SELECT value FROM variable WHERE name='rating_update_in_progress'") == "1");
   runRatingUpdate(config);
@@ -152,10 +152,10 @@ test "recomputing agrees with processing a tournament"
 
   // A deleted game whose winner has no gorating rating and whose loser has one starts an update;
   // after it, processing the tournament again finds nothing different.
-  String deleted = dbValue(config, String("SELECT id FROM game WHERE egd_tournament_id=") + t +
-                                      " AND winner_old_rating IS NULL AND loser_old_rating IS NOT NULL ORDER BY egd_tournament_round LIMIT 1");
+  String deleted = dbValue(config, toString("SELECT id FROM game WHERE egd_tournament_id=", t,
+                                      " AND winner_old_rating IS NULL AND loser_old_rating IS NOT NULL ORDER BY egd_tournament_round LIMIT 1"));
   require(!deleted.empty());
-  dbRun(config, String("UPDATE game SET deleted=1 WHERE id=") + deleted);
+  dbRun(config, toString("UPDATE game SET deleted=1 WHERE id=", deleted));
   check(dbValue(config, "SELECT value FROM variable WHERE name='rating_update_in_progress'") == "1");
   runRatingUpdate(config);
   dbRun(config, "DELETE FROM rating_discrepancy");
@@ -171,23 +171,22 @@ test "recomputing agrees with processing a tournament"
   // tournament's end.
   String a = dbValue(config, "SELECT id FROM user WHERE egd_pin='19990001'");
   String b = dbValue(config, "SELECT id FROM user WHERE egd_pin='19990003'");
-  dbRun(config, format("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_rating, winner_new_rating, loser_old_rating,"
-                       " loser_new_rating) VALUES({}, {}, 5, '2026-11-01 00:00:00', 1500, 1510, 1500, 1490)", a, b));
+  dbRun(config, toString("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating) VALUES(", a, ", ", b, ", 5, '2026-11-01 00:00:00', 1500, 1510, 1500, 1490)"));
   String later = dbValue(config, "SELECT MAX(id) FROM game");
-  dbRun(config, String("DELETE FROM game WHERE egd_tournament_id=") + t + "; DELETE FROM egd_tournament_result WHERE egd_tournament_id=" + t +
-                 "; DELETE FROM egd_tournament WHERE id=" + t);
+  dbRun(config, toString("DELETE FROM game WHERE egd_tournament_id=", t, "; DELETE FROM egd_tournament_result WHERE egd_tournament_id=", t,
+                 "; DELETE FROM egd_tournament WHERE id=", t));
   processMadeUpTournament(config);
-  t = dbValue(config, String("SELECT id FROM egd_tournament WHERE egd_key=") + quote(madeUpKey));
+  t = dbValue(config, toString("SELECT id FROM egd_tournament WHERE egd_key=", quote(madeUpKey)));
   check(dbValue(config, "SELECT value FROM variable WHERE name='rating_update_in_progress'") == "1");
   runRatingUpdate(config);
   auto lastOf = [&](StringView user)
   {
     String u(user);
-    return dbValue(config, String("SELECT IF(winner_user_id=") + u + ", winner_new_rating, loser_new_rating) FROM game WHERE egd_tournament_id=" + t +
-                               " AND deleted=0 AND (winner_user_id=" + u + " OR loser_user_id=" + u + ") ORDER BY egd_tournament_round DESC LIMIT 1");
+    return dbValue(config, toString("SELECT IF(winner_user_id=", u, ", winner_new_rating, loser_new_rating) FROM game WHERE egd_tournament_id=", t,
+                               " AND deleted=0 AND (winner_user_id=", u, " OR loser_user_id=", u, ") ORDER BY egd_tournament_round DESC LIMIT 1"));
   };
-  check(nearly(ratingValue(dbValue(config, String("SELECT winner_old_rating FROM game WHERE id=") + later)), ratingValue(lastOf(a))));
-  check(nearly(ratingValue(dbValue(config, String("SELECT loser_old_rating FROM game WHERE id=") + later)), ratingValue(lastOf(b))));
-  check(nearly(ratingValue(dbValue(config, String("SELECT rating FROM user WHERE id=") + a)),
-               ratingValue(dbValue(config, String("SELECT winner_new_rating FROM game WHERE id=") + later))));
+  check(nearly(ratingValue(dbValue(config, toString("SELECT winner_old_rating FROM game WHERE id=", later))), ratingValue(lastOf(a))));
+  check(nearly(ratingValue(dbValue(config, toString("SELECT loser_old_rating FROM game WHERE id=", later))), ratingValue(lastOf(b))));
+  check(nearly(ratingValue(dbValue(config, toString("SELECT rating FROM user WHERE id=", a))),
+               ratingValue(dbValue(config, toString("SELECT winner_new_rating FROM game WHERE id=", later)))));
 }

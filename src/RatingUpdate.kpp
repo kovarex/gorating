@@ -29,15 +29,15 @@ Optional<String> fetchUserRatingBefore(Page& page, const Row& user, StringView u
                                        const Optional<String>& tournamentId, const Optional<String>& lastResort, bool egdOnly)
 {
   String id(userId);
-  String sql = String("SELECT IF(game.winner_user_id=") + id + ", game.winner_new_rating, game.loser_new_rating) as rating,"
-               " IF(game.winner_user_id=" + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) as egd_rating"
-               " FROM game WHERE game.deleted = false and (game.winner_user_id=" + quote(id) + " or game.loser_user_id=" + quote(id) + ")";
+  String sql = toString("SELECT IF(game.winner_user_id=", id, ", game.winner_new_rating, game.loser_new_rating) as rating,"
+                        " IF(game.winner_user_id=", id, ", game.winner_new_egd_rating, game.loser_new_egd_rating) as egd_rating"
+                        " FROM game WHERE game.deleted = false and (game.winner_user_id=", quote(id), " or game.loser_user_id=", quote(id), ")");
   if (phpTrue(timestamp))
-    sql << String(" and game.timestamp < ") + quote(*timestamp);
+    sql << " and game.timestamp < " << quote(*timestamp);
   if (phpTrue(tournamentId))
-    sql << String(" and (game.egd_tournament_id is null or game.egd_tournament_id != ") + quote(*tournamentId) + ")";
+    sql << " and (game.egd_tournament_id is null or game.egd_tournament_id != " << quote(*tournamentId) << ")";
   if (egdOnly)
-    sql << String(" and IF(game.winner_user_id=") + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) is not null";
+    sql << " and IF(game.winner_user_id=" << id << ", game.winner_new_egd_rating, game.loser_new_egd_rating) is not null";
   // (the id last: two games of one time and round, two reports of the same second, in one order)
   sql << " ORDER BY game.timestamp DESC, game.egd_tournament_round DESC, game.id DESC LIMIT 1";
   mariadb::MariaDbResult last = page.query(sql);
@@ -55,9 +55,9 @@ Optional<String> fetchUserRatingBefore(Page& page, const Row& user, StringView u
 Optional<String> fetchUserRatingBefore(Page& page, StringView userId, const Optional<String>& timestamp,
                                        const Optional<String>& tournamentId, const Optional<String>& lastResort = Optional<String>())
 {
-  mariadb::MariaDbResult user = page.query(String("SELECT * FROM user where id=") + quote(userId));
+  mariadb::MariaDbResult user = page.query("SELECT * FROM user where id=", quote(userId));
   if (user.empty())
-    throw GoratingError(format("no user {}", userId));
+    throw GoratingError(toString("no user ", userId));
   return fetchUserRatingBefore(page, Row(user, 0), userId, timestamp, tournamentId, lastResort, false);
 }
 
@@ -79,7 +79,7 @@ String ratingToUse(const Optional<String>& rating, const Optional<String>& ratin
 
 String variable(Page& page, StringView name)
 {
-  Optional<String> value = page.db->scalar(String("SELECT value from variable WHERE name=") + quote(name));
+  Optional<String> value = page.db->scalar("SELECT value from variable WHERE name=", quote(name));
   return value.has_value() ? *value : String();
 }
 
@@ -95,9 +95,9 @@ String limitedLines(StringView header, const Vector<String>& lines, ContainerSiz
 {
   String out(header);
   for (ContainerSize i = 0; i < lines.size() && i < limit; ++i)
-    out << String("\n") + lines[i];
+    out << "\n" << lines[i];
   if (lines.size() > limit)
-    out << format("\n... and {} more {}.", (i64)(lines.size() - limit), more);
+    out << "\n... and " << (i64)(lines.size() - limit) << " more " << more << ".";
   return out;
 }
 
@@ -180,8 +180,8 @@ struct RatingUpdateWindow
                      " winner_is_black, jigo, rating_update_version, winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating,"
                      " winner_new_egd_rating, loser_new_egd_rating";
     String order = " ORDER BY timestamp, egd_tournament_id, egd_tournament_round, id";
-    mariadb::MariaDbResult rows = page->query(String("SELECT ") + columns + " FROM game WHERE timestamp >= " + quote(this->start) + order +
-                                              format(" LIMIT {}", ratingUpdateWindowGames + 1));
+    mariadb::MariaDbResult rows = page->query("SELECT ", columns, " FROM game WHERE timestamp >= ", quote(this->start), order,
+                                              toString(" LIMIT ", ratingUpdateWindowGames + 1));
     ContainerSize count = rows.size();
     if (count > (ContainerSize)ratingUpdateWindowGames)
     {
@@ -191,7 +191,7 @@ struct RatingUpdateWindow
       if (count == 0)
       {
         // One time with more games than a window: that time alone.
-        rows = page->query(String("SELECT ") + columns + " FROM game WHERE timestamp = " + quote(this->start) + order);
+        rows = page->query("SELECT ", columns, " FROM game WHERE timestamp = ", quote(this->start), order);
         count = rows.size();
       }
     }
@@ -206,13 +206,17 @@ struct RatingUpdateWindow
     // production copy): those games as the database has them, for its players' sides.
     String tournaments;
     for (const UpdateGame& g : this->games)
-      if (g.tournament.has_value() && tournaments.find(String(",") + *g.tournament + ",") == String::npos)
-        tournaments << String(tournaments.empty() ? "," : "") + *g.tournament + ",";
+      if (g.tournament.has_value() && tournaments.find(toString(",", *g.tournament, ",")) == String::npos)
+      {
+        if (tournaments.empty())
+          tournaments << ",";
+        tournaments << *g.tournament << ",";
+      }
     if (!tournaments.empty())
     {
       String list = tournaments.substr(1, tournaments.size() - 2);
-      mariadb::MariaDbResult others = page->query(String("SELECT ") + columns + " FROM game WHERE egd_tournament_id IN (" + list + ") AND (timestamp < " +
-                                                  quote(this->games.front().timestamp) + " OR timestamp > " + quote(this->games.back().timestamp) + ")" + order);
+      mariadb::MariaDbResult others = page->query("SELECT ", columns, " FROM game WHERE egd_tournament_id IN (", list, ") AND (timestamp < ",
+                                                  quote(this->games.front().timestamp), " OR timestamp > ", quote(this->games.back().timestamp), ")", order);
       for (ContainerSize i = 0; i < others.size(); ++i)
         this->outside.push_back(readGame(others, i));
     }
@@ -305,8 +309,8 @@ struct RatingUpdateWindow
         before = cached->second;
       else
       {
-        before = page->db->scalar(String("SELECT IF(winner_user_id=") + user + ", winner_old_egd_rating, loser_old_egd_rating) FROM game WHERE egd_tournament_id=" +
-                                  quote(*tournament) + " and (winner_user_id=" + quote(user) + " or loser_user_id=" + quote(user) +
+        before = page->db->scalar("SELECT IF(winner_user_id=", user, ", winner_old_egd_rating, loser_old_egd_rating) FROM game WHERE egd_tournament_id=",
+                                  quote(*tournament), " and (winner_user_id=", quote(user), " or loser_user_id=", quote(user),
                                   ") ORDER BY egd_tournament_round, id LIMIT 1");
         this->egdBefore[key] = before;
       }
@@ -315,7 +319,7 @@ struct RatingUpdateWindow
       return *before;
     if (gameOldRating.has_value() && !gameOldRating->empty())
       return *gameOldRating;
-    throw GoratingError(format("no rating to recompute user {}'s game from", user));
+    throw GoratingError(toString("no rating to recompute user ", user, "'s game from"));
   }
 
   // A player's side of a tournament's game, as processTournament computes it: from their rating
@@ -368,7 +372,7 @@ struct RatingUpdateWindow
       }
     }
     if (!found)
-      throw GoratingError(format("game {} is not among user {}'s games of its tournament", game.id, user));
+      throw GoratingError(toString("game ", game.id, " is not among user ", user, "'s games of its tournament"));
     side.end = runningText;
     return side;
   }
@@ -525,14 +529,14 @@ struct RatingUpdateWindow
       {
         const UpdateGame& g = *written[i];
         ids << String(i == from ? "" : ",") + g.id;
-        winnerOld << String(" WHEN ") + g.id + " THEN " + sqlValue(g.winnerOld);
-        winnerNew << String(" WHEN ") + g.id + " THEN " + sqlValue(g.winnerNew);
-        loserOld << String(" WHEN ") + g.id + " THEN " + sqlValue(g.loserOld);
-        loserNew << String(" WHEN ") + g.id + " THEN " + sqlValue(g.loserNew);
+        winnerOld << " WHEN " << g.id << " THEN " << sqlValue(g.winnerOld);
+        winnerNew << " WHEN " << g.id << " THEN " << sqlValue(g.winnerNew);
+        loserOld << " WHEN " << g.id << " THEN " << sqlValue(g.loserOld);
+        loserNew << " WHEN " << g.id << " THEN " << sqlValue(g.loserNew);
       }
-      page->query(String("UPDATE game SET winner_old_rating = CASE id") + winnerOld + " END, winner_new_rating = CASE id" + winnerNew +
-                  " END, loser_old_rating = CASE id" + loserOld + " END, loser_new_rating = CASE id" + loserNew +
-                  " END, rating_update_version = " + this->version + " WHERE id IN (" + ids + ")");
+      page->query("UPDATE game SET winner_old_rating = CASE id", winnerOld, " END, winner_new_rating = CASE id", winnerNew,
+                  " END, loser_old_rating = CASE id", loserOld, " END, loser_new_rating = CASE id", loserNew,
+                  " END, rating_update_version = ", this->version, " WHERE id IN (", ids, ")");
     }
     for (ContainerSize from = 0; from < this->changedValues.size(); from += 500)
     {
@@ -544,7 +548,7 @@ struct RatingUpdateWindow
         const UpdateValue& value = this->values[user];
         rows << String(i == from ? "" : ",") + "(" + user + "," + value.rating + ",STR_TO_DATE(" + quote(value.timestamp) + ",'%Y-%m-%d %H:%i:%s'))";
       }
-      page->query(String("INSERT INTO rating_update_value(user_id, rating, timestamp) VALUES ") + rows +
+      page->query("INSERT INTO rating_update_value(user_id, rating, timestamp) VALUES ", rows,
                   " ON DUPLICATE KEY UPDATE rating = VALUES(rating), timestamp = VALUES(timestamp)");
     }
   }
@@ -553,12 +557,12 @@ struct RatingUpdateWindow
 // The update's next game: the earliest game it takes (the window starts there), or none.
 Optional<String> nextRatingUpdateTime(Page& page, StringView version, StringView since)
 {
-  String common = String(" WHERE game.deleted = false and game.rating_update_version < ") + String(version) + " and game.timestamp >= " +
-                  quote(since) + " and game.timestamp >= rating_update_value.timestamp";
-  return page.db->scalar(String("SELECT MIN(game.timestamp) FROM (SELECT MIN(game.timestamp) AS timestamp FROM rating_update_value JOIN game ON") +
-                         " rating_update_value.user_id = game.winner_user_id" + common +
-                         " UNION ALL SELECT MIN(game.timestamp) FROM rating_update_value JOIN game ON rating_update_value.user_id = game.loser_user_id" +
-                         common + ") AS game");
+  String common = toString(" WHERE game.deleted = false and game.rating_update_version < ", version, " and game.timestamp >= ",
+                  quote(since), " and game.timestamp >= rating_update_value.timestamp");
+  return page.db->scalar("SELECT MIN(game.timestamp) FROM (SELECT MIN(game.timestamp) AS timestamp FROM rating_update_value JOIN game ON",
+                         " rating_update_value.user_id = game.winner_user_id", common,
+                         " UNION ALL SELECT MIN(game.timestamp) FROM rating_update_value JOIN game ON rating_update_value.user_id = game.loser_user_id",
+                         common, ") AS game");
 }
 
 // The end of an update: each player's rating from their latest game, as processing a tournament sets
@@ -572,7 +576,7 @@ String finishRatingUpdate(Page& page)
   {
     Row user(users, i);
     updateFinalRating(page, user["id"]);
-    Optional<String> now = page.db->scalar(String("SELECT rating FROM user WHERE id=") + quote(user["id"]));
+    Optional<String> now = page.db->scalar("SELECT rating FROM user WHERE id=", quote(user["id"]));
     changes.push_back(user["name"] + ": " + showRating(user["rating"]) + "→" + showRating(now.value_or(String())));
   }
   page.query("DELETE FROM rating_update_value");
@@ -637,7 +641,7 @@ String processRating(Page& page, i32 seconds)
     window.load();
     window.computeAll();
     if (window.processed == 0)
-      throw GoratingError(format("the rating update's next game, of {}, is not among the games read from it", window.start));
+      throw GoratingError(toString("the rating update's next game, of ", window.start, ", is not among the games read from it"));
     window.write();
     page.db->commit();
     processed += window.processed;
@@ -646,13 +650,11 @@ String processRating(Page& page, i32 seconds)
       break;
   }
   if (finished)
-    return format("Rating update finished after {} games.\n", processed) + report;
+    return toString("Rating update finished after ", processed, " games.\n") + report;
   String version = variable(page, "rating_update_version");
   if (reached.empty())
     reached = variable(page, "rating_update_timestamp");
-  Optional<String> left = page.db->scalar(String("SELECT COUNT(*) FROM game WHERE deleted = false and rating_update_version < ") + version +
-                                          " and timestamp >= " + quote(reached));
-  return format("Rating update: {} games recomputed in this request, up to the games of {}; {} later games are left to look at"
-                " (the next edit or the hourly job goes on).",
-                processed, reached, left.value_or(String("0")));
+  Optional<String> left = page.db->scalar("SELECT COUNT(*) FROM game WHERE deleted = false and rating_update_version < ", version,
+                                          " and timestamp >= ", quote(reached));
+  return toString("Rating update: ", processed, " games recomputed in this request, up to the games of ", reached, "; ", left.value_or(String("0")), " later games are left to look at (the next edit or the hourly job goes on).");
 }

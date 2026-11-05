@@ -69,7 +69,7 @@ void invitesPage(Page& page)
   String pin = page.get("pin");
   if (!pin.empty())
   {
-    mariadb::MariaDbResult player = page.query(String("SELECT first_name, last_name FROM user WHERE egd_pin=") + quote(pin));
+    mariadb::MariaDbResult player = page.query("SELECT first_name, last_name FROM user WHERE egd_pin=", quote(pin));
     if (!player.empty())
     {
       first = Row(player, 0)["first_name"];
@@ -79,8 +79,8 @@ void invitesPage(Page& page)
   bool all = canAccessAllInvites(page);
   page.body << invitesTemplate.render(
       {{"first", first}, {"last", last}, {"own", all ? html::SafeHtml() : html::SafeHtml::escape("Your account can see only invites you created.")}});
-  Table table(page, String("invite LEFT JOIN user ON invite.user_id=user.id JOIN user as inviter ON invite.from_user_id=inviter.id") +
-                        (all ? String() : String(" WHERE invite.from_user_id=") + quote(userValue(page, "id"))));
+  Table table(page, toString("invite LEFT JOIN user ON invite.user_id=user.id JOIN user as inviter ON invite.from_user_id=inviter.id",
+                        (all ? String() : String(" WHERE invite.from_user_id=") + quote(userValue(page, "id")))));
   Sort primary;
   primary.column = "timestamp";
   primary.ascending = false;
@@ -124,12 +124,12 @@ void inviteAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/invites", "A first and a last name are needed");
   if (!rating.empty() && !number(rating).has_value())
     return redirectWithMessage(response, "/invites", "The rating is a number");
-  if (!page.query(String("SELECT id FROM user WHERE email=") + quote(email)).empty())
+  if (!page.query("SELECT id FROM user WHERE email=", quote(email)).empty())
     return redirectWithMessage(response, "/invites", "Player with this email is already registered");
   String secret = secureRandomSecret();
-  page.query(String("INSERT INTO invite(from_user_id, first_name, last_name, email, secret, rating) VALUES (") +
-             quote(userValue(page, "id")) + "," + quote(first) + "," + quote(last) + "," + quote(email) + "," + quote(secret) + "," +
-             quoteOrNull(rating) + ")");
+  page.query("INSERT INTO invite(from_user_id, first_name, last_name, email, secret, rating) VALUES (",
+             quote(userValue(page, "id")), ",", quote(first), ",", quote(last), ",", quote(email), ",", quote(secret), ",",
+             quoteOrNull(rating), ")");
   String id = *page.db->scalar("SELECT LAST_INSERT_ID()");
   sendMail(*page.config, email, "Friendly go rating invitation",
            inviteMailTemplate.render({{"name", first + " " + last}, {"link", inviteAddress(page, id, secret)}}));
@@ -157,10 +157,10 @@ void inviteExistingUserPage(Page& page)
   if (!requireLogin(page))
     return;
   String id = page.get("user_id");
-  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
+  mariadb::MariaDbResult found = page.query("SELECT * FROM user WHERE id=", quote(id));
   if (id.empty() || found.empty())
   {
-    page.body << pageMessageTemplate.render({{"message", String("User with id=") + id + " not found"}});
+    page.body << pageMessageTemplate.render({{"message", toString("User with id=", id, " not found")}});
     return;
   }
   Row player(found, 0);
@@ -182,9 +182,9 @@ void inviteExistingUserAction(Page& page, http::HttpResponse& response)
   String email = formValue(form, "email");
   if (userId.empty())
     return redirectWithMessage(response, "/invites", "user_id of player to register not provided");
-  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE user.id=") + quote(userId));
+  mariadb::MariaDbResult found = page.query("SELECT * FROM user WHERE user.id=", quote(userId));
   if (found.empty())
-    return redirectWithMessage(response, "/invites", String("User with id=") + userId + " not found.");
+    return redirectWithMessage(response, "/invites", toString("User with id=", userId, " not found."));
   Row user(found, 0);
   if (!user["username"].empty())
     return redirectWithMessage(response, "/invites", user["name"] + " is already registered.");
@@ -192,11 +192,11 @@ void inviteExistingUserAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/invites", "Email not provided");
   if (!isMailAddress(email))
     return redirectWithMessage(response, "/invites", "That is not an email address");
-  if (!page.query(String("SELECT id FROM user WHERE email=") + quote(email)).empty())
+  if (!page.query("SELECT id FROM user WHERE email=", quote(email)).empty())
     return redirectWithMessage(response, "/invites", "Player with this email is already registered");
   String secret = secureRandomSecret();
-  page.query(String("INSERT INTO invite(from_user_id, user_id, email, secret) VALUES (") + quote(userValue(page, "id")) + "," +
-             quote(userId) + "," + quote(email) + "," + quote(secret) + ")");
+  page.query("INSERT INTO invite(from_user_id, user_id, email, secret) VALUES (", quote(userValue(page, "id")), ",",
+             quote(userId), ",", quote(email), ",", quote(secret), ")");
   String id = *page.db->scalar("SELECT LAST_INSERT_ID()");
   sendMail(*page.config, email, "Friendly go rating invitation",
            inviteExistingMailTemplate.render({{"player", siteAddress(page) + playerPath(user["id"], user["username"])},
@@ -212,13 +212,13 @@ Optional<String> registrationProblem(Page& page, StringView id, StringView secre
 {
   if (id.empty())
     return Optional<String>(String("Invite ID not specified."));
-  mariadb::MariaDbResult invite = page.query(String("SELECT * FROM invite WHERE id=") + quote(id));
+  mariadb::MariaDbResult invite = page.query("SELECT * FROM invite WHERE id=", quote(id));
   if (invite.empty())
-    return Optional<String>(String("Specified invite with id=") + String(id) + " doesn't exist.");
+    return Optional<String>(toString("Specified invite with id=", id, " doesn't exist."));
   Row row(invite, 0);
   if (!sha256::Sha256::constantTimeEqual(row["secret"], secret))
     return Optional<String>(String("Secret incorrect"));
-  if (!page.query(String("SELECT id FROM user WHERE email=") + quote(row["email"])).empty())
+  if (!page.query("SELECT id FROM user WHERE email=", quote(row["email"])).empty())
     return Optional<String>(String("User with this email already present."));
   return Optional<String>();
 }
@@ -255,11 +255,11 @@ void registerPage(Page& page)
     page.body << pageMessageTemplate.render({{"message", *problem}});
     return;
   }
-  mariadb::MariaDbResult invited = page.query(String("SELECT * FROM invite WHERE id=") + quote(id));
+  mariadb::MariaDbResult invited = page.query("SELECT * FROM invite WHERE id=", quote(id));
   Row row(invited, 0);
   mariadb::MariaDbResult user;
   if (!row["user_id"].empty())
-    user = page.query(String("SELECT * FROM user WHERE id=") + quote(row["user_id"]));
+    user = page.query("SELECT * FROM user WHERE id=", quote(row["user_id"]));
   bool existing = !user.empty();
   Row existingUser = existing ? Row(user, 0) : Row();
   page.body << registerTemplate.render(
@@ -293,11 +293,11 @@ void registerAction(Page& page, http::HttpResponse& response)
   Vector<url::UrlQueryParameter> form = page.request->form();
   String id = formValue(form, "invite_id");
   String secret = formValue(form, "secret");
-  String back = String("/register?id=") + url::urlEncode(id) + "&secret=" + url::urlEncode(secret);
+  String back = toString("/register?id=", url::urlEncode(id), "&secret=", url::urlEncode(secret));
   Optional<String> problem = registrationProblem(page, id, secret);
   if (problem.has_value())
     return redirectWithMessage(response, "/", *problem);
-  mariadb::MariaDbResult invited = page.query(String("SELECT * FROM invite WHERE id=") + quote(id));
+  mariadb::MariaDbResult invited = page.query("SELECT * FROM invite WHERE id=", quote(id));
   Row row(invited, 0);
   String username = formValue(form, "username");
   String password = formValue(form, "password");
@@ -305,21 +305,21 @@ void registerAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, back, "A username is letters, digits, '_', '-' and '.', and not a page's name");
   if (password.size() < 4)
     return redirectWithMessage(response, back, "The password needs 4 characters or more");
-  if (!page.query(String("SELECT id FROM user where username=") + quote(username)).empty())
-    return redirectWithMessage(response, back, String("The username \"") + username + "\" is taken");
+  if (!page.query("SELECT id FROM user where username=", quote(username)).empty())
+    return redirectWithMessage(response, back, toString("The username \"", username, "\" is taken"));
   String hash = passwordHash(password);
   String newUserId;
   page.db->begin();
   if (!row["user_id"].empty())
   {
-    if (page.query(String("SELECT id FROM user WHERE id=") + quote(row["user_id"])).empty())
+    if (page.query("SELECT id FROM user WHERE id=", quote(row["user_id"])).empty())
     {
       page.db->rollback();
       return redirectWithMessage(response, back, "The user you are supposed to register as doesn't exist.");
     }
-    page.query(String("UPDATE user SET username=") + quote(username) + ", email=" + quote(row["email"]) + ", password=" + quote(hash) +
-               ", admin_level_id=5, invited_by_user_id=" + row["from_user_id"] +
-               ", register_timestamp=now(), register_rating=user.rating WHERE user.id=" + quote(row["user_id"]));
+    page.query("UPDATE user SET username=", quote(username), ", email=", quote(row["email"]), ", password=", quote(hash),
+               ", admin_level_id=5, invited_by_user_id=", row["from_user_id"],
+               ", register_timestamp=now(), register_rating=user.rating WHERE user.id=", quote(row["user_id"]));
     newUserId = row["user_id"];
   }
   else
@@ -330,21 +330,21 @@ void registerAction(Page& page, http::HttpResponse& response)
       page.db->rollback();
       return redirectWithMessage(response, back, "Country not selected");
     }
-    mariadb::MariaDbResult countries = page.query(String("SELECT id FROM country WHERE code=") + quote(country));
+    mariadb::MariaDbResult countries = page.query("SELECT id FROM country WHERE code=", quote(country));
     if (countries.empty())
     {
       page.db->rollback();
-      return redirectWithMessage(response, back, String("Country with code '") + country + "' not found.");
+      return redirectWithMessage(response, back, toString("Country with code '", country, "' not found."));
     }
     String rating = row["rating"].empty() ? String("100") : row["rating"];
-    page.query(String("INSERT INTO user(username, first_name, last_name, email, rating, register_rating, password, country_id,"
-                      " admin_level_id, invited_by_user_id, register_timestamp) VALUES(") +
-               quote(username) + "," + quote(row["first_name"]) + "," + quote(row["last_name"]) + "," + quote(row["email"]) + "," +
-               quote(rating) + "," + quote(rating) + "," + quote(hash) + "," + quote(Row(countries, 0)["id"]) + ",5," +
-               row["from_user_id"] + ", now())");
+    page.query("INSERT INTO user(username, first_name, last_name, email, rating, register_rating, password, country_id,"
+               " admin_level_id, invited_by_user_id, register_timestamp) VALUES(",
+               quote(username), ",", quote(row["first_name"]), ",", quote(row["last_name"]), ",", quote(row["email"]), ",",
+               quote(rating), ",", quote(rating), ",", quote(hash), ",", quote(Row(countries, 0)["id"]), ",5,",
+               row["from_user_id"], ", now())");
     newUserId = *page.db->scalar("SELECT LAST_INSERT_ID()");
   }
-  page.query(String("DELETE FROM invite WHERE user_id=") + quote(newUserId));
+  page.query("DELETE FROM invite WHERE user_id=", quote(newUserId));
   page.db->commit();
   redirectWithMessage(response, playerPath(newUserId, username), "Registration successful.");
 }
@@ -385,15 +385,14 @@ void resetPasswordAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/reset_password", "Email not provided");
   // The same answer whether the address has an account or not.
   String answer = "If an account has this address, a reset link is on its way to it.";
-  mariadb::MariaDbResult found = page.query(
-      String("SELECT id, TIMESTAMPDIFF(SECOND, reset_password_timestamp, NOW()) as since FROM user WHERE email=") + quote(email));
+  mariadb::MariaDbResult found = page.query("SELECT id, TIMESTAMPDIFF(SECOND, reset_password_timestamp, NOW()) as since FROM user WHERE email=", quote(email));
   if (found.empty() || !isMailAddress(email))
     return redirectWithMessage(response, "/", answer);
   Row user(found, 0);
   if (!user["since"].empty() && stoll(user["since"]) < resetInterval)
     return redirectWithMessage(response, "/", answer);
   String secret = secureRandomSecret();
-  page.query(String("UPDATE user SET reset_password_secret=") + quote(secret) + ", reset_password_timestamp=now() WHERE id=" + quote(user["id"]));
+  page.query("UPDATE user SET reset_password_secret=", quote(secret), ", reset_password_timestamp=now() WHERE id=", quote(user["id"]));
   sendMail(*page.config, email, "gorating.com password reset",
            resetMailTemplate.render({{"link", siteAddress(page) + "/reset_password_confirm?id=" + user["id"] + "&secret=" + secret}}));
   redirectWithMessage(response, "/", answer);
@@ -404,8 +403,8 @@ Optional<String> resetProblem(Page& page, StringView id, StringView secret, mari
 {
   if (id.empty())
     return Optional<String>(String("Player id not provided"));
-  user = page.query(String("SELECT id, reset_password_secret, TIMESTAMPDIFF(SECOND, reset_password_timestamp, NOW()) as since"
-                           " FROM user WHERE id=") + quote(id));
+  user = page.query("SELECT id, reset_password_secret, TIMESTAMPDIFF(SECOND, reset_password_timestamp, NOW()) as since"
+                    " FROM user WHERE id=", quote(id));
   if (user.empty())
     return Optional<String>(String("User doesn't exist"));
   Row row(user, 0);
@@ -441,10 +440,10 @@ void resetPasswordConfirmAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/", *problem);
   String password = formValue(form, "password");
   if (password.size() < 4)
-    return redirectWithMessage(response, String("/reset_password_confirm?id=") + url::urlEncode(formValue(form, "id")) + "&secret=" +
-                                             url::urlEncode(formValue(form, "secret")),
+    return redirectWithMessage(response, toString("/reset_password_confirm?id=", url::urlEncode(formValue(form, "id")), "&secret=",
+                                             url::urlEncode(formValue(form, "secret"))),
                                "The password needs 4 characters or more");
-  page.query(String("UPDATE user SET password=") + quote(passwordHash(password)) +
-             ", reset_password_secret = NULL, reset_password_timestamp = NULL WHERE id=" + quote(Row(user, 0)["id"]));
+  page.query("UPDATE user SET password=", quote(passwordHash(password)),
+             ", reset_password_secret = NULL, reset_password_timestamp = NULL WHERE id=", quote(Row(user, 0)["id"]));
   redirectWithMessage(response, "/", "Password successfully changed.");
 }

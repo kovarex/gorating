@@ -17,9 +17,9 @@ String multipartBody(const Vector<Pair<String, String>>& fields, StringView file
 {
   String body;
   for (const Pair<String, String>& field : fields)
-    body << String("--XyZ\r\nContent-Disposition: form-data; name=\"") + field.first + "\"\r\n\r\n" + field.second + "\r\n";
-  body << String("--XyZ\r\nContent-Disposition: form-data; name=\"sgf\"; filename=\"") + fileName +
-              "\"\r\nContent-Type: application/x-go-sgf\r\n\r\n" + file + "\r\n--XyZ--\r\n";
+    body << "--XyZ\r\nContent-Disposition: form-data; name=\"" << field.first << "\"\r\n\r\n" << field.second << "\r\n";
+  body << "--XyZ\r\nContent-Disposition: form-data; name=\"sgf\"; filename=\"" << fileName <<
+              "\"\r\nContent-Type: application/x-go-sgf\r\n\r\n" << file << "\r\n--XyZ--\r\n";
   return body;
 }
 
@@ -41,19 +41,19 @@ test "a game's SGF: reported with it, downloaded, replaced and removed, the chan
   http::HttpResponse reported = siteRequest(config, "player11", "POST", "/report_action", reportBody, "multipart/form-data; boundary=XyZ");
   check(locationOf(reported).find("message=Game%20added") != String::npos);
   String game = goratingDbValue(config, "SELECT MAX(id) FROM game");
-  check(goratingDbValue(config, String("SELECT sgf FROM game WHERE id=") + game) == sgf);
+  check(goratingDbValue(config, toString("SELECT sgf FROM game WHERE id=", game)) == sgf);
 
   // Anyone downloads it, named by the game and its players.
-  http::HttpResponse download = siteRequest(config, "visitor", "GET", String("/sgf?id=") + game);
+  http::HttpResponse download = siteRequest(config, "visitor", "GET", toString("/sgf?id=", game));
   check(download.status == 200 && download.body == sgf);
   check(headerOf(download, "Content-Type") == "application/octet-stream");
   String disposition = headerOf(download, "Content-Disposition");
-  check(disposition.starts_with(String("attachment; filename=\"") + game + " ") && disposition.find(".sgf\"; filename*=UTF-8''") != String::npos);
+  check(disposition.starts_with(toString("attachment; filename=\"", game, " ")) && disposition.find(".sgf\"; filename*=UTF-8''") != String::npos);
   check(siteRequest(config, "visitor", "GET", "/sgf?id=999999").status == 404);
   check(siteRequest(config, "visitor", "GET", "/sgf").body == "Sgf id not provided.");
 
   // The admin replaces it: the change log keeps both files, which only admins download.
-  String timestamp = goratingDbValue(config, String("SELECT timestamp FROM game WHERE id=") + game);
+  String timestamp = goratingDbValue(config, toString("SELECT timestamp FROM game WHERE id=", game));
   Vector<Pair<String, String>> editFields = {{String("id"), game}, {String("redirect"), String("/")}, {String("original_winner"), String("winner")},
                                              {String("original_winner_color"), String("white")}, {String("handicap"), String("0")},
                                              {String("komi"), String("6.5")}, {String("location"), String("Brno")}, {String("timestamp"), timestamp}};
@@ -61,23 +61,23 @@ test "a game's SGF: reported with it, downloaded, replaced and removed, the chan
   http::HttpResponse replaced = siteRequest(config, "player2", "POST", "/edit_game_action", multipartBody(editFields, "new.sgf", replacement),
                                             "multipart/form-data; boundary=XyZ");
   check(locationOf(replaced).find("SGF%20was%20updated.") != String::npos);
-  check(siteRequest(config, "visitor", "GET", String("/sgf?id=") + game).body == replacement);
-  String change = goratingDbValue(config, String("SELECT MAX(id) FROM `change` WHERE change_type_id=") + format("{}", changeGameSgf) +
-                                              " AND game_id=" + game);
-  check(siteRequest(config, "player2", "GET", String("/sgf?from=change_old&id=") + change).body == sgf);
-  check(siteRequest(config, "player2", "GET", String("/sgf?from=change_new&id=") + change).body == replacement);
-  check(siteRequest(config, "player11", "GET", String("/sgf?from=change_old&id=") + change).status == 403);
-  check(siteRequest(config, "visitor", "GET", String("/sgf?from=change_new&id=") + change).status == 403);
+  check(siteRequest(config, "visitor", "GET", toString("/sgf?id=", game)).body == replacement);
+  String change = goratingDbValue(config, toString("SELECT MAX(id) FROM `change` WHERE change_type_id=", toString(changeGameSgf),
+                                              " AND game_id=", game));
+  check(siteRequest(config, "player2", "GET", toString("/sgf?from=change_old&id=", change)).body == sgf);
+  check(siteRequest(config, "player2", "GET", toString("/sgf?from=change_new&id=", change)).body == replacement);
+  check(siteRequest(config, "player11", "GET", toString("/sgf?from=change_old&id=", change)).status == 403);
+  check(siteRequest(config, "visitor", "GET", toString("/sgf?from=change_new&id=", change)).status == 403);
 
   // Removed with the form's checkbox: the game has none, the log keeps the last one.
-  String removeForm = String("id=") + game + "&redirect=%2F&original_winner=winner&original_winner_color=white&handicap=0&komi=6.5&location=Brno&delete-sgf=on&timestamp=" +
-                      url::urlEncode(timestamp);
+  String removeForm = toString("id=", game, "&redirect=%2F&original_winner=winner&original_winner_color=white&handicap=0&komi=6.5&location=Brno&delete-sgf=on&timestamp=",
+                      url::urlEncode(timestamp));
   check(locationOf(postForm(config, "player2", "/edit_game_action", removeForm)).find("SGF%20was%20removed") != String::npos);
-  check(goratingDbValue(config, String("SELECT sgf IS NULL FROM game WHERE id=") + game) == "1");
-  check(siteRequest(config, "visitor", "GET", String("/sgf?id=") + game).body.empty());
-  String removal = goratingDbValue(config, String("SELECT MAX(id) FROM `change` WHERE change_type_id=") + format("{}", changeGameSgf) +
-                                               " AND game_id=" + game);
-  check(removal != change && siteRequest(config, "player2", "GET", String("/sgf?from=change_old&id=") + removal).body == replacement);
+  check(goratingDbValue(config, toString("SELECT sgf IS NULL FROM game WHERE id=", game)) == "1");
+  check(siteRequest(config, "visitor", "GET", toString("/sgf?id=", game)).body.empty());
+  String removal = goratingDbValue(config, toString("SELECT MAX(id) FROM `change` WHERE change_type_id=", toString(changeGameSgf),
+                                               " AND game_id=", game));
+  check(removal != change && siteRequest(config, "player2", "GET", toString("/sgf?from=change_old&id=", removal)).body == replacement);
 }
 
 test "a user's settings: rating digits and the rating change format"
@@ -107,7 +107,7 @@ test "a user's settings: rating digits and the rating change format"
   check(form.find("<option value=\"2\" selected=\"selected\">2</option>") != String::npos);
   check(form.find("id=\"format_2\" name=\"rating_change_format\" value=\"2\" checked=\"checked\"") != String::npos);
   double rating = ratingValue(goratingDbValue(config, "SELECT rating FROM user WHERE username='player11'"));
-  String shown = format("<td>Rating:</td><td>{}</td>", fixed(rating, 2));
+  String shown = toString("<td>Rating:</td><td>", fixed(rating, 2), "</td>");
   check(siteRequest(config, "player11", "GET", "/player11").body.find(shown) != String::npos);
   check(siteRequest(config, "visitor", "GET", "/player11").body.find(shown) == String::npos);
 }
@@ -122,26 +122,26 @@ test "a mod edits a player's name: the change log, and what is refused"
   }
   GoratingConfig config = freshTestDatabase(*server);
   String player = goratingDbValue(config, "SELECT id FROM user WHERE username='player12'");
-  String oldName = goratingDbValue(config, String("SELECT name FROM user WHERE id=") + player);
-  String form = String("id=") + player + "&first_name=Jana&last_name=Nov%C3%A1kov%C3%A1";
+  String oldName = goratingDbValue(config, toString("SELECT name FROM user WHERE id=", player));
+  String form = toString("id=", player, "&first_name=Jana&last_name=Nov%C3%A1kov%C3%A1");
   // A user may not; a mod (player3) may, with a POST.
   check(locationOf(postForm(config, "player11", "/edit_player_name_action", form)).find("No%20rights%20to%20edit%20names") != String::npos);
-  check(locationOf(siteRequest(config, "player3", "GET", String("/edit_player_name_action?") + form)).find("A%20name%20is%20edited%20with%20the%20form") !=
+  check(locationOf(siteRequest(config, "player3", "GET", toString("/edit_player_name_action?", form))).find("A%20name%20is%20edited%20with%20the%20form") !=
         String::npos);
-  check(goratingDbValue(config, String("SELECT name FROM user WHERE id=") + player) == oldName);
+  check(goratingDbValue(config, toString("SELECT name FROM user WHERE id=", player)) == oldName);
 
   String done = locationOf(postForm(config, "player3", "/edit_player_name_action", form));
-  check(done.starts_with(String("/player?id=") + player) && done.find("Changed%20name%20from%20") != String::npos);
-  check(goratingDbValue(config, String("SELECT name FROM user WHERE id=") + player) == "Jana Nováková");
-  check(goratingDbValue(config, String("SELECT COUNT(*) FROM `change` WHERE change_type_id IN (1, 2) AND user_id=") + player) == "2");
-  check(goratingDbValue(config, String("SELECT CONCAT(old_value, ' ', new_value) FROM `change` WHERE change_type_id=2 AND user_id=") + player).ends_with(" Nováková"));
-  check(siteRequest(config, "visitor", "GET", String("/player?id=") + player).body.find("Jana Nováková") != String::npos);
+  check(done.starts_with(toString("/player?id=", player)) && done.find("Changed%20name%20from%20") != String::npos);
+  check(goratingDbValue(config, toString("SELECT name FROM user WHERE id=", player)) == "Jana Nováková");
+  check(goratingDbValue(config, toString("SELECT COUNT(*) FROM `change` WHERE change_type_id IN (1, 2) AND user_id=", player)) == "2");
+  check(goratingDbValue(config, toString("SELECT CONCAT(old_value, ' ', new_value) FROM `change` WHERE change_type_id=2 AND user_id=", player)).ends_with(" Nováková"));
+  check(siteRequest(config, "visitor", "GET", toString("/player?id=", player)).body.find("Jana Nováková") != String::npos);
 
   check(locationOf(postForm(config, "player3", "/edit_player_name_action", form)).find("No%20change.") != String::npos);
-  check(locationOf(postForm(config, "player3", "/edit_player_name_action", String("id=") + player + "&first_name=Jana&last_name=")).find("A%20first%20and%20a%20last%20name%20are%20needed") !=
+  check(locationOf(postForm(config, "player3", "/edit_player_name_action", toString("id=", player, "&first_name=Jana&last_name="))).find("A%20first%20and%20a%20last%20name%20are%20needed") !=
         String::npos);
   check(locationOf(postForm(config, "player3", "/edit_player_name_action", "id=999999&first_name=A&last_name=B")).find("No%20player%20with%20id%3D999999") != String::npos);
-  check(goratingDbValue(config, String("SELECT COUNT(*) FROM `change` WHERE change_type_id IN (1, 2) AND user_id=") + player) == "2");
+  check(goratingDbValue(config, toString("SELECT COUNT(*) FROM `change` WHERE change_type_id IN (1, 2) AND user_id=", player)) == "2");
 }
 
 test "a tournament whose games go past EGD's round count shows every round"
@@ -156,25 +156,25 @@ test "a tournament whose games go past EGD's round count shows every round"
   // As T261101A on production: EGD says one round, its games are in rounds 1 and 2.
   mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
   String gameType = db.query("SELECT game_type_id FROM egd_tournament ORDER BY id LIMIT 1").text(0, "game_type_id");
-  db.query(String("INSERT INTO egd_tournament(egd_key, name, player_count, round_count, timestamp, country_id, game_type_id) VALUES('TROUNDS', 'Short count', 3, 1, '2021-06-01 10:00:00', (SELECT MIN(id) FROM country), ") +
-           gameType + ")");
+  db.query("INSERT INTO egd_tournament(egd_key, name, player_count, round_count, timestamp, country_id, game_type_id) VALUES('TROUNDS', 'Short count', 3, 1, '2021-06-01 10:00:00', (SELECT MIN(id) FROM country), ",
+           gameType, ")");
   String tournament = goratingDbValue(config, "SELECT id FROM egd_tournament WHERE egd_key='TROUNDS'");
   Vector<String> players;
   for (StringView username : {"player11", "player12", "player13"})
-    players.push_back(goratingDbValue(config, String("SELECT id FROM user WHERE username='") + username + "'"));
+    players.push_back(goratingDbValue(config, toString("SELECT id FROM user WHERE username='", username, "'")));
   for (ContainerSize i = 0; i < players.size(); ++i)
-    db.query(String("INSERT INTO egd_tournament_result(egd_tournament_id, user_id, placement) VALUES(") + tournament + "," + players[i] + "," +
-             format("{}", (i64)(i + 1)) + ")");
+    db.query("INSERT INTO egd_tournament_result(egd_tournament_id, user_id, placement) VALUES(", tournament, ",", players[i], ",",
+             toString((i64)(i + 1)), ")");
   auto game = [&](StringView winner, StringView loser, i32 round) {
-    db.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
-                    " loser_old_egd_rating, loser_new_egd_rating, egd_tournament_id, egd_tournament_round) VALUES(") +
-             String(winner) + "," + String(loser) + "," + gameType + ",'2021-06-01 10:00:00',1500,1510,1500,1490," + tournament + "," +
-             format("{}", round) + ")");
+    db.query("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
+             " loser_old_egd_rating, loser_new_egd_rating, egd_tournament_id, egd_tournament_round) VALUES(",
+             String(winner), ",", loser, ",", gameType, ",'2021-06-01 10:00:00',1500,1510,1500,1490,", tournament, ",",
+             toString(round), ")");
   };
   game(players[0], players[1], 1);
   game(players[0], players[2], 2);
   game(players[1], players[2], 3);
-  http::HttpResponse shown = siteRequest(config, "visitor", "GET", String("/tournament?id=") + tournament);
+  http::HttpResponse shown = siteRequest(config, "visitor", "GET", toString("/tournament?id=", tournament));
   check(shown.status == 200);
   check(shown.body.find("<th>Round 1</th><th>Round 2</th><th>Round 3</th></tr>") != String::npos);
   check(shown.body.find("<th>Round 4</th>") == String::npos);

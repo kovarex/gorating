@@ -41,7 +41,7 @@ void settingsAction(Page& page, http::HttpResponse& response)
     return redirectWithMessage(response, "/settings", "Significant digits are 0 to 3");
   if (format != "1" && format != "2")
     return redirectWithMessage(response, "/settings", "Invalid rating change format value");
-  page.query(String("UPDATE user SET setting_significant_digits_in_rating=") + digits +
-             ", setting_rating_change_format=" + format + " WHERE id=" + quote(userValue(page, "id")));
+  page.query("UPDATE user SET setting_significant_digits_in_rating=", digits,
+             ", setting_rating_change_format=", format, " WHERE id=", quote(userValue(page, "id")));
   response.redirect("/");
 }

@@ -40,7 +40,7 @@ html::SafeHtml showRatingDelta(StringView oldRating, StringView newRating)
   if (size < 0.01 && digits < 3)
     digits = 3;
   return ratingDeltaTemplate.render({{"class", ratingValue(oldRating) < ratingValue(newRating) ? "winner" : "loser"},
-                                     {"delta", format("{}{}", StringView(delta > 0 ? "+" : ""), fixed(delta, digits))}});
+                                     {"delta", toString(StringView(delta > 0 ? "+" : ""), fixed(delta, digits))}});
 }
 
 // PHP's truthiness of a column: NULL, "" and "0" are false.
@@ -79,15 +79,15 @@ StringView ratingChangeKind(StringView type)
     return "Manual";
   if (type == "6")
     return "Errornous";
-  throw GoratingError(format("a rating change of type {}", type));
+  throw GoratingError(toString("a rating change of type ", type));
 }
 
 void playerPage(Page& page, StringView id)
 {
-  mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
+  mariadb::MariaDbResult found = page.query("SELECT * FROM user WHERE id=", quote(id));
   if (found.empty())
   {
-    page.body << html::SafeHtml::escape(String("Unknown player with id=") + String(id));
+    page.body << html::SafeHtml::escape(toString("Unknown player with id=", id));
     return;
   }
   Row player(found, 0);
@@ -115,13 +115,13 @@ void playerPage(Page& page, StringView id)
                                               {"pin", pin}});
 
   String me = quote(player["id"]);
-  Table table(page, String("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,"
-                           " user as winner, user as loser, game_type"
-                           " WHERE game.deleted = false and game.winner_user_id = winner.id and game.loser_user_id = loser.id"
-                           " and game.game_type_id = game_type.id and (winner_user_id=") + me + " or loser_user_id=" + me + ")");
-  table.secondaryFrom = Optional<String>(String("rating_change JOIN rating_change_type ON rating_change.rating_change_type_id=rating_change_type.id"
-                                                " LEFT JOIN user as executed_by ON rating_change.executed_by_user_id=executed_by.id"
-                                                " WHERE rating_change.user_id=") + me);
+  Table table(page, toString("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,"
+                             " user as winner, user as loser, game_type"
+                             " WHERE game.deleted = false and game.winner_user_id = winner.id and game.loser_user_id = loser.id"
+                             " and game.game_type_id = game_type.id and (winner_user_id=", me, " or loser_user_id=", me, ")"));
+  table.secondaryFrom = Optional<String>(toString("rating_change JOIN rating_change_type ON rating_change.rating_change_type_id=rating_change_type.id"
+                                                  " LEFT JOIN user as executed_by ON rating_change.executed_by_user_id=executed_by.id"
+                                                  " WHERE rating_change.user_id=", me));
   // The edit column: an admin's on every page, a user's on their own (src/auth.php's canEditGame:
   // a game of theirs, for a day after it). PHP widened the rating change rows for it whenever
   // someone was logged in, column or not.
@@ -150,7 +150,7 @@ void playerPage(Page& page, StringView id)
   last.ascending = false;
   table.lastSort = Optional<Sort>(last);
 
-  String isWinner = String("winner.id = ") + me;
+  String isWinner = toString("winner.id = ", me);
   Page* p = &page;
   if (editColumn)
   {
@@ -167,15 +167,15 @@ void playerPage(Page& page, StringView id)
                     });
   }
   table.addColumn("result", "",
-                  {{String("IF(game.jigo, 'JIGO', IF(") + isWinner + ", 'WIN', 'LOSS'))", "result"}, {"NULL", "rating_change_type_id"}},
+                  {{toString("IF(game.jigo, 'JIGO', IF(", isWinner, ", 'WIN', 'LOSS'))"), "result"}, {"NULL", "rating_change_type_id"}},
                   [p](const Row& row) { return resultImage(*p, row["result"]); }, Align::center)
       .addSecondary({{"NULL", "result"}, {"rating_change_type_id", "rating_change_type_id"}});
   TableColumn& rating = table.addColumn(
       "rating_change", "Rating",
-      {{String("IF(") + isWinner + ", IFNULL(game.winner_new_rating, 0) - IFNULL(game.winner_old_rating, 0),"
-                                   " IFNULL(game.loser_new_rating, 0) - IFNULL(game.loser_old_rating, 0))", "rating_change"},
-       {String("IF(") + isWinner + ", game.winner_old_rating, game.loser_old_rating)", "old_rating"},
-       {String("IF(") + isWinner + ", game.winner_new_rating, game.loser_new_rating)", "new_rating"}},
+      {{toString("IF(", isWinner, ", IFNULL(game.winner_new_rating, 0) - IFNULL(game.winner_old_rating, 0),"
+                 " IFNULL(game.loser_new_rating, 0) - IFNULL(game.loser_old_rating, 0))"), "rating_change"},
+       {toString("IF(", isWinner, ", game.winner_old_rating, game.loser_old_rating)"), "old_rating"},
+       {toString("IF(", isWinner, ", game.winner_new_rating, game.loser_new_rating)"), "new_rating"}},
       [](const Row& row) { return ratingChangeCells(row["old_rating"], row["new_rating"]); });
   rating.writesCells = true;
   rating.headerColspan = ratingChangeFormat == 2 ? 2 : 1;
@@ -184,10 +184,10 @@ void playerPage(Page& page, StringView id)
                        {"rating_change.new_rating", "new_rating"}});
   TableColumn& egdRating = table.addColumn(
       "egd_rating_change", "EGD Rating",
-      {{String("IF(") + isWinner + ", IFNULL(game.winner_new_egd_rating, 0) - IFNULL(game.winner_old_egd_rating, 0),"
-                                   " IFNULL(game.loser_new_egd_rating, 0) - IFNULL(game.loser_old_egd_rating, 0))", "egd_rating_change"},
-       {String("IF(") + isWinner + ", game.winner_old_egd_rating, game.loser_old_egd_rating)", "old_egd_rating"},
-       {String("IF(") + isWinner + ", game.winner_new_egd_rating, game.loser_new_egd_rating)", "new_egd_rating"}},
+      {{toString("IF(", isWinner, ", IFNULL(game.winner_new_egd_rating, 0) - IFNULL(game.winner_old_egd_rating, 0),"
+                 " IFNULL(game.loser_new_egd_rating, 0) - IFNULL(game.loser_old_egd_rating, 0))"), "egd_rating_change"},
+       {toString("IF(", isWinner, ", game.winner_old_egd_rating, game.loser_old_egd_rating)"), "old_egd_rating"},
+       {toString("IF(", isWinner, ", game.winner_new_egd_rating, game.loser_new_egd_rating)"), "new_egd_rating"}},
       [](const Row& row) { return ratingChangeCells(row["old_egd_rating"], row["new_egd_rating"]); });
   egdRating.writesCells = true;
   egdRating.headerColspan = ratingChangeFormat == 2 ? 2 : 1;
@@ -195,11 +195,11 @@ void playerPage(Page& page, StringView id)
                           {"rating_change.old_egd_rating", "old_egd_rating"},
                           {"rating_change.new_egd_rating", "new_egd_rating"}});
   table.addColumn("opponent_name", "Opponent",
-                  {{String("IF(") + isWinner + ", loser.name, winner.name)", "opponent_name"},
-                   {String("IF(") + isWinner + ", loser.username, winner.username)", "opponent_username"},
-                   {String("IF(") + isWinner + ", game.loser_user_id, game.winner_user_id)", "opponent_id"},
-                   {String("IF(") + isWinner + ", game.loser_new_rating, game.winner_new_rating)", "opponent_rating"},
-                   {String("IF(") + isWinner + ", game.loser_new_egd_rating, game.winner_new_egd_rating)", "opponent_egd_rating"}},
+                  {{toString("IF(", isWinner, ", loser.name, winner.name)"), "opponent_name"},
+                   {toString("IF(", isWinner, ", loser.username, winner.username)"), "opponent_username"},
+                   {toString("IF(", isWinner, ", game.loser_user_id, game.winner_user_id)"), "opponent_id"},
+                   {toString("IF(", isWinner, ", game.loser_new_rating, game.winner_new_rating)"), "opponent_rating"},
+                   {toString("IF(", isWinner, ", game.loser_new_egd_rating, game.winner_new_egd_rating)"), "opponent_egd_rating"}},
                   [](const Row& row) { return playerLink(row, "opponent"); })
       .addSecondary({{"executed_by.name", "opponent_name"},
                      {"executed_by.username", "opponent_username"},
@@ -208,7 +208,7 @@ void playerPage(Page& page, StringView id)
                      {"executed_by.egd_rating", "opponent_egd_rating"}});
   table.addColumn("game_type_name", "Game type", {{"game_type.name", "game_type_name"}},
                   [](const Row& row) { return html::SafeHtml::escape(row["game_type_name"]); }, Align::center);
-  table.addColumn("color", "Color", {{String("IF((") + isWinner + " = winner_is_black), 'Black', 'White')", "color"}},
+  table.addColumn("color", "Color", {{toString("IF((", isWinner, " = winner_is_black), 'Black', 'White')"), "color"}},
                   [](const Row& row) { return html::SafeHtml::escape(row["color"]); }, Align::center);
   table.addColumn("handicap", "Handicap", {{"game.handicap", "handicap"}, {"game.komi", "komi"}},
                   [](const Row& row) { return html::SafeHtml::escape(showHandicap(row["handicap"], row["komi"])); }, Align::center);
@@ -229,11 +229,11 @@ void playerPage(Page& page, StringView id)
       .addSecondary({{"NULL", "egd_tournament_name"}, {"NULL", "egd_tournament_key"}, {"NULL", "egd_tournament_id"}, {"9999", "egd_tournament_round"}});
   table.addColumn("game_location", "Location", {{"game.location", "game_location"}},
                   [](const Row& row) { return html::SafeHtml::escape(row["game_location"]); });
-  table.addColumn("comment", "Comment", {{String("IF(") + isWinner + ", game.winner_comment, game.loser_comment)", "comment"}},
+  table.addColumn("comment", "Comment", {{toString("IF(", isWinner, ", game.winner_comment, game.loser_comment)"), "comment"}},
                   [](const Row& row) { return html::SafeHtml::escape(row["comment"]); })
       .addSecondary({{"rating_change.comment", "comment"}});
   table.addColumn("opponent_comment", "Opponent comment",
-                  {{String("IF(") + isWinner + ", game.loser_comment, game.winner_comment)", "opponent_comment"}},
+                  {{toString("IF(", isWinner, ", game.loser_comment, game.winner_comment)"), "opponent_comment"}},
                   [](const Row& row) { return html::SafeHtml::escape(row["opponent_comment"]); });
   table.addColumn("has_sgf", "SGF", {{"length(game.sgf) > 0", "has_sgf"}, {"game.id", "game_id"}},
                   [](const Row& row) { return row["has_sgf"] == "1" ? sgfLink(row["game_id"]) : html::SafeHtml(); });
@@ -249,7 +249,7 @@ void playerPage(Page& page, StringView id)
 // /username: the player of that name; false when there is none.
 bool playerByUsername(Page& page, StringView username)
 {
-  mariadb::MariaDbResult found = page.query(String("SELECT id FROM user WHERE username=") + quote(username));
+  mariadb::MariaDbResult found = page.query("SELECT id FROM user WHERE username=", quote(username));
   if (found.empty())
     return false;
   playerPage(page, Row(found, 0)["id"]);

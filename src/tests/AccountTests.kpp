@@ -56,18 +56,18 @@ test "an invite, its registration, logging in, a password reset"
   check(mail.find("new.person@example.test") != String::npos && mail.find(secret) != String::npos);
 
   // Registering: a wrong secret refused, a page's name as username refused, then registered.
-  String registration = String("invite_id=") + inviteId + "&username=nova&password=secret1&country_code=CZ&secret=";
+  String registration = toString("invite_id=", inviteId, "&username=nova&password=secret1&country_code=CZ&secret=");
   check(locationOf(postForm(config, "visitor", "/register_action", registration + "0123456789abcdef0123456789abcdef")) != "");
   check(goratingDbValue(config, "SELECT COUNT(*) FROM user WHERE username='nova'") == "0");
   check(locationOf(postForm(config, "visitor", "/register_action",
-                            String("invite_id=") + inviteId + "&username=players&password=secret1&country_code=CZ&secret=" + secret))
+                            toString("invite_id=", inviteId, "&username=players&password=secret1&country_code=CZ&secret=", secret)))
             .find("not%20a%20page%27s%20name") != String::npos);
   http::HttpResponse registered = postForm(config, "visitor", "/register_action", registration + secret);
   check(locationOf(registered).find("Registration%20successful") != String::npos);
   check(goratingDbValue(config, "SELECT CONCAT(first_name, ' ', last_name, ' ', email, ' ', rating) FROM user WHERE username='nova'") ==
         "Nová Osoba new.person@example.test 1200");
   // The link registers once.
-  postForm(config, "visitor", "/register_action", String("invite_id=") + inviteId + "&username=nova2&password=secret1&country_code=CZ&secret=" + secret);
+  postForm(config, "visitor", "/register_action", toString("invite_id=", inviteId, "&username=nova2&password=secret1&country_code=CZ&secret=", secret));
   check(goratingDbValue(config, "SELECT COUNT(*) FROM user WHERE username='nova2'") == "0");
 
   // Logging in: the right password gives a session cookie, a wrong one does not.
@@ -87,14 +87,14 @@ test "an invite, its registration, logging in, a password reset"
   check(resetSecret.size() == 32);
   bool linked = false;
   for (const String& name : mails())
-    linked = linked || goratingReadFile(name).find(String("https://gorating.test/reset_password_confirm?id=") + userId + "&amp;secret=" + resetSecret) != String::npos;
+    linked = linked || goratingReadFile(name).find(toString("https://gorating.test/reset_password_confirm?id=", userId, "&amp;secret=", resetSecret)) != String::npos;
   check(linked);
   postForm(config, "visitor", "/reset_password_action", "email=new.person%40example.test");
   check(mails().size() == 2);
   // A wrong secret changes nothing; the right one sets the new password, which logs in.
-  postForm(config, "visitor", "/reset_password_confirm_action", String("id=") + userId + "&secret=0123456789abcdef0123456789abcdef&password=newpass1");
+  postForm(config, "visitor", "/reset_password_confirm_action", toString("id=", userId, "&secret=0123456789abcdef0123456789abcdef&password=newpass1"));
   check(setCookieOf(postForm(config, "visitor", "/login_action", "username=nova&password=newpass1")).empty());
-  check(locationOf(postForm(config, "visitor", "/reset_password_confirm_action", String("id=") + userId + "&secret=" + resetSecret + "&password=newpass1"))
+  check(locationOf(postForm(config, "visitor", "/reset_password_confirm_action", toString("id=", userId, "&secret=", resetSecret, "&password=newpass1")))
             .find("Password%20successfully%20changed") != String::npos);
   check(setCookieOf(postForm(config, "visitor", "/login_action", "username=nova&password=newpass1")).starts_with("gorating_id="));
   check(setCookieOf(postForm(config, "visitor", "/login_action", "username=nova&password=secret1")).empty());

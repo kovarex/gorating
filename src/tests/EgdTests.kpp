@@ -7,21 +7,13 @@
 String egdGameRow(StringView round, StringView gorChange, StringView color, StringView handicap, StringView result, StringView opponentPin,
                   StringView opponentName, StringView opponentGor, StringView opponentGorChange)
 {
-  return format("<tr><td class=\"text\">{}</td><td><b>{}</b></td><td><i>-7.955</i></td><td class=\"text\">{}</td><td class=\"text\" >{}</td>"
-                "<td class=\"text\">{}</td><td class=\"text\">{}</td><td class=\"text\">{}</td><td class=\"text\">3d</td><td>{}</td><td>{}</td></tr>\n",
-                round, gorChange, color, handicap, result, opponentPin, opponentName, opponentGor, opponentGorChange);
+  return toString("<tr><td class=\"text\">", round, "</td><td><b>", gorChange, "</b></td><td><i>-7.955</i></td><td class=\"text\">", color, "</td><td class=\"text\" >", handicap, "</td><td class=\"text\">", result, "</td><td class=\"text\">", opponentPin, "</td><td class=\"text\">", opponentName, "</td><td class=\"text\">3d</td><td>", opponentGor, "</td><td>", opponentGorChange, "</td></tr>\n");
 }
 
 // A player's block: place, the link "PIN - <b>Name</b>", GoR before, the games' table.
 String egdPlayerBlock(i32 place, StringView pin, StringView name, StringView gor, StringView rows)
 {
-  return format("<div class=\"thisdiv\"><br>Place {}: <a href=\"/EGD/Player_Card.php?key={}\">{} - <b>{}</b></a> (rank declared: 4d)<br>"
-                "GoR before tournament: <b>{}</b><br><br><table width=100%><tr><td><a href=\"/EGD/Player_Card.php?key={}\"><img src=\"x.png\" alt=\"\" ></a></td>"
-                "<td><table class=\"stdtable thistable\">\n<thead><tr><th rowspan=2 align=center>Rnd</th><th colspan=3>{}</th><th rowspan=2>Handicap</th>"
-                "<th rowspan=2>Result</th><th colspan=5>Opponent</th></tr><tr><th>GoR change</th><th>GoR change in case<br>of altern. result</th>"
-                "<th>Color</th><th>PIN</th><th>Name</th><th>Rank decl.</th><th>GoR</th><th>GoR change</th></tr></thead>\n<tbody>\n{}</tbody></table>\n"
-                "<br>GoR after tournament: <font color=\"green\"><b>2433.993 (+6.705)</b></font></td></tr></table></div><br>",
-                place, pin, pin, name, gor, pin, pin, rows);
+  return toString("<div class=\"thisdiv\"><br>Place ", place, ": <a href=\"/EGD/Player_Card.php?key=", pin, "\">", pin, " - <b>", name, "</b></a> (rank declared: 4d)<br>GoR before tournament: <b>", gor, "</b><br><br><table width=100%><tr><td><a href=\"/EGD/Player_Card.php?key=", pin, "\"><img src=\"x.png\" alt=\"\" ></a></td><td><table class=\"stdtable thistable\">\n<thead><tr><th rowspan=2 align=center>Rnd</th><th colspan=3>", pin, "</th><th rowspan=2>Handicap</th><th rowspan=2>Result</th><th colspan=5>Opponent</th></tr><tr><th>GoR change</th><th>GoR change in case<br>of altern. result</th><th>Color</th><th>PIN</th><th>Name</th><th>Rank decl.</th><th>GoR</th><th>GoR change</th></tr></thead>\n<tbody>\n", rows, "</tbody></table>\n<br>GoR after tournament: <font color=\"green\"><b>2433.993 (+6.705)</b></font></td></tr></table></div><br>");
 }
 
 // The page's facts (each input as EGD writes it; one left out when skip names it) and the blocks.
@@ -33,13 +25,9 @@ String egdTournamentPage(StringView blocks, StringView skip = "", StringView nat
                                          Pair<StringView, String>{"rounds", String("3")}, Pair<StringView, String>{"total_player", String("4")},
                                          Pair<StringView, String>{"rounds", String("9 (no handicap)")}})
     if (input.first != skip)
-      inputs << format("<input name=\"{}\" type=\"text\" size=\"12\" readonly=\"true\" class=\"plain3_light\" value=\"{}\">\n", input.first, input.second);
+      inputs << "<input name=\"" << input.first << "\" type=\"text\" size=\"12\" readonly=\"true\" class=\"plain3_light\" value=\"" << input.second << "\">\n";
   // (EGD's script writes table tags in strings, which the reader must not take for the page's.)
-  return format("<html><head><title>Tournament</title></head><body>\n<script language=\"JavaScript\">\n<!--\n"
-                "win.document.writeln(\"<TABLE><TR><TD>\");\n//-->\n</script>\n<form>{}"
-                "<input type=\"button\" id=\"togglebutton\" onclick=\"toggledetails();\" value=\"Show details\" /></form>\n"
-                "<div align=\"center\"><span class=\"plain5\">Made-up Cup 2026<br></span><span class=\"plain7\">.: T261031Z :.<br><br /></span></div>\n{}\n</body></html>",
-                inputs, blocks);
+  return toString("<html><head><title>Tournament</title></head><body>\n<script language=\"JavaScript\">\n<!--\nwin.document.writeln(\"<TABLE><TR><TD>\");\n//-->\n</script>\n<form>", inputs, "<input type=\"button\" id=\"togglebutton\" onclick=\"toggledetails();\" value=\"Show details\" /></form>\n<div align=\"center\"><span class=\"plain5\">Made-up Cup 2026<br></span><span class=\"plain7\">.: T261031Z :.<br><br /></span></div>\n", blocks, "\n</body></html>");
 }
 
 String madeUpBlocks()
