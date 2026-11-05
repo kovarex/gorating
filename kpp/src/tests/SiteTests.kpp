@@ -143,3 +143,39 @@ test "a mod edits a player's name: the change log, and what is refused"
   check(locationOf(postForm(config, "player3", "/edit_player_name_action", "id=999999&first_name=A&last_name=B")).find("No%20player%20with%20id%3D999999") != String::npos);
   check(goratingDbValue(config, String("SELECT COUNT(*) FROM `change` WHERE change_type_id IN (1, 2) AND user_id=") + player) == "2");
 }
+
+test "a tournament whose games go past EGD's round count shows every round"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  // As T261101A on production: EGD says one round, its games are in rounds 1 and 2.
+  mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
+  String gameType = db.query("SELECT game_type_id FROM egd_tournament ORDER BY id LIMIT 1").text(0, "game_type_id");
+  db.query(String("INSERT INTO egd_tournament(egd_key, name, player_count, round_count, timestamp, country_id, game_type_id) VALUES('TROUNDS', 'Short count', 3, 1, '2021-06-01 10:00:00', (SELECT MIN(id) FROM country), ") +
+           gameType + ")");
+  String tournament = goratingDbValue(config, "SELECT id FROM egd_tournament WHERE egd_key='TROUNDS'");
+  Vector<String> players;
+  for (StringView username : {"player11", "player12", "player13"})
+    players.push_back(goratingDbValue(config, String("SELECT id FROM user WHERE username='") + username + "'"));
+  for (ContainerSize i = 0; i < players.size(); ++i)
+    db.query(String("INSERT INTO egd_tournament_result(egd_tournament_id, user_id, placement) VALUES(") + tournament + "," + players[i] + "," +
+             format("{}", (int64_t)(i + 1)) + ")");
+  auto game = [&](StringView winner, StringView loser, int round) {
+    db.query(String("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, timestamp, winner_old_egd_rating, winner_new_egd_rating,"
+                    " loser_old_egd_rating, loser_new_egd_rating, egd_tournament_id, egd_tournament_round) VALUES(") +
+             String(winner) + "," + String(loser) + "," + gameType + ",'2021-06-01 10:00:00',1500,1510,1500,1490," + tournament + "," +
+             format("{}", round) + ")");
+  };
+  game(players[0], players[1], 1);
+  game(players[0], players[2], 2);
+  game(players[1], players[2], 3);
+  http::HttpResponse shown = siteRequest(config, "visitor", "GET", String("/tournament?id=") + tournament);
+  check(shown.status == 200);
+  check(shown.body.find("<th>Round 1</th><th>Round 2</th><th>Round 3</th></tr>") != String::npos);
+  check(shown.body.find("<th>Round 4</th>") == String::npos);
+}

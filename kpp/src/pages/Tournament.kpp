@@ -51,6 +51,16 @@ void tournamentPage(Page& page)
       quote(id) + " and game.loser_user_id = loser.id and loser_result.user_id = loser.id and loser_result.egd_tournament_id =" +
       quote(id) + " ORDER BY LEAST(winner_result.placement, loser_result.placement), game.egd_tournament_round");
 
+  // EGD's round count is below its games' rounds for about 2,000 tournaments (T261101A: "1 round",
+  // games in round 2): the table has a column for every round a game was played in (PHP left the
+  // later rounds' games out). The same for placements, which no tournament exceeds today.
+  for (ContainerSize i = 0; i < games.size(); ++i)
+  {
+    Row row(games, i);
+    rounds = max(rounds, (int)stoll(row["round"]));
+    players = max(players, (int)max(stoll(row["winner_placement"]), stoll(row["loser_placement"])));
+  }
+
   // cells[placement][round], placements[placement]: 1-based, as the PHP arrays.
   Vector<Vector<TournamentCell>> cells(players + 1, Vector<TournamentCell>(rounds + 1));
   Vector<Optional<PlayerRef>> placements(players + 1);

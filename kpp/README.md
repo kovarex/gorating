@@ -83,7 +83,7 @@ builds the test program):
 
 **Differences from the PHP version, on purpose:** every text is escaped (names, comments,
 messages); player links are absolute (`/kovarex`), and a username that is also a page's name links
-to `/player?id=`; a table's range on its last page is right; a rating before a game counts no
+to `/player?id=`; a table's range on its last page is right, and a player's table counts its rating changes with its games (it lists both); a tournament's table has a column for every round its games were played in (EGD's round count is below that for about 2,000 tournaments, whose later rounds PHP left out); a rating before a game counts no
 deleted game (kovarex, 2026-11-02); an EGD opponent's whole name is kept (PHP kept two words);
 a column sorted by a value other than its name shows its arrow, and rows with equal values keep
 one order; invite and reset secrets are 32 hexadecimal digits; the rating discrepancies are new;
