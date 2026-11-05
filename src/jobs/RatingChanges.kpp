@@ -33,7 +33,7 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
 {
   String id = quote(userId);
   page.db->begin();
-  out.append(format("user_id={}\n", userId));
+  out << format("user_id={}\n", userId);
   mariadb::MariaDbResult rows = page.query(
       String("SELECT IF(game.winner_user_id=") + id + ", game.winner_old_egd_rating, game.loser_old_egd_rating) as old_egd_rating,"
       " IF(game.winner_user_id=" + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) as new_egd_rating,"
@@ -86,11 +86,11 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
       {
         if (!thisIsJump)
         {
-          out.append(format("Rating jumped from {} to {} in tournament {} round {}\n", *egdRating, egdOld, key, row["egd_tournament_round"]));
+          out << format("Rating jumped from {} to {} in tournament {} round {}\n", *egdRating, egdOld, key, row["egd_tournament_round"]);
           int type = lastStart.has_value() ? ratingJumpReason(reported, firstRound, lastStart, lastEnd) : ratingChangeError;
           if (type == ratingChangeError)
           {
-            out.append("Since this looks like an error, recomputing ");
+            out << "Since this looks like an error, recomputing ";
             // Processing starts a transaction of its own, which ends this one (as in PHP).
             for (const Optional<String>& again : {previousKey, Optional<String>(key)})
             {
@@ -103,11 +103,11 @@ bool checkUserRatingChanges(Page& page, StringView userId, String& out)
               }
               catch (const Exception& e)
               {
-                out.append(String("Error: ") + String(StringView(e.what())) + "\n");
+                out << String("Error: ") + String(StringView(e.what())) + "\n";
               }
-              out.append(*again + " ");
+              out << *again + " ";
             }
-            out.append("\n");
+            out << "\n";
             page.db->rollback();
             return false;
           }
@@ -141,7 +141,7 @@ String checkRatingChanges(Page& page)
       checked = checkUserRatingChanges(page, userId, out);
     if (!checked)
     {
-      out.append("This user seems to be broken, manual check needed.\n");
+      out << "This user seems to be broken, manual check needed.\n";
       break;
     }
   }

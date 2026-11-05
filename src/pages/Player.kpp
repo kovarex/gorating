@@ -54,7 +54,7 @@ html::SafeHtml ratingChangeCells(StringView oldRating, StringView newRating)
   if (ratingChangeFormat != 2)
     return centerCellTemplate2.render({{"content", present ? showRatingChange(oldRating, newRating) : html::SafeHtml()}});
   html::SafeHtml cells = deltaCellTemplate.render({{"content", present ? showRatingDelta(oldRating, newRating) : html::SafeHtml()}});
-  cells.append(present ? newRatingCellTemplate.render({{"content", showRating(newRating)}}) : emptyNewRatingCellTemplate.render({}));
+  cells << (present ? newRatingCellTemplate.render({{"content", showRating(newRating)}}) : emptyNewRatingCellTemplate.render({}));
   return cells;
 }
 
@@ -87,7 +87,7 @@ void playerPage(Page& page, StringView id)
   mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
   if (found.empty())
   {
-    page.body.append(html::SafeHtml::escape(String("Unknown player with id=") + String(id)));
+    page.body << html::SafeHtml::escape(String("Unknown player with id=") + String(id));
     return;
   }
   Row player(found, 0);
@@ -104,7 +104,7 @@ void playerPage(Page& page, StringView id)
     else
       report = inviteLinkTemplate.render({{"id", player["id"]}});
   }
-  page.body.append(playerHeadTemplate.render({{"name", playerNameWithRank(playerRef(player, ""))},
+  page.body << playerHeadTemplate.render({{"name", playerNameWithRank(playerRef(player, ""))},
                                               {"editButton", canEditPlayerName(page) ? editNameButtonTemplate.render({}) : html::SafeHtml()},
                                               {"report", report},
                                               {"first", player["first_name"]},
@@ -112,7 +112,7 @@ void playerPage(Page& page, StringView id)
                                               {"id", player["id"]},
                                               {"rating", showRating(player["rating"])},
                                               {"egdRating", showRating(player["egd_rating"])},
-                                              {"pin", pin}}));
+                                              {"pin", pin}});
 
   String me = quote(player["id"]);
   Table table(page, String("game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,"
@@ -243,7 +243,7 @@ void playerPage(Page& page, StringView id)
     table.addColumn("", "Delete", {},
                     [redirect](const Row& row) { return deleteButtonTemplate.render({{"id", row["game_id"]}, {"redirect", redirect}}); });
   }
-  page.body.append(table.render());
+  page.body << table.render();
 }
 
 // /username: the player of that name; false when there is none.

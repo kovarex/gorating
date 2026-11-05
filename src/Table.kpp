@@ -110,8 +110,8 @@ struct Table
     for (const Optional<Sort>* sort : {&this->fixedSort, &this->currentSort, &this->lastSort})
       if (sort->has_value())
       {
-        out.append(out.empty() ? " ORDER BY " : ", ");
-        out.append((*sort)->column + ((*sort)->ascending ? "" : " DESC"));
+        out << (out.empty() ? StringView(" ORDER BY ") : StringView(", "));
+        out << ((*sort)->column + ((*sort)->ascending ? "" : " DESC"));
       }
     return out;
   }
@@ -123,8 +123,8 @@ struct Table
       for (const SqlColumn& part : column.sql)
       {
         if (!select.empty())
-          select.append(",\n");
-        select.append(part.sql + " as " + part.as);
+          select << ",\n";
+        select << part.sql + " as " + part.as;
       }
     String sql = "SELECT " + select + " FROM " + this->from;
     if (this->secondaryFrom.has_value())
@@ -134,16 +134,16 @@ struct Table
         for (ContainerSize i = 0; i < (column.hasSecondary ? column.secondarySql.size() : column.sql.size()); ++i)
         {
           if (!second.empty())
-            second.append(",\n");
-          second.append(column.hasSecondary ? column.secondarySql[i].sql + " as " + column.secondarySql[i].as
+            second << ",\n";
+          second << (column.hasSecondary ? column.secondarySql[i].sql + " as " + column.secondarySql[i].as
                                             : String("NULL as ") + column.sql[i].as);
         }
-      sql.append(" UNION ALL SELECT " + second + " FROM " + *this->secondaryFrom);
+      sql << (" UNION ALL SELECT " + second + " FROM " + *this->secondaryFrom);
     }
-    sql.append(this->orderBy());
-    sql.append(format(" LIMIT {}", this->limit.has_value() ? *this->limit : tablePageSize));
+    sql << (this->orderBy());
+    sql << format(" LIMIT {}", this->limit.has_value() ? *this->limit : tablePageSize);
     if (this->start() > 1)
-      sql.append(format(" OFFSET {}", this->start() - 1));
+      sql << format(" OFFSET {}", this->start() - 1);
     return sql;
   }
 
@@ -191,10 +191,10 @@ struct Table
         String path = this->addressWith(column.name, ascending ? "up" : "down");
         content = link(path, column.caption);
         if (sorted)
-          content.append(sortImageTemplate.render({{"resources", this->page->config->resourceAddress},
-                                                   {"direction", this->currentSort->ascending ? "up" : "down"}}));
+          content << sortImageTemplate.render({{"resources", this->page->config->resourceAddress},
+                                                   {"direction", this->currentSort->ascending ? "up" : "down"}});
       }
-      out.append((column.headerColspan == 2 ? wideHeaderTemplate : headerTemplate).render({{"content", content}}));
+      out << (column.headerColspan == 2 ? wideHeaderTemplate : headerTemplate).render({{"content", content}});
     }
     return out;
   }
@@ -253,20 +253,20 @@ struct Table
         if (first > 1)
         {
           int64_t previous = first - tablePageSize < 1 ? 1 : first - tablePageSize;
-          captionContent.append(link(this->address("start", format("{}", previous)), "Previous"));
-          captionContent.append(html::SafeHtml::trusted(" "));
+          captionContent << link(this->address("start", format("{}", previous)), "Previous");
+          captionContent << html::SafeHtml::trusted(" ");
         }
         // PHP showed first + shown, one past the last row.
         int64_t last = first + shown - 1 < total ? first + shown - 1 : total;
-        captionContent.append(html::SafeHtml::escape(format("{}-{} of {}", first, last, total)));
+        captionContent << html::SafeHtml::escape(format("{}-{} of {}", first, last, total));
         if (first + shown <= total && shown == tablePageSize)
         {
-          captionContent.append(html::SafeHtml::trusted(" "));
-          captionContent.append(link(this->address("start", format("{}", first + tablePageSize)), "Next"));
+          captionContent << html::SafeHtml::trusted(" ");
+          captionContent << link(this->address("start", format("{}", first + tablePageSize)), "Next");
         }
       }
     }
-    else if (!this->caption.html.empty())
+    else if (!this->caption.str().empty())
     {
       hasCaption = true;
       captionContent = this->caption;
@@ -280,7 +280,7 @@ struct Table
         Optional<html::SafeHtml> special = this->specialRow(row);
         if (special.has_value())
         {
-          rows.append(*special);
+          rows << *special;
           continue;
         }
       }
@@ -290,14 +290,14 @@ struct Table
         html::SafeHtml content = column.cell(row);
         if (column.writesCells)
         {
-          cells.append(content);
+          cells << content;
           continue;
         }
         const html::HtmlTemplate& t = column.align == Align::center ? centerCellTemplate
                                       : column.align == Align::right ? rightCellTemplate : cellTemplate;
-        cells.append(t.render({{"content", content}}));
+        cells << t.render({{"content", content}});
       }
-      rows.append(rowTemplate.render({{"cells", cells}}));
+      rows << rowTemplate.render({{"cells", cells}});
     }
     return tableTemplate.render({{"class", this->tableClass},
                                  {"caption", hasCaption ? captionTemplate.render({{"content", captionContent}}) : html::SafeHtml()},

@@ -24,7 +24,7 @@ bool requireLogin(Page& page)
 {
   if (loggedIn(page))
     return true;
-  page.body.append(pageMessageTemplate.render({{"message", "Not logged in"}}));
+  page.body << pageMessageTemplate.render({{"message", "Not logged in"}});
   return false;
 }
 
@@ -77,8 +77,8 @@ void invitesPage(Page& page)
     }
   }
   bool all = canAccessAllInvites(page);
-  page.body.append(invitesTemplate.render(
-      {{"first", first}, {"last", last}, {"own", all ? html::SafeHtml() : html::SafeHtml::escape("Your account can see only invites you created.")}}));
+  page.body << invitesTemplate.render(
+      {{"first", first}, {"last", last}, {"own", all ? html::SafeHtml() : html::SafeHtml::escape("Your account can see only invites you created.")}});
   Table table(page, String("invite LEFT JOIN user ON invite.user_id=user.id JOIN user as inviter ON invite.from_user_id=inviter.id") +
                         (all ? String() : String(" WHERE invite.from_user_id=") + quote(userValue(page, "id"))));
   Sort primary;
@@ -100,7 +100,7 @@ void invitesPage(Page& page)
                   [p](const Row& row) { return html::SafeHtml::escape(inviteAddress(*p, row["invite_id"], row["invite_secret"])); });
   table.addColumn("timestamp", "Timestamp", {{"invite.timestamp", "timestamp"}},
                   [](const Row& row) { return html::SafeHtml::escape(showDate(row["timestamp"], true)); });
-  page.body.append(table.render());
+  page.body << table.render();
 }
 
 bool canAccessAllInvites(const Page& page) { return userCanDo(page, adminLevelMod); }
@@ -160,15 +160,15 @@ void inviteExistingUserPage(Page& page)
   mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
   if (id.empty() || found.empty())
   {
-    page.body.append(pageMessageTemplate.render({{"message", String("User with id=") + id + " not found"}}));
+    page.body << pageMessageTemplate.render({{"message", String("User with id=") + id + " not found"}});
     return;
   }
   Row player(found, 0);
-  page.body.append(inviteExistingTemplate.render({{"first", player["first_name"]},
+  page.body << inviteExistingTemplate.render({{"first", player["first_name"]},
                                                   {"last", player["last_name"]},
                                                   {"pin", egdLink(player["egd_pin"])},
                                                   {"rating", player["rating"]},
-                                                  {"id", player["id"]}}));
+                                                  {"id", player["id"]}});
 }
 
 void inviteExistingUserAction(Page& page, http::HttpResponse& response)
@@ -252,7 +252,7 @@ void registerPage(Page& page)
   Optional<String> problem = registrationProblem(page, id, secret);
   if (problem.has_value())
   {
-    page.body.append(pageMessageTemplate.render({{"message", *problem}}));
+    page.body << pageMessageTemplate.render({{"message", *problem}});
     return;
   }
   mariadb::MariaDbResult invited = page.query(String("SELECT * FROM invite WHERE id=") + quote(id));
@@ -262,14 +262,14 @@ void registerPage(Page& page)
     user = page.query(String("SELECT * FROM user WHERE id=") + quote(row["user_id"]));
   bool existing = !user.empty();
   Row existingUser = existing ? Row(user, 0) : Row();
-  page.body.append(registerTemplate.render(
+  page.body << registerTemplate.render(
       {{"first", existing ? existingUser["first_name"] : row["first_name"]},
        {"last", existing ? existingUser["last_name"] : row["last_name"]},
        {"email", row["email"]},
        {"who", existing ? existingUserRowTemplate.render({{"link", playerLink(existingUser, "")}})
                         : countryRowTemplate.render({{"selector", countrySelector(page, "")}})},
        {"id", id},
-       {"secret", secret}}));
+       {"secret", secret}});
 }
 
 // A bcrypt hash as PHP's password_hash writes it (cost 10).
@@ -370,7 +370,7 @@ constexpr html::HtmlTemplate resetConfirmTemplate{R"(Now you can set a new passw
 <input type="submit" value="Reset"/><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="secret" value="{{secret}}"/></form>
 )"};
 
-void resetPasswordPage(Page& page) { page.body.append(resetPasswordTemplate.render({})); }
+void resetPasswordPage(Page& page) { page.body << resetPasswordTemplate.render({}); }
 
 constexpr int64_t resetSeconds = 3600;
 constexpr int64_t resetInterval = 600;
@@ -424,10 +424,10 @@ void resetPasswordConfirmPage(Page& page)
   Optional<String> problem = resetProblem(page, page.get("id"), page.get("secret"), user);
   if (problem.has_value())
   {
-    page.body.append(pageMessageTemplate.render({{"message", *problem}}));
+    page.body << pageMessageTemplate.render({{"message", *problem}});
     return;
   }
-  page.body.append(resetConfirmTemplate.render({{"id", Row(user, 0)["id"]}, {"secret", page.get("secret")}}));
+  page.body << resetConfirmTemplate.render({{"id", Row(user, 0)["id"]}, {"secret", page.get("secret")}});
 }
 
 void resetPasswordConfirmAction(Page& page, http::HttpResponse& response)

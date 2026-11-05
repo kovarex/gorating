@@ -52,17 +52,17 @@ constexpr html::HtmlTemplate messageTemplate{R"(<div class="message-div"><h3><b>
 html::SafeHtml menu(const Page& page)
 {
   html::SafeHtml out = firstMenuItemTemplate.render({{"href", "/"}, {"text", "Home"}});
-  out.append(menuItemTemplate.render({{"href", "/players"}, {"text", "Players"}}));
-  out.append(menuItemTemplate.render({{"href", "/tournaments"}, {"text", "Tournaments"}}));
+  out << menuItemTemplate.render({{"href", "/players"}, {"text", "Players"}});
+  out << menuItemTemplate.render({{"href", "/tournaments"}, {"text", "Tournaments"}});
   if (userCanDo(page, adminLevelUser))
-    out.append(menuItemTemplate.render({{"href", "/invites"}, {"text", "Invites"}}));
+    out << menuItemTemplate.render({{"href", "/invites"}, {"text", "Invites"}});
   if (canAccessChanges(page))
-    out.append(menuItemTemplate.render({{"href", "/changes"}, {"text", "Changes"}}));
+    out << menuItemTemplate.render({{"href", "/changes"}, {"text", "Changes"}});
   if (canAccessChanges(page))
-    out.append(menuItemTemplate.render({{"href", "/rating_discrepancies"}, {"text", "Rating discrepancies"}}));
+    out << menuItemTemplate.render({{"href", "/rating_discrepancies"}, {"text", "Rating discrepancies"}});
   if (canAccessDeletedGames(page))
-    out.append(menuItemTemplate.render({{"href", "/deleted_games"}, {"text", "Deleted games"}}));
-  out.append(menuItemTemplate.render({{"href", "/about"}, {"text", "About"}}));
+    out << menuItemTemplate.render({{"href", "/deleted_games"}, {"text", "Deleted games"}});
+  out << menuItemTemplate.render({{"href", "/about"}, {"text", "About"}});
   return out;
 }
 
@@ -77,7 +77,7 @@ String secondsText(double seconds)
     String digits = format("{}", fraction + 10000).substr(1);
     while (!digits.empty() && digits[digits.size() - 1] == '0')
       digits.pop_back();
-    out.append(String(".") + digits);
+    out << String(".") + digits;
   }
   return out;
 }
@@ -86,7 +86,7 @@ html::SafeHtml queryStatistics(const Page& page)
 {
   html::SafeHtml out;
   for (const Pair<String, double>& q : page.queries)
-    out.append(queryStatisticTemplate.render({{"sql", q.first}, {"seconds", secondsText(q.second)}}));
+    out << queryStatisticTemplate.render({{"sql", q.first}, {"seconds", secondsText(q.second)}});
   return out;
 }
 
@@ -99,10 +99,10 @@ html::SafeHtml messageLines(StringView message)
   for (;;)
   {
     ContainerSize end = message.find('\n', at);
-    out.append(html::SafeHtml::escape(message.substr(at, end == StringView::npos ? StringView::npos : end - at)));
+    out << html::SafeHtml::escape(message.substr(at, end == StringView::npos ? StringView::npos : end - at));
     if (end == StringView::npos)
       return out;
-    out.append(html::SafeHtml::trusted("<br/>"));
+    out << html::SafeHtml::trusted("<br/>");
     at = end + 1;
   }
 }
@@ -123,5 +123,5 @@ String layout(const Page& page, const html::SafeHtml& content, double seconds)
                {"message", message.empty() ? html::SafeHtml() : messageTemplate.render({{"message", messageLines(message)}})},
                {"content", content},
                {"generated", String(" - Page generated in ") + secondsText(seconds) + " seconds"}})
-      .html;
+      .str();
 }

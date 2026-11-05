@@ -21,4 +21,4 @@ TODO:
 </ul>
 )"};
 
-void aboutPage(Page& page) { page.body.append(aboutTemplate.render({})); }
+void aboutPage(Page& page) { page.body << aboutTemplate.render({}); }

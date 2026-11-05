@@ -54,7 +54,7 @@ String phpNumber(double value)
   // PHP's exponent form: "1.0E-7", not C's "1E-07".
   String mantissa = text.substr(0, e);
   if (mantissa.find('.') == String::npos)
-    mantissa.append(".0");
+    mantissa << ".0";
   String sign(1, text[e + 1]);
   String digits = text.substr(e + 2);
   while (digits.size() > 1 && digits[0] == '0')

@@ -48,10 +48,10 @@ String madeUpTournament()
       const MadeUpPlayer& other = madeUpPlayers[first ? g.b : g.a];
       StringView result = first ? StringView(g.result) : StringView(g.result) == "Win" ? StringView("Loss") : StringView(g.result) == "Loss" ? StringView("Win") : StringView("Jigo");
       StringView color = first ? StringView(g.color) : StringView(g.color) == "w" ? StringView("b") : StringView("w");
-      rows.append(egdGameRow(format("{}", g.round), first ? g.changeA : g.changeB, color, g.handicap, result, other.pin, other.name, other.gor,
-                             first ? g.changeB : g.changeA));
+      rows << egdGameRow(format("{}", g.round), first ? g.changeA : g.changeB, color, g.handicap, result, other.pin, other.name, other.gor,
+                             first ? g.changeB : g.changeA);
     }
-    blocks.append(egdPlayerBlock(p + 1, madeUpPlayers[p].pin, madeUpPlayers[p].name, madeUpPlayers[p].gor, rows));
+    blocks << egdPlayerBlock(p + 1, madeUpPlayers[p].pin, madeUpPlayers[p].name, madeUpPlayers[p].gor, rows);
   }
   return egdTournamentPage(blocks, "", "Czechia (CZ)", "A (1x)");
 }
@@ -95,10 +95,10 @@ String madeUpRatings(const GoratingConfig& config, StringView tournament)
     {
       const Optional<String>& v = games.at(i, column);
       // Rounded to 1e-6: a recompute writes the same double, which MariaDB may print otherwise.
-      out.append(v.has_value() ? (column == "id" ? *v : phpNumber(round(ratingValue(*v) * 1e6) / 1e6)) : String("NULL"));
-      out.append(" ");
+      out << (v.has_value() ? (column == "id" ? *v : phpNumber(round(ratingValue(*v) * 1e6) / 1e6)) : String("NULL"));
+      out << " ";
     }
-    out.append("\n");
+    out << "\n";
   }
   return out;
 }

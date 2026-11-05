@@ -52,7 +52,7 @@ struct HtmlDocument
   {
     const HtmlNode& n = this->nodes[node];
     if (n.tag.empty())
-      out.append(n.text);
+      out << n.text;
     for (int child : n.children)
       this->appendText(child, out);
   }
@@ -105,24 +105,24 @@ void htmlAppendCodePoint(String& out, uint32_t c)
   if (c == 0 || c > 0x10ffff || (c >= 0xd800 && c <= 0xdfff))
     c = 0xfffd;
   if (c < 0x80)
-    out.append(char(c));
+    out << char(c);
   else if (c < 0x800)
   {
-    out.append(char(0xc0 | (c >> 6)));
-    out.append(char(0x80 | (c & 63)));
+    out << char(0xc0 | (c >> 6));
+    out << char(0x80 | (c & 63));
   }
   else if (c < 0x10000)
   {
-    out.append(char(0xe0 | (c >> 12)));
-    out.append(char(0x80 | ((c >> 6) & 63)));
-    out.append(char(0x80 | (c & 63)));
+    out << char(0xe0 | (c >> 12));
+    out << char(0x80 | ((c >> 6) & 63));
+    out << char(0x80 | (c & 63));
   }
   else
   {
-    out.append(char(0xf0 | (c >> 18)));
-    out.append(char(0x80 | ((c >> 12) & 63)));
-    out.append(char(0x80 | ((c >> 6) & 63)));
-    out.append(char(0x80 | (c & 63)));
+    out << char(0xf0 | (c >> 18));
+    out << char(0x80 | ((c >> 12) & 63));
+    out << char(0x80 | ((c >> 6) & 63));
+    out << char(0x80 | (c & 63));
   }
 }
 
@@ -135,13 +135,13 @@ String htmlDecode(StringView text)
   {
     if (text[i] != '&')
     {
-      out.append(text[i++]);
+      out << text[i++];
       continue;
     }
     ContainerSize end = text.find(';', i);
     if (end == StringView::npos || end - i > 40)
     {
-      out.append(text[i++]);
+      out << text[i++];
       continue;
     }
     StringView name = text.substr(i + 1, end - i - 1);
@@ -168,11 +168,11 @@ String htmlDecode(StringView text)
     }
     else if (const char* named = markdown::markdownNamedEntity(name))
     {
-      out.append(StringView(named));
+      out << StringView(named);
       i = end + 1;
       continue;
     }
-    out.append(text[i++]);
+    out << text[i++];
   }
   return out;
 }

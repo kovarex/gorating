@@ -38,7 +38,7 @@ String goratingReadFile(const String& path)
     size_t n = fread(buffer, 1, 65536, file);
     if (n == 0)
       break;
-    text.append(StringView(buffer, (ContainerSize)n));
+    text << StringView(buffer, (ContainerSize)n);
   }
   fclose(file);
   return text;

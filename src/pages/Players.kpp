@@ -23,9 +23,9 @@ void playersPage(Page& page)
   String search = page.get("search");
   String country = page.get("country_code");
   bool registeredOnly = page.get("from_search").empty() || !page.get("is_registered").empty();
-  page.body.append(playersFormTemplate.render({{"search", search},
+  page.body << playersFormTemplate.render({{"search", search},
                                                {"selector", countrySelector(page, country)},
-                                               {"registered", (registeredOnly ? checkedTemplate : uncheckedTemplate).render({})}}));
+                                               {"registered", (registeredOnly ? checkedTemplate : uncheckedTemplate).render({})}});
 
   String text;
   ContainerSize at = 0;
@@ -38,21 +38,21 @@ void playersPage(Page& page)
     // Without MariaDB's boolean full-text operators, which made a search like "<b>" an SQL error.
     for (char c : StringView(search).substr(at, end - at))
       if (StringView("+-<>()~*\"@").find(c) == StringView::npos)
-        part.append(c);
+        part << c;
     at = end + 1;
     if (part.empty())
       continue;
     if (!text.empty())
-      text.append(" or ");
+      text << " or ";
     if (isEgdPin(part))
-      text.append(String("user.egd_pin=") + quote(part));
+      text << String("user.egd_pin=") + quote(part);
     else
-      text.append(String("MATCH(user.name) AGAINST(") + quote(part + "*") + " IN BOOLEAN MODE)");
+      text << String("MATCH(user.name) AGAINST(") + quote(part + "*") + " IN BOOLEAN MODE)";
   }
   String where;
   auto add = [&where](StringView condition) {
-    where.append(where.empty() ? " WHERE " : " and ");
-    where.append(condition);
+    where << (where.empty() ? StringView(" WHERE ") : StringView(" and "));
+    where << condition;
   };
   if (!text.empty())
     add(String("(") + text + ")");
@@ -100,5 +100,5 @@ void playersPage(Page& page)
     table.addColumn(name, caption, {{String("user.") + name, name}},
                     [name](const Row& row) { return html::SafeHtml::escape(row[name]); }, Align::right, false);
   }
-  page.body.append(table.render());
+  page.body << table.render();
 }

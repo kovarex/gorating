@@ -125,7 +125,7 @@ EgdTournamentPage readEgdTournamentPage(const HtmlDocument& doc, StringView key)
     player.firstName = pieces[2];
     player.lastName = pieces[3];
     for (ContainerSize i = 4; i < pieces.size(); ++i)
-      player.lastName.append(String(" ") + pieces[i]);
+      player.lastName << String(" ") + pieces[i];
 
     for (int row : doc.elements(tables[1], "tr"))
     {

@@ -21,11 +21,11 @@ void gamePage(Page& page)
              " WHERE game.id=") + quote(id));
   if (result.empty())
   {
-    page.body.append(pageMessageTemplate.render({{"message", "Game not found"}}));
+    page.body << pageMessageTemplate.render({{"message", "Game not found"}});
     return;
   }
   Row game(result, 0);
-  page.body.append(gameTemplate.render(
+  page.body << gameTemplate.render(
       {{"id", game["game_id"]},
        {"redirect", String("/game?id=") + game["game_id"]},
        {"winner", playerLink(game, "winner")},
@@ -36,5 +36,5 @@ void gamePage(Page& page)
        {"handicap", game["game_handicap"]},
        {"komi", game["game_komi"]},
        {"time", showDate(game["game_timestamp"], true)},
-       {"sgf", game["has_sgf"] == "1" ? sgfLink(game["game_id"]) : html::SafeHtml::escape("not present")}}));
+       {"sgf", game["has_sgf"] == "1" ? sgfLink(game["game_id"]) : html::SafeHtml::escape("not present")}});
 }

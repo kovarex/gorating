@@ -21,8 +21,8 @@ html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
                    {"IF(game.jigo, 'JIGO', IF(game.winner_is_black, 'WIN', 'LOSS'))", "black_result"}},
                   [p](const Row& row) {
                     html::SafeHtml out = resultImage(*p, row["black_result"]);
-                    out.append(html::SafeHtml::trusted(" "));
-                    out.append(playerLink(row, "black"));
+                    out << html::SafeHtml::trusted(" ");
+                    out << playerLink(row, "black");
                     return out;
                   });
   table.addColumn("white", "White",
@@ -33,8 +33,8 @@ html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
                    {"IF(game.jigo, 'JIGO', IF(game.winner_is_black, 'LOSS', 'WIN'))", "white_result"}},
                   [p](const Row& row) {
                     html::SafeHtml out = resultImage(*p, row["white_result"]);
-                    out.append(html::SafeHtml::trusted(" "));
-                    out.append(playerLink(row, "white"));
+                    out << html::SafeHtml::trusted(" ");
+                    out << playerLink(row, "white");
                     return out;
                   });
   table.addColumn("handicap", "Handicap", {{"game.handicap", "handicap"}, {"game.komi", "komi"}},
@@ -59,6 +59,6 @@ html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
 
 void homePage(Page& page)
 {
-  page.body.append(latestGames(page, Optional<int>(10), "Latest friendly games"));
-  page.body.append(tournamentTable(page, Optional<int>(10), "Latest tournaments", ""));
+  page.body << latestGames(page, Optional<int>(10), "Latest friendly games");
+  page.body << tournamentTable(page, Optional<int>(10), "Latest tournaments", "");
 }

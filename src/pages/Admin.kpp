@@ -22,7 +22,7 @@ void deletedGamesPage(Page& page)
 {
   if (!canAccessDeletedGames(page))
   {
-    page.body.append(pageMessageTemplate.render({{"message", "No rights to access deleted games."}}));
+    page.body << pageMessageTemplate.render({{"message", "No rights to access deleted games."}});
     return;
   }
   Table table(page, "game LEFT JOIN egd_tournament ON game.egd_tournament_id = egd_tournament.id,"
@@ -72,7 +72,7 @@ void deletedGamesPage(Page& page)
   String redirect = page.request->target;
   table.addColumn("", "Restore", {},
                   [redirect](const Row& row) { return restoreButtonTemplate.render({{"id", row["game_id"]}, {"redirect", redirect}}); });
-  page.body.append(table.render());
+  page.body << table.render();
 }
 
 constexpr int changeGameSgfType = 16;
@@ -81,7 +81,7 @@ void changesPage(Page& page)
 {
   if (!canAccessChanges(page))
   {
-    page.body.append(pageMessageTemplate.render({{"message", "No rights."}}));
+    page.body << pageMessageTemplate.render({{"message", "No rights."}});
     return;
   }
   Table table(page, "`change` JOIN user as executed_by ON change.executed_by_user_id=executed_by.id"
@@ -122,7 +122,7 @@ void changesPage(Page& page)
   }
   table.addColumn("timestamp", "Date", {{"change.timestamp", "timestamp"}},
                   [](const Row& row) { return html::SafeHtml::escape(showDate(row["timestamp"], true)); });
-  page.body.append(table.render());
+  page.body << table.render();
 }
 
 // What processing tournaments again found different from the stored games (rating_discrepancy,
@@ -131,7 +131,7 @@ void ratingDiscrepanciesPage(Page& page)
 {
   if (!canAccessChanges(page))
   {
-    page.body.append(pageMessageTemplate.render({{"message", "No rights."}}));
+    page.body << pageMessageTemplate.render({{"message", "No rights."}});
     return;
   }
   Table table(page, "rating_discrepancy JOIN user ON rating_discrepancy.user_id=user.id");
@@ -166,7 +166,7 @@ void ratingDiscrepanciesPage(Page& page)
                   [](const Row& row) { return html::SafeHtml::escape(showDate(row["first_seen"], true)); });
   table.addColumn("last_seen", "Last seen", {{"rating_discrepancy.last_seen", "last_seen"}},
                   [](const Row& row) { return html::SafeHtml::escape(showDate(row["last_seen"], true)); });
-  page.body.append(table.render());
+  page.body << table.render();
 }
 
 constexpr int changeUserFirstName = 1;

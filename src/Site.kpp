@@ -188,7 +188,7 @@ html::SafeHtml resultImage(const Page& page, StringView result)
 {
   String lower;
   for (char c : result)
-    lower.append(c >= 'A' && c <= 'Z' ? char(c - 'A' + 'a') : c);
+    lower << (c >= 'A' && c <= 'Z' ? char(c - 'A' + 'a') : c);
   return resultImageTemplate.render({{"resources", page.config->resourceAddress}, {"result", lower}});
 }
 
@@ -210,6 +210,6 @@ String showDate(StringView timestamp, bool withTime)
     return String(timestamp);
   String out = String(timestamp.substr(8, 2)) + ". " + String(timestamp.substr(5, 2)) + ". " + String(timestamp.substr(0, 4));
   if (withTime)
-    out.append(String(" ") + String(timestamp.substr(11, 5)));
+    out << String(" ") + String(timestamp.substr(11, 5));
   return out;
 }

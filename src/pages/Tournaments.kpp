@@ -13,7 +13,7 @@ html::SafeHtml countrySelector(Page& page, StringView selected)
   {
     Row row(countries, i);
     const html::HtmlTemplate& t = row["code"] == selected ? selectedOptionTemplate : optionTemplate;
-    options.append(t.render({{"value", row["code"]}, {"name", row["name"]}}));
+    options << t.render({{"value", row["code"]}, {"name", row["name"]}});
   }
   return selectTemplate.render({{"options", options}});
 }
@@ -23,7 +23,7 @@ html::SafeHtml tournamentTable(Page& page, Optional<int> limit, StringView capti
   String from = "egd_tournament, country, game_type"
                 " WHERE egd_tournament.country_id=country.id and egd_tournament.game_type_id=game_type.id";
   if (!country.empty())
-    from.append(String(" and country.code=") + quote(country));
+    from << String(" and country.code=") + quote(country);
   Table table(page, from);
   table.limit = limit;
   if (!caption.empty())
@@ -55,6 +55,6 @@ constexpr html::HtmlTemplate tournamentFormTemplate{R"(<div style="text-align:ce
 void tournamentsPage(Page& page)
 {
   String country = page.get("country_code");
-  page.body.append(tournamentFormTemplate.render({{"selector", countrySelector(page, country)}}));
-  page.body.append(tournamentTable(page, Optional<int>(), "", country));
+  page.body << tournamentFormTemplate.render({{"selector", countrySelector(page, country)}});
+  page.body << tournamentTable(page, Optional<int>(), "", country);
 }

@@ -33,7 +33,7 @@ String egdTournamentPage(StringView blocks, StringView skip = "", StringView nat
                                          Pair<StringView, String>{"rounds", String("3")}, Pair<StringView, String>{"total_player", String("4")},
                                          Pair<StringView, String>{"rounds", String("9 (no handicap)")}})
     if (input.first != skip)
-      inputs.append(format("<input name=\"{}\" type=\"text\" size=\"12\" readonly=\"true\" class=\"plain3_light\" value=\"{}\">\n", input.first, input.second));
+      inputs << format("<input name=\"{}\" type=\"text\" size=\"12\" readonly=\"true\" class=\"plain3_light\" value=\"{}\">\n", input.first, input.second);
   // (EGD's script writes table tags in strings, which the reader must not take for the page's.)
   return format("<html><head><title>Tournament</title></head><body>\n<script language=\"JavaScript\">\n<!--\n"
                 "win.document.writeln(\"<TABLE><TR><TD>\");\n//-->\n</script>\n<form>{}"

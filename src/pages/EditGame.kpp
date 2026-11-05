@@ -77,18 +77,18 @@ void editGamePage(Page& page)
              " WHERE game.id=") + quote(id));
   if (found.empty())
   {
-    page.body.append(html::SafeHtml::escape(String("Unknown game with id=") + id));
+    page.body << html::SafeHtml::escape(String("Unknown game with id=") + id);
     return;
   }
   Row row(found, 0);
   if (!mayEditGame(page, row["winner_id"], row["loser_id"], id))
   {
-    page.body.append(pageMessageTemplate.render({{"message", "You can't edit this game."}}));
+    page.body << pageMessageTemplate.render({{"message", "You can't edit this game."}});
     return;
   }
   bool winnerIsBlack = row["winner_is_black"] == "1";
   bool hasSgf = row["has_sgf"] == "1";
-  page.body.append(editGameTemplate.render(
+  page.body << editGameTemplate.render(
       {{"winner", playerLink(row, "winner")},
        {"winnerChoice", canEditWinner(page) ? winnerChoiceTemplate.render({}) : html::SafeHtml()},
        {"winnerColors", (winnerIsBlack ? blackFirstTemplate : whiteFirstTemplate).render({})},
@@ -102,7 +102,7 @@ void editGamePage(Page& page)
        {"sgfState", hasSgf ? "" : "not "},
        {"deleteSgf", hasSgf ? deleteSgfTemplate.render({}) : html::SafeHtml()},
        {"id", id},
-       {"redirect", localRedirect(page.get("redirect"), String("/game?id=") + id)}}));
+       {"redirect", localRedirect(page.get("redirect"), String("/game?id=") + id)}});
 }
 
 // "YYYY-MM-DD HH:MM:SS", the form MariaDB writes a timestamp in.
@@ -156,8 +156,8 @@ String editedGameRatings(Page& page, const Row& before, StringView id)
     if (now.empty())
       continue;
     changed = changed || now != then;
-    out.append(String(out.empty() ? "This game: " : "; ") + after[String(side) + "_name"] + " " + now +
-               (then.empty() ? String() : String(" (before the edit ") + then + ")"));
+    out << String(out.empty() ? "This game: " : "; ") + after[String(side) + "_name"] + " " + now +
+               (then.empty() ? String() : String(" (before the edit ") + then + ")");
   }
   return changed ? out + "." : String();
 }
@@ -168,13 +168,13 @@ void addChange(Page& page, int type, StringView gameId, const Optional<String>& 
   String values = format("{},{},{}", type, quote(gameId), quote(userValue(page, "id")));
   if (oldValue.has_value())
   {
-    columns.append(",old_value");
-    values.append(String(",") + quoteOrNull(*oldValue));
+    columns << ",old_value";
+    values << String(",") + quoteOrNull(*oldValue);
   }
   if (newValue.has_value())
   {
-    columns.append(",new_value");
-    values.append(String(",") + quoteOrNull(*newValue));
+    columns << ",new_value";
+    values << String(",") + quoteOrNull(*newValue);
   }
   page.query(String("INSERT INTO `change`(") + columns + ") VALUES(" + values + ")");
 }
@@ -239,15 +239,15 @@ void editGameAction(Page& page, http::HttpResponse& response)
     // The two players' rating columns change places (as PHP did: the new ones become the old ones
     // until the rating update recomputes them).
     auto value = [&game](StringView column) { return game.isNull(column) ? String("NULL") : quoteOrNull(game[column]); };
-    set.append(String(", winner_old_egd_rating=") + value("loser_old_egd_rating") + ", winner_old_rating=" + value("loser_old_rating") +
+    set << String(", winner_old_egd_rating=") + value("loser_old_egd_rating") + ", winner_old_rating=" + value("loser_old_rating") +
                ", winner_new_egd_rating=" + value("loser_old_egd_rating") + ", winner_new_rating=" + value("loser_old_rating") +
                ", loser_old_egd_rating=" + value("winner_old_egd_rating") + ", loser_old_rating=" + value("winner_old_rating") +
-               ", loser_new_egd_rating=" + value("winner_new_egd_rating") + ", loser_new_rating=" + value("winner_new_rating"));
+               ", loser_new_egd_rating=" + value("winner_new_egd_rating") + ", loser_new_rating=" + value("winner_new_rating");
   }
   if (form.sgf.has_value())
-    set.append(String(", sgf=") + quoteOrNull(*form.sgf));
+    set << String(", sgf=") + quoteOrNull(*form.sgf);
   else if (deleteSgf)
-    set.append(",sgf=null");
+    set << ",sgf=null";
   page.query(String("UPDATE game SET ") + set + " WHERE game.id=" + quote(id));
 
   Vector<String> changes;
@@ -297,10 +297,10 @@ void editGameAction(Page& page, http::HttpResponse& response)
   // A line each, as PHP's message had (its <br/>).
   String message = String("Game id=") + id + ":";
   for (const String& change : changes)
-    message.append(String("\n") + change);
-  message.append(String("\n") + processRating(page, ratingUpdateSeconds));
+    message << String("\n") + change;
+  message << String("\n") + processRating(page, ratingUpdateSeconds);
   String ratings = editedGameRatings(page, game, id);
   if (!ratings.empty())
-    message.append(String("\n") + ratings);
+    message << String("\n") + ratings;
   redirectWithMessage(response, redirect, message);
 }

@@ -78,24 +78,24 @@ void reportPage(Page& page)
 {
   if (!loggedIn(page))
   {
-    page.body.append(pageMessageTemplate.render({{"message", "Log in to report a game"}}));
+    page.body << pageMessageTemplate.render({{"message", "Log in to report a game"}});
     return;
   }
   String id = page.get("id");
   mariadb::MariaDbResult found = page.query(String("SELECT * FROM user WHERE id=") + quote(id));
   if (found.empty())
   {
-    page.body.append(html::SafeHtml::escape(String("User with id=") + id + " doesn't exist"));
+    page.body << html::SafeHtml::escape(String("User with id=") + id + " doesn't exist");
     return;
   }
   Row opponent(found, 0);
-  page.body.append(reportTemplate.render({{"myRating", userValue(page, "rating")},
+  page.body << reportTemplate.render({{"myRating", userValue(page, "rating")},
                                           {"opponentRating", opponent["rating"]},
                                           {"role", canReportWin(page) ? "Opponent" : "Winner"},
                                           {"opponent", playerLink(opponent, "")},
                                           {"opponentRounded", format("{}", fixed(ratingValue(opponent["rating"]), 0))},
                                           {"win", canReportWin(page) ? winRadioTemplate.render({}) : html::SafeHtml()},
-                                          {"opponentId", opponent["id"]}}));
+                                          {"opponentId", opponent["id"]}});
 }
 
 // The form's fields and its one file, urlencoded or multipart.

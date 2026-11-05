@@ -155,9 +155,9 @@ constexpr html::HtmlTemplate loggedInAsTemplate{R"(Currently logged in as {{user
 void loginPage(Page& page)
 {
   if (loggedIn(page))
-    page.body.append(loggedInAsTemplate.render({{"username", userValue(page, "username")}}));
+    page.body << loggedInAsTemplate.render({{"username", userValue(page, "username")}});
   else
-    page.body.append(loginTemplate.render({}));
+    page.body << loginTemplate.render({});
 }
 
 // The value of the form's field, or "". Text that is not UTF-8 is the request's error (400).
@@ -177,8 +177,8 @@ String formValue(const Vector<url::UrlQueryParameter>& form, StringView name)
 void redirectWithMessage(http::HttpResponse& response, StringView target, StringView message)
 {
   String location(target);
-  location.append(location.find('?') == String::npos ? "?" : "&");
-  location.append(String("message=") + url::urlEncode(message));
+  location << (location.find('?') == String::npos ? StringView("?") : StringView("&"));
+  location << String("message=") + url::urlEncode(message);
   response.redirect(location);
 }
 

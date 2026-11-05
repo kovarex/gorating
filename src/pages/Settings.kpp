@@ -13,16 +13,16 @@ void settingsPage(Page& page)
 {
   if (!loggedIn(page))
   {
-    page.body.append(pageMessageTemplate.render({{"message", "Not logged in"}}));
+    page.body << pageMessageTemplate.render({{"message", "Not logged in"}});
     return;
   }
   html::SafeHtml digits;
   for (int i = 0; i <= 3; ++i)
-    digits.append((i == ratingDigits ? selectedDigitOptionTemplate : digitOptionTemplate).render({{"value", i}}));
-  page.body.append(settingsTemplate.render(
+    digits << (i == ratingDigits ? selectedDigitOptionTemplate : digitOptionTemplate).render({{"value", i}});
+  page.body << settingsTemplate.render(
       {{"digits", digits},
        {"format1", (ratingChangeFormat != 2 ? checkedFormatRadioTemplate : formatRadioTemplate).render({{"value", 1}})},
-       {"format2", (ratingChangeFormat == 2 ? checkedFormatRadioTemplate : formatRadioTemplate).render({{"value", 2}})}}));
+       {"format2", (ratingChangeFormat == 2 ? checkedFormatRadioTemplate : formatRadioTemplate).render({{"value", 2}})}});
 }
 
 void settingsAction(Page& page, http::HttpResponse& response)

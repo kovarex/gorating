@@ -10,7 +10,7 @@ String attachmentHeader(StringView name)
   for (char c : name)
   {
     unsigned char u = (unsigned char)c;
-    ascii.append(u < 0x20 || u >= 0x7f || c == '"' || c == '\\' ? '_' : c);
+    ascii << (u < 0x20 || u >= 0x7f || c == '"' || c == '\\' ? '_' : c);
   }
   return String("attachment; filename=\"") + ascii + ".sgf\"; filename*=UTF-8''" + url::urlEncode(String(name) + ".sgf");
 }

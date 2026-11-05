@@ -20,7 +20,7 @@ void tournamentPage(Page& page)
   String id = page.get("id");
   if (id.empty())
   {
-    page.body.append(html::SafeHtml::escape("ID not specified."));
+    page.body << html::SafeHtml::escape("ID not specified.");
     return;
   }
   mariadb::MariaDbResult found = page.query(
@@ -29,7 +29,7 @@ void tournamentPage(Page& page)
              " JOIN game_type ON egd_tournament.game_type_id = game_type.id WHERE egd_tournament.id=") + quote(id));
   if (found.empty())
   {
-    page.body.append(html::SafeHtml::escape(String("Tournament with id=") + id + " not found."));
+    page.body << html::SafeHtml::escape(String("Tournament with id=") + id + " not found.");
     return;
   }
   Row tournament(found, 0);
@@ -91,7 +91,7 @@ void tournamentPage(Page& page)
 
   html::SafeHtml roundHeaders;
   for (int round = 1; round <= rounds; ++round)
-    roundHeaders.append(roundHeaderTemplate.render({{"round", round}}));
+    roundHeaders << roundHeaderTemplate.render({{"round", round}});
   html::SafeHtml rows;
   for (int placement = 1; placement <= players; ++placement)
   {
@@ -106,23 +106,23 @@ void tournamentPage(Page& page)
       {
         if (canEditAnyGame(page))
         {
-          content.append(editGameLinkTemplate.render({{"id", cell.gameId}, {"redirect", String("/tournament?id=") + id}}));
-          content.append(html::SafeHtml::trusted(" "));
+          content << editGameLinkTemplate.render({{"id", cell.gameId}, {"redirect", String("/tournament?id=") + id}});
+          content << html::SafeHtml::trusted(" ");
         }
-        content.append(resultImage(page, cell.result));
-        content.append(html::SafeHtml::trusted(" "));
-        content.append(playerLink(cell.opponent));
+        content << resultImage(page, cell.result);
+        content << html::SafeHtml::trusted(" ");
+        content << playerLink(cell.opponent);
         if (cell.hasSgf)
         {
-          content.append(html::SafeHtml::trusted(" "));
-          content.append(sgfLink(cell.gameId));
+          content << html::SafeHtml::trusted(" ");
+          content << sgfLink(cell.gameId);
         }
       }
-      roundCells.append(plainCellTemplate.render({{"content", content}}));
+      roundCells << plainCellTemplate.render({{"content", content}});
     }
-    rows.append(placementRowTemplate.render({{"placement", placement}, {"player", playerLink(*placements[placement])}, {"cells", roundCells}}));
+    rows << placementRowTemplate.render({{"placement", placement}, {"player", playerLink(*placements[placement])}, {"cells", roundCells}});
   }
-  page.body.append(tournamentTemplate.render({{"name", tournament["name"]},
+  page.body << tournamentTemplate.render({{"name", tournament["name"]},
                                               {"egd", egdTournamentLink(tournament["egd_key"])},
                                               {"date", showDate(tournament["timestamp"], false)},
                                               {"type", tournament["game_type_name"]},
@@ -130,5 +130,5 @@ void tournamentPage(Page& page)
                                               {"country", tournament["country_name"]},
                                               {"city", tournament["city"]},
                                               {"rounds", roundHeaders},
-                                              {"rows", rows}}));
+                                              {"rows", rows}});
 }

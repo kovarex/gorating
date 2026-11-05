@@ -33,13 +33,13 @@ Optional<String> fetchUserRatingBefore(Page& page, const Row& user, StringView u
                " IF(game.winner_user_id=" + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) as egd_rating"
                " FROM game WHERE game.deleted = false and (game.winner_user_id=" + quote(id) + " or game.loser_user_id=" + quote(id) + ")";
   if (phpTrue(timestamp))
-    sql.append(String(" and game.timestamp < ") + quote(*timestamp));
+    sql << String(" and game.timestamp < ") + quote(*timestamp);
   if (phpTrue(tournamentId))
-    sql.append(String(" and (game.egd_tournament_id is null or game.egd_tournament_id != ") + quote(*tournamentId) + ")");
+    sql << String(" and (game.egd_tournament_id is null or game.egd_tournament_id != ") + quote(*tournamentId) + ")";
   if (egdOnly)
-    sql.append(String(" and IF(game.winner_user_id=") + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) is not null");
+    sql << String(" and IF(game.winner_user_id=") + id + ", game.winner_new_egd_rating, game.loser_new_egd_rating) is not null";
   // (the id last: two games of one time and round, two reports of the same second, in one order)
-  sql.append(" ORDER BY game.timestamp DESC, game.egd_tournament_round DESC, game.id DESC LIMIT 1");
+  sql << " ORDER BY game.timestamp DESC, game.egd_tournament_round DESC, game.id DESC LIMIT 1";
   mariadb::MariaDbResult last = page.query(sql);
   if (last.empty())
   {
@@ -95,9 +95,9 @@ String limitedLines(StringView header, const Vector<String>& lines, ContainerSiz
 {
   String out(header);
   for (ContainerSize i = 0; i < lines.size() && i < limit; ++i)
-    out.append(String("\n") + lines[i]);
+    out << String("\n") + lines[i];
   if (lines.size() > limit)
-    out.append(format("\n... and {} more {}.", (int64_t)(lines.size() - limit), more));
+    out << format("\n... and {} more {}.", (int64_t)(lines.size() - limit), more);
   return out;
 }
 
@@ -207,7 +207,7 @@ struct RatingUpdateWindow
     String tournaments;
     for (const UpdateGame& g : this->games)
       if (g.tournament.has_value() && tournaments.find(String(",") + *g.tournament + ",") == String::npos)
-        tournaments.append(String(tournaments.empty() ? "," : "") + *g.tournament + ",");
+        tournaments << String(tournaments.empty() ? "," : "") + *g.tournament + ",";
     if (!tournaments.empty())
     {
       String list = tournaments.substr(1, tournaments.size() - 2);
@@ -524,11 +524,11 @@ struct RatingUpdateWindow
       for (ContainerSize i = from; i < to; ++i)
       {
         const UpdateGame& g = *written[i];
-        ids.append(String(i == from ? "" : ",") + g.id);
-        winnerOld.append(String(" WHEN ") + g.id + " THEN " + sqlValue(g.winnerOld));
-        winnerNew.append(String(" WHEN ") + g.id + " THEN " + sqlValue(g.winnerNew));
-        loserOld.append(String(" WHEN ") + g.id + " THEN " + sqlValue(g.loserOld));
-        loserNew.append(String(" WHEN ") + g.id + " THEN " + sqlValue(g.loserNew));
+        ids << String(i == from ? "" : ",") + g.id;
+        winnerOld << String(" WHEN ") + g.id + " THEN " + sqlValue(g.winnerOld);
+        winnerNew << String(" WHEN ") + g.id + " THEN " + sqlValue(g.winnerNew);
+        loserOld << String(" WHEN ") + g.id + " THEN " + sqlValue(g.loserOld);
+        loserNew << String(" WHEN ") + g.id + " THEN " + sqlValue(g.loserNew);
       }
       page->query(String("UPDATE game SET winner_old_rating = CASE id") + winnerOld + " END, winner_new_rating = CASE id" + winnerNew +
                   " END, loser_old_rating = CASE id" + loserOld + " END, loser_new_rating = CASE id" + loserNew +
@@ -542,7 +542,7 @@ struct RatingUpdateWindow
       {
         const String& user = this->changedValues[i];
         const UpdateValue& value = this->values[user];
-        rows.append(String(i == from ? "" : ",") + "(" + user + "," + value.rating + ",STR_TO_DATE(" + quote(value.timestamp) + ",'%Y-%m-%d %H:%i:%s'))");
+        rows << String(i == from ? "" : ",") + "(" + user + "," + value.rating + ",STR_TO_DATE(" + quote(value.timestamp) + ",'%Y-%m-%d %H:%i:%s'))";
       }
       page->query(String("INSERT INTO rating_update_value(user_id, rating, timestamp) VALUES ") + rows +
                   " ON DUPLICATE KEY UPDATE rating = VALUES(rating), timestamp = VALUES(timestamp)");

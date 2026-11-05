@@ -42,16 +42,16 @@ Vector<String> sqlStatements(StringView script)
     if (c == '\'' || c == '"' || c == '`')
     {
       // A quoted string or name: to its closing quote, a backslash (not in a name) escaping the next.
-      current.append(c);
+      current << c;
       ++i;
       while (i < script.size() && script[i] != c)
       {
         if (script[i] == '\\' && c != '`' && i + 1 < script.size())
-          current.append(script[i++]);
-        current.append(script[i++]);
+          current << script[i++];
+        current << script[i++];
       }
       if (i < script.size())
-        current.append(script[i++]);
+        current << script[i++];
       continue;
     }
     if ((c == '-' && script.substr(i).starts_with("-- ")) || c == '#')
@@ -72,7 +72,7 @@ Vector<String> sqlStatements(StringView script)
       i += delimiter.size();
       continue;
     }
-    current.append(c);
+    current << c;
     ++i;
   }
   finish();
