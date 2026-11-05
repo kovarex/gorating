@@ -1,6 +1,17 @@
 // The jobs (Jobs.kpp) against the made-up data, from saved pages (no network): who may run them,
 // and the hourly update_tournament_list, which queues EGD's new tournaments and processes them.
 
+// A job as the server's shell runs it (gorating.cgi --job): its answer, its exit code checked.
+String job(const GoratingConfig& config, const Vector<String>& arguments, int expected = 0)
+{
+  goratingConfig = config;
+  String output;
+  int code = jobCommand(arguments, output);
+  if (code != expected)
+    throw GoratingError(format("--job {} exited {}, not {}: {}", arguments.empty() ? String() : arguments[0], code, expected, output));
+  return output;
+}
+
 test "the jobs: who may run them, and the tournament list"
 {
   Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
@@ -12,27 +23,23 @@ test "the jobs: who may run them, and the tournament list"
   GoratingConfig config = freshTestDatabase(*server);
   saveMadeUpPages();
   config.egdPageDirectory = String(egdWork);
-  config.jobSecret = "a-job-secret-for-the-tests";
 
-  // A visitor, an admin, or a wrong secret: 403, nothing done; the owner or the secret: the job.
+  // Over HTTP a visitor or an admin is refused, a secret is no key (there is none); the owner runs them.
   for (StringView who : {"visitor", "player2"})
   {
     http::HttpResponse refused = siteRequest(config, who, "GET", "/update_rating");
     check(refused.status == 403 && refused.body == "The jobs run from the server's shell (gorating.cgi --job NAME), or for the owner.\n");
   }
-  check(siteRequest(config, "visitor", "GET", "/update_rating?secret=wrong").status == 403);
-  check(siteRequest(config, "visitor", "GET", "/update_rating?secret=a-job-secret-for-the-tests").status == 200);
-  GoratingConfig noSecret = config;
-  noSecret.jobSecret = String();
-  check(siteRequest(noSecret, "visitor", "GET", "/update_rating?secret=").status == 403);
+  check(siteRequest(config, "visitor", "GET", "/update_rating?secret=").status == 403);
+  check(siteRequest(config, "visitor", "GET", "/update_rating?secret=anything").status == 403);
+  check(siteRequest(config, "owner", "GET", "/update_rating").status == 200);
 
   // EGD's list names a known tournament and a new one: the new one is queued and processed.
   String known = dbValue(config, "SELECT egd_key FROM egd_tournament ORDER BY id LIMIT 1");
   String list = String("<pre>\n Tournament list\n ") + known + "  A  4 Known\n " + madeUpKey + "  A  4 Made-up Cup\n</pre>\n";
   writeTestFile(String(egdWork) + "/" + egdPageName(String(egdAddress) + "EGD_2_0/downloads/tlist.html", ""), list);
   String before = dbValue(config, "SELECT COUNT(*) FROM egd_tournament");
-  http::HttpResponse ran = siteRequest(config, "visitor", "GET", "/update_tournament_list?secret=a-job-secret-for-the-tests");
-  check(ran.status == 200 && ran.body.starts_with("Queued 1 tournaments.\n"));
+  check(job(config, {String("update_tournament_list")}).starts_with("Queued 1 tournaments.\n"));
   check(ratingValue(dbValue(config, "SELECT COUNT(*) FROM egd_tournament")) == ratingValue(before) + 1);
   check(dbValue(config, String("SELECT COUNT(*) FROM game JOIN egd_tournament ON egd_tournament.id=game.egd_tournament_id WHERE egd_key=") +
                             quote(madeUpKey)) == "6");
@@ -67,7 +74,6 @@ test "EGD rating jumps between tournaments: check_rating_changes and collect_man
     return;
   }
   GoratingConfig config = freshTestDatabase(*server);
-  config.jobSecret = "a-job-secret-for-the-tests";
   // A player with no EGD games and no rating changes yet, the only one left to check (a jump that
   // looks like an error would process its tournaments from EGD: none here).
   String player = dbValue(config, "SELECT id FROM user WHERE id NOT IN (SELECT winner_user_id FROM game WHERE winner_old_egd_rating IS NOT NULL)"
@@ -87,11 +93,10 @@ test "EGD rating jumps between tournaments: check_rating_changes and collect_man
   }
 
   check(siteRequest(config, "visitor", "GET", "/check_rating_changes").status == 403);
-  http::HttpResponse checked = siteRequest(config, "visitor", "GET", "/check_rating_changes?secret=a-job-secret-for-the-tests");
-  check(checked.status == 200);
-  check(checked.body.starts_with(String("Remaining 1 users to check.\nuser_id=") + player + "\n"));
-  check(checked.body.find("Rating jumped from 2160 to 2200 in tournament TJUMP2 round 1\n") != String::npos);
-  check(checked.body.find("Rating jumped from 2210 to 2760 in tournament TJUMP3 round 1\n") != String::npos);
+  String checked = job(config, {String("check_rating_changes")});
+  check(checked.starts_with(String("Remaining 1 users to check.\nuser_id=") + player + "\n"));
+  check(checked.find("Rating jumped from 2160 to 2200 in tournament TJUMP2 round 1\n") != String::npos);
+  check(checked.find("Rating jumped from 2210 to 2760 in tournament TJUMP3 round 1\n") != String::npos);
   String changes = String("SELECT CONCAT(old_egd_rating, ' ', new_egd_rating, ' ', rating_change_type_id, ' ', timestamp) FROM rating_change WHERE user_id=") +
                    player + " ORDER BY timestamp";
   // Each jump dated by the tournament before it.
@@ -100,21 +105,17 @@ test "EGD rating jumps between tournaments: check_rating_changes and collect_man
   check(dbValue(config, String("SELECT CONCAT(old_egd_rating, ' ', new_egd_rating, ' ', rating_change_type_id) FROM rating_change WHERE user_id=") + player +
                 " ORDER BY timestamp DESC LIMIT 1") == format("2210 2760 {}", ratingChangeManualEgd));
   check(dbValue(config, String("SELECT rating_change_checked FROM user WHERE id=") + player) == "1");
-  check(siteRequest(config, "visitor", "GET", "/check_rating_changes?secret=a-job-secret-for-the-tests").body == "Remaining 0 users to check.\n");
+  check(job(config, {String("check_rating_changes")}) == "Remaining 0 users to check.\n");
 
   // Collected again by hand, by id or username: the recorded jumps are known, nothing is added.
   String username = dbValue(config, String("SELECT IFNULL(username, '') FROM user WHERE id=") + player);
-  http::HttpResponse again = siteRequest(config, "visitor", "GET", String("/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&id=") + player);
-  check(again.body == String("user_id=") + player + "\n");
+  check(job(config, {String("collect_manual_rating_changes"), String("id=") + player}) == String("user_id=") + player + "\n");
   if (!username.empty())
-    check(siteRequest(config, "visitor", "GET", String("/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&username=") + username).body ==
-          String("user_id=") + player + "\n");
+    check(job(config, {String("collect_manual_rating_changes"), String("username=") + username}) == String("user_id=") + player + "\n");
   check(dbValue(config, String("SELECT COUNT(*) FROM rating_change WHERE user_id=") + player) == "2");
-  check(siteRequest(config, "visitor", "GET", "/collect_manual_rating_changes?secret=a-job-secret-for-the-tests").body == "User id nor username provided\n");
-  check(siteRequest(config, "visitor", "GET", "/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&id=999999").body ==
-        "User with id=\"999999\" doesn't exist.\n");
-  check(siteRequest(config, "visitor", "GET", "/collect_manual_rating_changes?secret=a-job-secret-for-the-tests&username=nobody-here").body ==
-        "User with username=\"nobody-here\" doesn't exist.\n");
+  check(job(config, {String("collect_manual_rating_changes")}) == "User id nor username provided\n");
+  check(job(config, {String("collect_manual_rating_changes"), String("id=999999")}) == "User with id=\"999999\" doesn't exist.\n");
+  check(job(config, {String("collect_manual_rating_changes"), String("username=nobody-here")}) == "User with username=\"nobody-here\" doesn't exist.\n");
 }
 
 test "the jobs from the server's shell: gorating.cgi --job NAME, no secret"
@@ -126,7 +127,6 @@ test "the jobs from the server's shell: gorating.cgi --job NAME, no secret"
     return;
   }
   GoratingConfig config = freshTestDatabase(*server);
-  config.jobSecret = String();
   goratingConfig = config;
   String output;
   check(jobCommand({String("update_rating")}, output) == 0 && output == "No rating changes to process.\n");
@@ -135,7 +135,7 @@ test "the jobs from the server's shell: gorating.cgi --job NAME, no secret"
   check(jobCommand(Vector<String>(), output) == 2 && output.starts_with("usage: gorating.cgi --job NAME"));
   check(jobCommand({String("about")}, output) == 2 && output.starts_with("no job about\n"));
   check(jobCommand({String("no_such_page")}, output) == 2 && output.starts_with("no job no_such_page\n"));
-  // Over HTTP, without a jobSecret in the configuration, only the owner runs them.
+  // Over HTTP only the owner runs them.
   check(siteRequest(config, "visitor", "GET", "/update_rating?secret=").status == 403);
   check(siteRequest(config, "owner", "GET", "/update_rating").body == "No rating changes to process.\n");
 }
