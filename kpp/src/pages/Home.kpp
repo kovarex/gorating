@@ -1,6 +1,6 @@
 // The home page (home.php): the latest friendly games and the latest tournaments.
 
-constexpr html::HtmlTemplate h2Template(R"(<h2>{{text}}</h2>)");
+constexpr html::HtmlTemplate h2Template{R"(<h2>{{text}}</h2>)"};
 
 html::SafeHtml latestGames(Page& page, Optional<int> limit, StringView caption)
 {

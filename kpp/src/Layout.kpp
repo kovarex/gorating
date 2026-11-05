@@ -1,7 +1,7 @@
 // The frame of every normal page (src/header_internal.php, src/header.php, src/footer.php): the
 // head, the account box, the menu, a message from ?message=, the page, and the footer.
 
-constexpr html::HtmlTemplate layoutTemplate(R"(<!DOCTYPE html>
+constexpr html::HtmlTemplate layoutTemplate{R"(<!DOCTYPE html>
 <html>
   <head>
     <title>
@@ -20,34 +20,34 @@ constexpr html::HtmlTemplate layoutTemplate(R"(<!DOCTYPE html>
 </div>
 </body>
 </html>
-)");
+)"};
 
-constexpr html::HtmlTemplate loggedOutTemplate(R"(<div style="position: absolute;right: 0px;">
+constexpr html::HtmlTemplate loggedOutTemplate{R"(<div style="position: absolute;right: 0px;">
           Currently not logged in
           <form method="post" action="/login" style="display:inline;">
             <input type="submit" value="Login"/>
           </form>
-        </div>)");
+        </div>)"};
 
-constexpr html::HtmlTemplate loggedInTemplate(R"(<div style="position: absolute;right: 0px;">
+constexpr html::HtmlTemplate loggedInTemplate{R"(<div style="position: absolute;right: 0px;">
           Currently logged in as {{username}}
           <form method="post" action="/logout" style="display:inline;">
             <input type="submit" value="Logoff"/>
           </form>{{statistics}}<form method="post" action="/settings" style="display:inline;">
           <input type="submit" value="Settings"/>
-        </form></div>)");
+        </form></div>)"};
 
-constexpr html::HtmlTemplate statisticsButtonTemplate(R"(<form method="post" action="/toggle_statistics" style="display:inline;">
+constexpr html::HtmlTemplate statisticsButtonTemplate{R"(<form method="post" action="/toggle_statistics" style="display:inline;">
             <input type="submit" value="Toggle statistics"/>
-          </form>)");
-constexpr html::HtmlTemplate queryStatisticTemplate(R"(<div>Query:<pre>{{sql}}</pre>Took {{seconds}} seconds</div>
-)");
+          </form>)"};
+constexpr html::HtmlTemplate queryStatisticTemplate{R"(<div>Query:<pre>{{sql}}</pre>Took {{seconds}} seconds</div>
+)"};
 
-constexpr html::HtmlTemplate menuItemTemplate(R"(&nbsp;&nbsp;:&nbsp;&nbsp;<a href="{{href}}">{{text}}</a>
-)");
-constexpr html::HtmlTemplate firstMenuItemTemplate(R"(<a href="{{href}}">{{text}}</a>
-)");
-constexpr html::HtmlTemplate messageTemplate(R"(<div class="message-div"><h3><b>Message:</b></h3><br/>{{message}}</div>)");
+constexpr html::HtmlTemplate menuItemTemplate{R"(&nbsp;&nbsp;:&nbsp;&nbsp;<a href="{{href}}">{{text}}</a>
+)"};
+constexpr html::HtmlTemplate firstMenuItemTemplate{R"(<a href="{{href}}">{{text}}</a>
+)"};
+constexpr html::HtmlTemplate messageTemplate{R"(<div class="message-div"><h3><b>Message:</b></h3><br/>{{message}}</div>)"};
 
 html::SafeHtml menu(const Page& page)
 {

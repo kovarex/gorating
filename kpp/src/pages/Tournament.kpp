@@ -1,9 +1,9 @@
 // One EGD tournament (tournament.php): its facts, and the cross table of its games by placement.
 
-constexpr html::HtmlTemplate tournamentTemplate(R"(<h1>{{name}}</h1><table class="centered-table"><tr><td>EGD:</td><td>{{egd}}</td></tr><tr><td>Date:</td><td>{{date}}</td></tr><tr><td>Type:</td><td>{{type}}</td></tr><tr><td>Players:</td><td>{{players}}</td></tr><tr><td>Country:</td><td>{{country}}</td></tr><tr><td>City:</td><td>{{city}}</td></tr></table><br/><table class="data-table"><tr><th>Placement</th>{{rounds}}</tr>{{rows}}</table>)");
-constexpr html::HtmlTemplate roundHeaderTemplate(R"(<th>Round {{round}}</th>)");
-constexpr html::HtmlTemplate placementRowTemplate(R"(<tr><td>{{placement}}. {{player}}</td>{{cells}}</tr>)");
-constexpr html::HtmlTemplate plainCellTemplate(R"(<td>{{content}}</td>)");
+constexpr html::HtmlTemplate tournamentTemplate{R"(<h1>{{name}}</h1><table class="centered-table"><tr><td>EGD:</td><td>{{egd}}</td></tr><tr><td>Date:</td><td>{{date}}</td></tr><tr><td>Type:</td><td>{{type}}</td></tr><tr><td>Players:</td><td>{{players}}</td></tr><tr><td>Country:</td><td>{{country}}</td></tr><tr><td>City:</td><td>{{city}}</td></tr></table><br/><table class="data-table"><tr><th>Placement</th>{{rounds}}</tr>{{rows}}</table>)"};
+constexpr html::HtmlTemplate roundHeaderTemplate{R"(<th>Round {{round}}</th>)"};
+constexpr html::HtmlTemplate placementRowTemplate{R"(<tr><td>{{placement}}. {{player}}</td>{{cells}}</tr>)"};
+constexpr html::HtmlTemplate plainCellTemplate{R"(<td>{{content}}</td>)"};
 
 // A game in the cross table, as the row of one of its players shows it.
 struct TournamentCell

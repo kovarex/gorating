@@ -3,7 +3,7 @@
 // any game; a player their own for a day after it (PHP called canEditMyGameSince, which does not
 // exist, so a player's own edit ended in a PHP error). The values are checked before they reach SQL.
 
-constexpr html::HtmlTemplate editGameTemplate(R"(<form method="post" action="/edit_game_action" enctype="multipart/form-data">
+constexpr html::HtmlTemplate editGameTemplate{R"(<form method="post" action="/edit_game_action" enctype="multipart/form-data">
 <table>
 <tr>
 <td>{{winner}}</td>
@@ -39,15 +39,15 @@ function fixWinner(caller)
     document.getElementById('original_winner').value = caller.value == 'loser' ? 'winner' : 'loser';
 }
 </script>
-)");
-constexpr html::HtmlTemplate winnerChoiceTemplate(R"(<td><select id="original_winner" name="original_winner" oninput="fixWinner(this);"><option value="winner" selected="selected">Winner</option><option value="loser">Loser</option></select></td>
-)");
-constexpr html::HtmlTemplate loserChoiceTemplate(R"(<td><select id="original_loser" name="original_loser" oninput="fixWinner(this);"><option value="winner">Winner</option><option value="loser" selected="selected">Loser</option></select></td>
-)");
-constexpr html::HtmlTemplate blackFirstTemplate(R"(<option value="black" selected="selected">Black</option><option value="white">White</option>)");
-constexpr html::HtmlTemplate whiteFirstTemplate(R"(<option value="black">Black</option><option value="white" selected="selected">White</option>)");
-constexpr html::HtmlTemplate deleteSgfTemplate(R"(<tr><td></td><td colspan="2"><input type="checkbox" id="delete-sgf" name="delete-sgf"/><label for="delete-sgf">Delete Current sgf</label></td></tr>
-)");
+)"};
+constexpr html::HtmlTemplate winnerChoiceTemplate{R"(<td><select id="original_winner" name="original_winner" oninput="fixWinner(this);"><option value="winner" selected="selected">Winner</option><option value="loser">Loser</option></select></td>
+)"};
+constexpr html::HtmlTemplate loserChoiceTemplate{R"(<td><select id="original_loser" name="original_loser" oninput="fixWinner(this);"><option value="winner">Winner</option><option value="loser" selected="selected">Loser</option></select></td>
+)"};
+constexpr html::HtmlTemplate blackFirstTemplate{R"(<option value="black" selected="selected">Black</option><option value="white">White</option>)"};
+constexpr html::HtmlTemplate whiteFirstTemplate{R"(<option value="black">Black</option><option value="white" selected="selected">White</option>)"};
+constexpr html::HtmlTemplate deleteSgfTemplate{R"(<tr><td></td><td colspan="2"><input type="checkbox" id="delete-sgf" name="delete-sgf"/><label for="delete-sgf">Delete Current sgf</label></td></tr>
+)"};
 
 bool canEditWinner(const Page& page) { return userCanDo(page, adminLevelMod); }
 

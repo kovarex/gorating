@@ -1,9 +1,9 @@
 // The tournament list (tournaments.php, src/tournament_helper.php) and the country selector
 // (src/link_helper.php's countrySelector).
 
-constexpr html::HtmlTemplate optionTemplate(R"(<option value="{{value}}">{{name}}</option>)");
-constexpr html::HtmlTemplate selectedOptionTemplate(R"(<option value="{{value}}" selected="selected">{{name}}</option>)");
-constexpr html::HtmlTemplate selectTemplate(R"(<select name="country_code"><option value="">Any</option>{{options}}</select>)");
+constexpr html::HtmlTemplate optionTemplate{R"(<option value="{{value}}">{{name}}</option>)"};
+constexpr html::HtmlTemplate selectedOptionTemplate{R"(<option value="{{value}}" selected="selected">{{name}}</option>)"};
+constexpr html::HtmlTemplate selectTemplate{R"(<select name="country_code"><option value="">Any</option>{{options}}</select>)"};
 
 html::SafeHtml countrySelector(Page& page, StringView selected)
 {
@@ -50,7 +50,7 @@ html::SafeHtml tournamentTable(Page& page, Optional<int> limit, StringView capti
   return table.render();
 }
 
-constexpr html::HtmlTemplate tournamentFormTemplate(R"(<div style="text-align:center;"><form><table class="centered-table"><tr><td><label for="country_code">Country:</label></td><td>{{selector}}</td></tr><tr><td colspan="2"><input type="submit" value="Submit"/></td></tr></table></form></div>)");
+constexpr html::HtmlTemplate tournamentFormTemplate{R"(<div style="text-align:center;"><form><table class="centered-table"><tr><td><label for="country_code">Country:</label></td><td>{{selector}}</td></tr><tr><td colspan="2"><input type="submit" value="Submit"/></td></tr></table></form></div>)"};
 
 void tournamentsPage(Page& page)
 {

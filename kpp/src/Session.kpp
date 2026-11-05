@@ -135,7 +135,7 @@ int significantDigits(const Page& page)
   return digits.empty() ? 0 : (int)stoll(digits);
 }
 
-constexpr html::HtmlTemplate loginTemplate(R"(<form method="post" action="/login_action">
+constexpr html::HtmlTemplate loginTemplate{R"(<form method="post" action="/login_action">
     <table>
       <tr>
         <td><label for="username">Username:</label></td>
@@ -149,8 +149,8 @@ constexpr html::HtmlTemplate loginTemplate(R"(<form method="post" action="/login
     <input type="submit" value="Login"/>
   </form>
   <a href="/reset_password">Reset password</a>
-)");
-constexpr html::HtmlTemplate loggedInAsTemplate(R"(Currently logged in as {{username}}<form method="post" action="/logout"><input type="submit" value="Logoff"/></form>)");
+)"};
+constexpr html::HtmlTemplate loggedInAsTemplate{R"(Currently logged in as {{username}}<form method="post" action="/logout"><input type="submit" value="Logoff"/></form>)"};
 
 void loginPage(Page& page)
 {

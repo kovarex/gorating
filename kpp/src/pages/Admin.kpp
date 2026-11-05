@@ -1,10 +1,10 @@
 // The admins' pages: deleted games with a way back (deleted_games.php), the change log
 // (changes.php), the rating discrepancies (new), and a mod's edit of a player's name (edit_player_name_action.php).
 
-constexpr html::HtmlTemplate restoreButtonTemplate(R"(<form method="post" action="/restore_game_action" onsubmit="return confirm('Are you sure to restore the game?');" style="display:inline;"><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="redirect" value="{{redirect}}"/><input type="submit" value="Restore"/></form>)");
-constexpr html::HtmlTemplate deleteButtonTemplate(R"(<form method="post" action="/delete_game_action" onsubmit="return confirm('Are you sure to delete the game?');" style="display:inline;"><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="redirect" value="{{redirect}}"/><input type="submit" value="X"/></form>)");
-constexpr html::HtmlTemplate gameLinkTemplate(R"(<a href="/game?id={{id}}">Game {{id}}</a>)");
-constexpr html::HtmlTemplate changeSgfLinkTemplate(R"(<a href="/sgf?from={{from}}&amp;id={{id}}">{{text}}</a>)");
+constexpr html::HtmlTemplate restoreButtonTemplate{R"(<form method="post" action="/restore_game_action" onsubmit="return confirm('Are you sure to restore the game?');" style="display:inline;"><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="redirect" value="{{redirect}}"/><input type="submit" value="Restore"/></form>)"};
+constexpr html::HtmlTemplate deleteButtonTemplate{R"(<form method="post" action="/delete_game_action" onsubmit="return confirm('Are you sure to delete the game?');" style="display:inline;"><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="redirect" value="{{redirect}}"/><input type="submit" value="X"/></form>)"};
+constexpr html::HtmlTemplate gameLinkTemplate{R"(<a href="/game?id={{id}}">Game {{id}}</a>)"};
+constexpr html::HtmlTemplate changeSgfLinkTemplate{R"(<a href="/sgf?from={{from}}&amp;id={{id}}">{{text}}</a>)"};
 
 // The handicap as the deleted games page wrote it ("2h", "2h komi 5.5", "komi 0.5", "Even").
 String deletedGameHandicap(StringView handicap, StringView komi)

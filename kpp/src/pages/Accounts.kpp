@@ -30,7 +30,7 @@ bool requireLogin(Page& page)
 
 // --- invites ---
 
-constexpr html::HtmlTemplate invitesTemplate(R"(<div class="centered-div">Only invite players NOT in EGD here!<br/>
+constexpr html::HtmlTemplate invitesTemplate{R"(<div class="centered-div">Only invite players NOT in EGD here!<br/>
 To invite EGD players, use the Invite link under their name.</div><form method="post" action="/invite_action">
         <table>
           <tr>
@@ -53,12 +53,12 @@ To invite EGD players, use the Invite link under their name.</div><form method="
         <input type="hidden" name="redirect" value="/invites"/>
         <input type="submit" value="invite"/>
       </form><br/><br/>
-{{own}})");
-constexpr html::HtmlTemplate inviteMailTemplate(R"(You have been invited to register as {{name}} on gorating.com<br/>
+{{own}})"};
+constexpr html::HtmlTemplate inviteMailTemplate{R"(You have been invited to register as {{name}} on gorating.com<br/>
 If you already exist in EGD (you participated in any official tournament), ignore this email and request invitation that is connected to it.<br/>
-Otherwise follow <a href="{{link}}">the link</a> to register.)");
-constexpr html::HtmlTemplate inviteExistingMailTemplate(R"(You have been invited to register as <a href="{{player}}">{{name}}</a><br/>
-Follow this <a href="{{link}}">link</a> to register.)");
+Otherwise follow <a href="{{link}}">the link</a> to register.)"};
+constexpr html::HtmlTemplate inviteExistingMailTemplate{R"(You have been invited to register as <a href="{{player}}">{{name}}</a><br/>
+Follow this <a href="{{link}}">link</a> to register.)"};
 
 void invitesPage(Page& page)
 {
@@ -136,7 +136,7 @@ void inviteAction(Page& page, http::HttpResponse& response)
   redirectWithMessage(response, "/invites", "Invite created");
 }
 
-constexpr html::HtmlTemplate inviteExistingTemplate(R"(<form method="post" action="/invite_existing_user_action">
+constexpr html::HtmlTemplate inviteExistingTemplate{R"(<form method="post" action="/invite_existing_user_action">
         <table>
           <tr><td>First name:</td><td>{{first}}</td></tr>
           <tr><td>Last name:</td><td>{{last}}</td></tr>
@@ -150,7 +150,7 @@ constexpr html::HtmlTemplate inviteExistingTemplate(R"(<form method="post" actio
         <input type="hidden" name="user_id" value="{{id}}"/>
         <input type="hidden" name="redirect" value="/invites"/>
         <input type="submit" value="invite"/>
-      </form>)");
+      </form>)"};
 
 void inviteExistingUserPage(Page& page)
 {
@@ -223,7 +223,7 @@ Optional<String> registrationProblem(Page& page, StringView id, StringView secre
   return Optional<String>();
 }
 
-constexpr html::HtmlTemplate registerTemplate(R"(<div>You can now finish your registration with the following details</div><br/><form method="post" action="/register_action">
+constexpr html::HtmlTemplate registerTemplate{R"(<div>You can now finish your registration with the following details</div><br/><form method="post" action="/register_action">
        <table>
          <tr><td>First name:</td><td>{{first}}</td></tr>
          <tr><td>Last name:</td><td>{{last}}</td></tr>
@@ -241,9 +241,9 @@ constexpr html::HtmlTemplate registerTemplate(R"(<div>You can now finish your re
        <input type="hidden" name="invite_id" value="{{id}}"/>
        <input type="hidden" name="secret" value="{{secret}}"/>
        <input type="submit" value="Register"/>
-     </form>)");
-constexpr html::HtmlTemplate existingUserRowTemplate(R"(<tr><td>Existing user:</td><td>{{link}}</td></tr>)");
-constexpr html::HtmlTemplate countryRowTemplate(R"(<tr><td>Country:</td><td>{{selector}}</td></tr>)");
+     </form>)"};
+constexpr html::HtmlTemplate existingUserRowTemplate{R"(<tr><td>Existing user:</td><td>{{link}}</td></tr>)"};
+constexpr html::HtmlTemplate countryRowTemplate{R"(<tr><td>Country:</td><td>{{selector}}</td></tr>)"};
 
 void registerPage(Page& page)
 {
@@ -351,24 +351,24 @@ void registerAction(Page& page, http::HttpResponse& response)
 
 // --- password resets ---
 
-constexpr html::HtmlTemplate resetPasswordTemplate(R"(<div>Enter the email address of your account so we can send you a link to reset your password.</div>
+constexpr html::HtmlTemplate resetPasswordTemplate{R"(<div>Enter the email address of your account so we can send you a link to reset your password.</div>
 <form method="post" action="/reset_password_action">
   <table>
     <tr><td><label for="email">email:</label></td><td><input type="text" id="email" name="email"/></td></tr>
   </table>
   <input type="submit" value="Send reset link"/>
 </form>
-)");
-constexpr html::HtmlTemplate resetMailTemplate(R"(You have requested to reset your password<br/>
+)"};
+constexpr html::HtmlTemplate resetMailTemplate{R"(You have requested to reset your password<br/>
 Follow this <a href="{{link}}">link</a> to proceed.<br/>
-If you didn't order the reset, you can ignore the email.)");
-constexpr html::HtmlTemplate resetConfirmTemplate(R"(Now you can set a new password:<br/>
+If you didn't order the reset, you can ignore the email.)"};
+constexpr html::HtmlTemplate resetConfirmTemplate{R"(Now you can set a new password:<br/>
 <form method="post" action="/reset_password_confirm_action">
 <table>
 <tr><td><label for="password">New password:</label></td><td><input type="password" id="password" name="password"/></td></tr>
 </table>
 <input type="submit" value="Reset"/><input type="hidden" name="id" value="{{id}}"/><input type="hidden" name="secret" value="{{secret}}"/></form>
-)");
+)"};
 
 void resetPasswordPage(Page& page) { page.body.append(resetPasswordTemplate.render({})); }
 

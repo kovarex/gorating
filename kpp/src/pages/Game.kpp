@@ -1,11 +1,11 @@
 // One game (game.php).
 
-constexpr html::HtmlTemplate gameTemplate(R"(<table class="centered-data-table">
+constexpr html::HtmlTemplate gameTemplate{R"(<table class="centered-data-table">
 <caption><a href="/edit_game?id={{id}}&amp;redirect={{redirect}}">Edit game</a></caption><tr><td>ID:</td><td>{{id}}</td></tr><tr><td>Winner:</td><td>{{winner}}</td></tr><tr><td>Loser:</td><td>{{loser}}</td></tr><tr><td>Location:</td><td>{{location}}</td></tr><tr><td>Winner comment:</td><td>{{winnerComment}}</td></tr><tr><td>Loser comment:</td><td>{{loserComment}}</td></tr><tr><td>Handicap:</td><td>{{handicap}}</td></tr><tr><td>Komi:</td><td>{{komi}}</td></tr><tr><td>Time:</td><td>{{time}}</td></tr><tr><td>SGF:</td><td>{{sgf}}</td></tr></table>
-)");
+)"};
 
 // The message a page shows when it cannot: as PHP's `return "..."` from a page.
-constexpr html::HtmlTemplate pageMessageTemplate(R"(<div class="message-div"><h3><b>Message:</b></h3><br/>{{message}}</div>)");
+constexpr html::HtmlTemplate pageMessageTemplate{R"(<div class="message-div"><h3><b>Message:</b></h3><br/>{{message}}</div>)"};
 
 void gamePage(Page& page)
 {

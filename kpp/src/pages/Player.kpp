@@ -1,19 +1,19 @@
 // A player's page (player.php): name and ratings, then their games and rating changes in one
 // table, newest first. As a visitor sees it: the edit, report and delete parts come with sessions.
 
-constexpr html::HtmlTemplate playerHeadTemplate(R"(<div class="centered-div"><h1 style="display: inline;">{{name}}</h1>{{editButton}}</div><div id="edit-dialog" style="position:absolute;background: white;display:none;"><form action="/edit_player_name_action" method="post" class="data-form"><table><tr><td><label for="first_name">First name:</label></td><td><input type="text" name="first_name" value="{{first}}"/></td></tr><tr><td><label for="last_name">Last name:</label></td><td><input type="text" name="last_name" value="{{last}}"/></td></tr></table><input type="hidden" name="id" value="{{id}}"/><input type="submit" value="Submit"/></form></div>{{report}}<table class="centered-table"><tr><td>Rating:</td><td>{{rating}}</td></tr><tr><td>EGD Rating:</td><td>{{egdRating}}</td></tr>{{pin}}</table>)");
-constexpr html::HtmlTemplate editNameButtonTemplate(R"(<button type="button" onclick="showEditDialog(event);">Edit</button>)");
-constexpr html::HtmlTemplate reportLinkTemplate(R"(<div class="centered-div"><a class="report-loss-link" href="/report?id={{id}}">{{text}}</a></div>)");
-constexpr html::HtmlTemplate inviteLinkTemplate(R"(<div class="centered-div"><a class="report-loss-link" href="/invite_existing_user?user_id={{id}}">Invite</a></div>)");
-constexpr html::HtmlTemplate editGameLinkTemplate(R"(<a href="/edit_game?id={{id}}&amp;redirect={{redirect}}">Edit</a>)");
-constexpr html::HtmlTemplate pinRowTemplate(R"(<tr><td>EGD PIN:</td><td>{{link}}</td></tr>)");
-constexpr html::HtmlTemplate ratingChangeTemplate(R"(<span class="{{class}}">{{old}}&rarr;{{new}}</span>)");
-constexpr html::HtmlTemplate ratingDeltaTemplate(R"(<span class="{{class}}">{{delta}}</span>)");
-constexpr html::HtmlTemplate ratingChangeRowTemplate(R"(<tr><td colspan="{{editColumns}}"></td>{{change}}{{egdChange}}<td colspan="4">{{kind}} rating change issued by {{by}}</td><td>{{time}}</td><td colspan="{{lastColumns}}">{{comment}}</td></tr>)");
-constexpr html::HtmlTemplate centerCellTemplate2(R"(<td style="text-align:center;">{{content}}</td>)");
-constexpr html::HtmlTemplate deltaCellTemplate(R"(<td style="text-align:right;border-right:none;">{{content}}</td>)");
-constexpr html::HtmlTemplate newRatingCellTemplate(R"(<td style="text-align:right;border-left:none;">{{content}}</td>)");
-constexpr html::HtmlTemplate emptyNewRatingCellTemplate(R"(<td style="border-left: none;"></td>)");
+constexpr html::HtmlTemplate playerHeadTemplate{R"(<div class="centered-div"><h1 style="display: inline;">{{name}}</h1>{{editButton}}</div><div id="edit-dialog" style="position:absolute;background: white;display:none;"><form action="/edit_player_name_action" method="post" class="data-form"><table><tr><td><label for="first_name">First name:</label></td><td><input type="text" name="first_name" value="{{first}}"/></td></tr><tr><td><label for="last_name">Last name:</label></td><td><input type="text" name="last_name" value="{{last}}"/></td></tr></table><input type="hidden" name="id" value="{{id}}"/><input type="submit" value="Submit"/></form></div>{{report}}<table class="centered-table"><tr><td>Rating:</td><td>{{rating}}</td></tr><tr><td>EGD Rating:</td><td>{{egdRating}}</td></tr>{{pin}}</table>)"};
+constexpr html::HtmlTemplate editNameButtonTemplate{R"(<button type="button" onclick="showEditDialog(event);">Edit</button>)"};
+constexpr html::HtmlTemplate reportLinkTemplate{R"(<div class="centered-div"><a class="report-loss-link" href="/report?id={{id}}">{{text}}</a></div>)"};
+constexpr html::HtmlTemplate inviteLinkTemplate{R"(<div class="centered-div"><a class="report-loss-link" href="/invite_existing_user?user_id={{id}}">Invite</a></div>)"};
+constexpr html::HtmlTemplate editGameLinkTemplate{R"(<a href="/edit_game?id={{id}}&amp;redirect={{redirect}}">Edit</a>)"};
+constexpr html::HtmlTemplate pinRowTemplate{R"(<tr><td>EGD PIN:</td><td>{{link}}</td></tr>)"};
+constexpr html::HtmlTemplate ratingChangeTemplate{R"(<span class="{{class}}">{{old}}&rarr;{{new}}</span>)"};
+constexpr html::HtmlTemplate ratingDeltaTemplate{R"(<span class="{{class}}">{{delta}}</span>)"};
+constexpr html::HtmlTemplate ratingChangeRowTemplate{R"(<tr><td colspan="{{editColumns}}"></td>{{change}}{{egdChange}}<td colspan="4">{{kind}} rating change issued by {{by}}</td><td>{{time}}</td><td colspan="{{lastColumns}}">{{comment}}</td></tr>)"};
+constexpr html::HtmlTemplate centerCellTemplate2{R"(<td style="text-align:center;">{{content}}</td>)"};
+constexpr html::HtmlTemplate deltaCellTemplate{R"(<td style="text-align:right;border-right:none;">{{content}}</td>)"};
+constexpr html::HtmlTemplate newRatingCellTemplate{R"(<td style="text-align:right;border-left:none;">{{content}}</td>)"};
+constexpr html::HtmlTemplate emptyNewRatingCellTemplate{R"(<td style="border-left: none;"></td>)"};
 
 // The viewer's rating change format (settings): 1 "1657&rarr;1667" in one cell (the default), 2
 // "+10" and "1667" in two. Set for each request.

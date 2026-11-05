@@ -1,6 +1,6 @@
 // The about page (about.php).
 
-constexpr html::HtmlTemplate aboutTemplate(R"(<ul>
+constexpr html::HtmlTemplate aboutTemplate{R"(<ul>
   <li>The idea is to have "softcore/friendly" unoficial go rating.</li>
   <li>Registered players can play friendly games and report them instantly.</li>
   <li>This site is not related to EGD directly, it uses it for 2 purposes:</li>
@@ -19,6 +19,6 @@ TODO:
   <li>Adding sgf files to others.</li>
   <li>Rating promotions/demotions (like in egd) but more explicit.</li>
 </ul>
-)");
+)"};
 
 void aboutPage(Page& page) { page.body.append(aboutTemplate.render({})); }
