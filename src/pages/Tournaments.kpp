@@ -1,8 +1,7 @@
 // The tournament list (tournaments.php, src/tournament_helper.php) and the country selector
 // (src/link_helper.php's countrySelector).
 
-constexpr html::HtmlTemplate optionTemplate{R"(<option value="{{value}}">{{name}}</option>)"};
-constexpr html::HtmlTemplate selectedOptionTemplate{R"(<option value="{{value}}" selected="selected">{{name}}</option>)"};
+constexpr html::HtmlTemplate optionTemplate{R"(<option value="{{value}}" ?selected="{{selected}}">{{name}}</option>)"};
 constexpr html::HtmlTemplate selectTemplate{R"(<select name="country_code"><option value="">Any</option>{{options}}</select>)"};
 
 html::SafeHtml countrySelector(Page& page, StringView selected)
@@ -12,8 +11,7 @@ html::SafeHtml countrySelector(Page& page, StringView selected)
   for (ContainerSize i = 0; i < countries.size(); ++i)
   {
     Row row(countries, i);
-    const html::HtmlTemplate& t = row["code"] == selected ? selectedOptionTemplate : optionTemplate;
-    options << t.render({{"value", row["code"]}, {"name", row["name"]}});
+    options << optionTemplate.render({{"value", row["code"]}, {"name", row["name"]}, {"selected", row["code"] == selected}});
   }
   return selectTemplate.render({{"options", options}});
 }

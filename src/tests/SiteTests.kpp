@@ -104,8 +104,8 @@ test "a user's settings: rating digits and the rating change format"
   check(goratingDbValue(config, settings) == "2 2");
   // The form shows them, and the pages use them at once: the player's rating with two decimals.
   String form = siteRequest(config, "player11", "GET", "/settings").body;
-  check(form.find("<option value=\"2\" selected=\"selected\">2</option>") != String::npos);
-  check(form.find("id=\"format_2\" name=\"rating_change_format\" value=\"2\" checked=\"checked\"") != String::npos);
+  check(form.find("<option value=\"2\" selected>2</option>") != String::npos);
+  check(form.find("id=\"format_2\" name=\"rating_change_format\" value=\"2\" checked/>") != String::npos);
   double rating = ratingValue(goratingDbValue(config, "SELECT rating FROM user WHERE username='player11'"));
   String shown = toString("<td>Rating:</td><td>", fixed(rating, 2), "</td>");
   check(siteRequest(config, "player11", "GET", "/player11").body.find(shown) != String::npos);

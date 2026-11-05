@@ -4,10 +4,8 @@
 constexpr html::HtmlTemplate settingsTemplate{R"(<form method="post" action="/settings_action"><table><tr><td><label for="significant_digits">Singificant digits to show in rating:</label></td><td><select id="significant_digits" name="significant_digits">{{digits}}</select></td></tr><tr><td><label for="rating_change_format">Rating change format:</label></td><td>{{format1}} <label for="format_1">1657&rarr;1667</label><br/>
 {{format2}} <label for="format_2">+12 1667</label><br/>
 </td></tr></table><input type="submit" value="submit"/></form>)"};
-constexpr html::HtmlTemplate digitOptionTemplate{R"(<option value="{{value}}">{{value}}</option>)"};
-constexpr html::HtmlTemplate selectedDigitOptionTemplate{R"(<option value="{{value}}" selected="selected">{{value}}</option>)"};
-constexpr html::HtmlTemplate formatRadioTemplate{R"(<input type="radio" id="format_{{value}}" name="rating_change_format" value="{{value}}"/>)"};
-constexpr html::HtmlTemplate checkedFormatRadioTemplate{R"(<input type="radio" id="format_{{value}}" name="rating_change_format" value="{{value}}" checked="checked"/>)"};
+constexpr html::HtmlTemplate digitOptionTemplate{R"(<option value="{{value}}" ?selected="{{selected}}">{{value}}</option>)"};
+constexpr html::HtmlTemplate formatRadioTemplate{R"(<input type="radio" id="format_{{value}}" name="rating_change_format" value="{{value}}" ?checked="{{checked}}"/>)"};
 
 void settingsPage(Page& page)
 {
@@ -18,11 +16,11 @@ void settingsPage(Page& page)
   }
   html::SafeHtml digits;
   for (i32 i = 0; i <= 3; ++i)
-    digits << (i == ratingDigits ? selectedDigitOptionTemplate : digitOptionTemplate).render({{"value", i}});
+    digits << digitOptionTemplate.render({{"value", i}, {"selected", i == ratingDigits}});
   page.body << settingsTemplate.render(
       {{"digits", digits},
-       {"format1", (ratingChangeFormat != 2 ? checkedFormatRadioTemplate : formatRadioTemplate).render({{"value", 1}})},
-       {"format2", (ratingChangeFormat == 2 ? checkedFormatRadioTemplate : formatRadioTemplate).render({{"value", 2}})}});
+       {"format1", formatRadioTemplate.render({{"value", 1}, {"checked", ratingChangeFormat != 2}})},
+       {"format2", formatRadioTemplate.render({{"value", 2}, {"checked", ratingChangeFormat == 2}})}});
 }
 
 void settingsAction(Page& page, http::HttpResponse& response)
