@@ -27,21 +27,22 @@ void settingsPage(Page& page)
 
 void settingsAction(Page& page, http::HttpResponse& response)
 {
+  Form form(*page.request, "/");
   if (!loggedIn(page))
-    return redirectWithMessage(response, "/", "Not logged in");
+    form.fail("Not logged in");
   if (page.request->method != "POST")
   {
     response.redirect("/settings");
     return;
   }
-  Vector<url::UrlQueryParameter> form = page.request->form();
-  String digits = formValue(form, "significant_digits");
-  String format = formValue(form, "rating_change_format");
-  if (digits != "0" && digits != "1" && digits != "2" && digits != "3")
-    return redirectWithMessage(response, "/settings", "Significant digits are 0 to 3");
-  if (format != "1" && format != "2")
-    return redirectWithMessage(response, "/settings", "Invalid rating change format value");
-  page.query("UPDATE user SET setting_significant_digits_in_rating=", digits,
-             ", setting_rating_change_format=", format, " WHERE id=", quote(userValue(page, "id")));
+  form.setTarget("/settings");
+  u8 digits = form.number<u8>("significant_digits", "Significant digits are 0 to 3");
+  if (digits > 3)
+    form.fail("Significant digits are 0 to 3");
+  u8 format = form.number<u8>("rating_change_format", "Invalid rating change format value");
+  if (format != 1 && format != 2)
+    form.fail("Invalid rating change format value");
+  page.query("UPDATE user SET setting_significant_digits_in_rating=", digits, ", setting_rating_change_format=", format,
+             " WHERE id=", quote(userValue(page, "id")));
   response.redirect("/");
 }

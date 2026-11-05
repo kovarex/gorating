@@ -1,0 +1,7 @@
+// A form's value that does not fit (Form::fail): the action stops, and the request goes back to
+// target with the message (handle in Main.kpp).
+struct FormError
+{
+  String target;
+  String message;
+};

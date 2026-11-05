@@ -69,7 +69,7 @@ struct PhpNumber
 // PHP's is_numeric for what EGD's pages hold: an optional sign, digits, a point, an exponent.
 bool phpIsNumeric(StringView text)
 {
-  return number(text).has_value();
+  return phpNumeric(text).has_value();
 }
 
 // PHP 8's loose == of two column values: as numbers when both are numeric, else as text; NULL
@@ -79,7 +79,7 @@ bool phpLooseEqual(const Optional<String>& a, const Optional<String>& b)
   if (!a.has_value() || !b.has_value())
     return (a.has_value() ? a->empty() : true) && (b.has_value() ? b->empty() : true);
   if (phpIsNumeric(*a) && phpIsNumeric(*b))
-    return *number(*a) == *number(*b);
+    return *phpNumeric(*a) == *phpNumeric(*b);
   return *a == *b;
 }
 

@@ -115,58 +115,34 @@ void handle(const http::HttpRequest& request, http::HttpResponse& response)
     sgfDownload(page, response);
     return;
   }
-  if (name == "login_action")
-  {
-    loginAction(page, response);
-    return;
-  }
+  // The actions: a form's value that does not fit goes back to the form with a message (Form).
   using Action = void (*)(Page&, http::HttpResponse&);
-  for (Pair<const char*, Action> action : {Pair<const char*, Action>{"invite_action", inviteAction},
+  for (Pair<const char*, Action> action : {Pair<const char*, Action>{"login_action", loginAction},
+                                           Pair<const char*, Action>{"invite_action", inviteAction},
                                            Pair<const char*, Action>{"invite_existing_user_action", inviteExistingUserAction},
                                            Pair<const char*, Action>{"register_action", registerAction},
                                            Pair<const char*, Action>{"reset_password_action", resetPasswordAction},
                                            Pair<const char*, Action>{"reset_password_confirm_action", resetPasswordConfirmAction},
-                                           Pair<const char*, Action>{"toggle_statistics", toggleStatisticsAction}})
+                                           Pair<const char*, Action>{"toggle_statistics", toggleStatisticsAction},
+                                           Pair<const char*, Action>{"edit_player_name_action", editPlayerNameAction},
+                                           Pair<const char*, Action>{"edit_game_action", editGameAction},
+                                           Pair<const char*, Action>{"delete_game_action", deleteGameAction},
+                                           Pair<const char*, Action>{"restore_game_action", restoreGameAction},
+                                           Pair<const char*, Action>{"report_action", reportAction},
+                                           Pair<const char*, Action>{"settings_action", settingsAction},
+                                           Pair<const char*, Action>{"logout", logoutAction}})
     if (name == action.first)
     {
-      action.second(page, response);
+      try
+      {
+        action.second(page, response);
+      }
+      catch (const FormError& e)
+      {
+        redirectWithMessage(response, e.target, e.message);
+      }
       return;
     }
-  if (name == "edit_player_name_action")
-  {
-    editPlayerNameAction(page, response);
-    return;
-  }
-  if (name == "edit_game_action")
-  {
-    editGameAction(page, response);
-    return;
-  }
-  if (name == "delete_game_action")
-  {
-    deleteGameAction(page, response);
-    return;
-  }
-  if (name == "restore_game_action")
-  {
-    restoreGameAction(page, response);
-    return;
-  }
-  if (name == "report_action")
-  {
-    reportAction(page, response);
-    return;
-  }
-  if (name == "settings_action")
-  {
-    settingsAction(page, response);
-    return;
-  }
-  if (name == "logout")
-  {
-    logoutAction(response);
-    return;
-  }
   bool routed = false;
   try
   {

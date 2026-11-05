@@ -188,50 +188,48 @@ constexpr i32 changeGameTimestamp = 17;
 
 void editGameAction(Page& page, http::HttpResponse& response)
 {
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/", "A game is edited with the edit form.");
-  ReportForm form = readGameForm(*page.request);
-  String id = formValue(form.fields, "id");
-  String redirect = localRedirect(formValue(form.fields, "redirect"), toString("/game?id=", url::urlEncode(id)));
-  mariadb::MariaDbResult found = page.query("SELECT * FROM game WHERE id=", quote(id));
+  Form form(*page.request, "/");
+  form.requirePost("A game is edited with the edit form.");
+  String id = toString(form.number<u64>("id", "Game to update doesn't exist."));
+  mariadb::MariaDbResult found = page.query("SELECT * FROM game WHERE id=", id);
   if (found.empty())
-    return redirectWithMessage(response, "/", "Game to update doesn't exist.");
+    form.fail("Game to update doesn't exist.");
+  String redirect = localRedirect(form.text("redirect"), toString("/game?id=", id));
+  form.setTarget(redirect);
   Row game(found, 0);
   if (!mayEditGame(page, game["winner_user_id"], game["loser_user_id"], id))
-    return redirectWithMessage(response, redirect, "You can't edit this game; a mod can.");
+    form.fail("You can't edit this game; a mod can.");
 
   bool originalWinnerIsBlack = game["winner_is_black"] == "1";
   String winnerId = game["winner_user_id"];
   String loserId = game["loser_user_id"];
   bool winnerIsBlack = originalWinnerIsBlack;
-  String originalWinner = formValue(form.fields, "original_winner");
+  String originalWinner = form.text("original_winner");
   bool switched = !originalWinner.empty() && originalWinner != "winner";
   if (switched)
   {
     if (!canEditWinner(page))
-      return redirectWithMessage(response, redirect, "Can't edit winner.");
+      form.fail("Can't edit winner.");
     swap(winnerId, loserId);
     winnerIsBlack = !winnerIsBlack;
   }
-  if ((formValue(form.fields, "original_winner_color") == "black") != originalWinnerIsBlack)
+  if ((form.text("original_winner_color") == "black") != originalWinnerIsBlack)
     winnerIsBlack = !winnerIsBlack;
 
-  String handicap = formValue(form.fields, "handicap");
-  Optional<double> handicapValue = number(handicap);
-  if (!handicapValue.has_value() || *handicapValue != floor(*handicapValue) || *handicapValue < 0 || *handicapValue > 9)
-    return redirectWithMessage(response, redirect, "Handicap is a whole number from 0 to 9");
-  String komi = formValue(form.fields, "komi");
-  if (!number(komi).has_value())
-    return redirectWithMessage(response, redirect, "Komi value must be numeric");
-  String timestamp = formValue(form.fields, "timestamp");
+  u8 handicap = form.number<u8>("handicap", "Handicap is a whole number from 0 to 9");
+  if (handicap > 9)
+    form.fail("Handicap is a whole number from 0 to 9");
+  double komi = form.decimal("komi", "Komi value must be numeric");
+  String timestamp = form.text("timestamp");
   if (!isTimestamp(timestamp))
-    return redirectWithMessage(response, redirect, "The timestamp is written YYYY-MM-DD HH:MM:SS");
-  String location = formValue(form.fields, "location");
-  bool deleteSgf = !formValue(form.fields, "delete-sgf").empty();
+    form.fail("The timestamp is written YYYY-MM-DD HH:MM:SS");
+  String location = form.text("location");
+  bool deleteSgf = !form.text("delete-sgf").empty();
+  Optional<String> sgf = form.file("sgf");
 
   page.db->begin();
   String set = toString("winner_user_id=", quote(winnerId), ",loser_user_id=", quote(loserId),
-               ",winner_is_black=", winnerIsBlack, ",handicap=", quote(handicap), ",komi=", quote(komi),
+               ",winner_is_black=", winnerIsBlack, ",handicap=", handicap, ",komi=", komi,
                ",location=", quoteOrNull(location), ",timestamp=", quote(timestamp));
   if (switched)
   {
@@ -243,11 +241,11 @@ void editGameAction(Page& page, http::HttpResponse& response)
                ", loser_old_egd_rating=" << value("winner_old_egd_rating") << ", loser_old_rating=" << value("winner_old_rating") <<
                ", loser_new_egd_rating=" << value("winner_new_egd_rating") << ", loser_new_rating=" << value("winner_new_rating");
   }
-  if (form.sgf.has_value())
-    set << ", sgf=" << quoteOrNull(*form.sgf);
+  if (sgf.has_value())
+    set << ", sgf=" << quoteOrNull(*sgf);
   else if (deleteSgf)
     set << ",sgf=null";
-  page.query("UPDATE game SET ", set, " WHERE game.id=", quote(id));
+  page.query("UPDATE game SET ", set, " WHERE game.id=", id);
 
   Vector<String> changes;
   if (game["winner_user_id"] != winnerId)
@@ -261,15 +259,15 @@ void editGameAction(Page& page, http::HttpResponse& response)
     addChange(page, changeGameBlackPlayer, id, Optional<String>(), Optional<String>());
   }
   // Compared as numbers, as PHP compared numeric strings ("2" is "2.0").
-  if (ratingValue(game["handicap"]) != *handicapValue)
+  if (ratingValue(game["handicap"]) != handicap)
   {
     changes.push_back(toString("Handicap was changed from ", game["handicap"], " to ", handicap));
-    addChange(page, changeGameHandicap, id, Optional<String>(game["handicap"]), Optional<String>(handicap));
+    addChange(page, changeGameHandicap, id, Optional<String>(game["handicap"]), Optional<String>(toString(handicap)));
   }
-  if (ratingValue(game["komi"]) != *number(komi))
+  if (ratingValue(game["komi"]) != komi)
   {
     changes.push_back(toString("Komi was changed from ", game["komi"], " to ", komi));
-    addChange(page, changeGameKomi, id, Optional<String>(game["komi"]), Optional<String>(komi));
+    addChange(page, changeGameKomi, id, Optional<String>(game["komi"]), Optional<String>(toString(komi)));
   }
   if (game["location"] != location)
   {
@@ -282,10 +280,10 @@ void editGameAction(Page& page, http::HttpResponse& response)
     addChange(page, changeGameTimestamp, id, Optional<String>(game["timestamp"]), Optional<String>(timestamp));
   }
   bool hadSgf = !game["sgf"].empty();
-  if (form.sgf.has_value())
+  if (sgf.has_value())
   {
     changes.push_back(hadSgf ? "SGF was updated." : "SGF was added.");
-    addChange(page, changeGameSgf, id, hadSgf ? Optional<String>(game["sgf"]) : Optional<String>(), Optional<String>(*form.sgf));
+    addChange(page, changeGameSgf, id, hadSgf ? Optional<String>(game["sgf"]) : Optional<String>(), Optional<String>(*sgf));
   }
   else if (deleteSgf && hadSgf)
   {

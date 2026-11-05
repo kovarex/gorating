@@ -1,0 +1,97 @@
+// A form sent to an action: its fields read as text or typed numbers. A value that does not fit is
+// a FormError, which sends the request back to the form's page with a message (Main.kpp's handle),
+// so an action reads its values and checks them without returning at each one.
+class Form
+{
+public:
+  // The request's form (urlencoded or multipart); a value that does not fit goes back to target.
+  Form(const http::HttpRequest& request, StringView target) : request(&request), fields(request.form()), target(target) {}
+
+  // The field's text, "" when absent. Text that is not UTF-8 is the request's error (400).
+  String text(StringView name) const
+  {
+    for (const url::UrlQueryParameter& field : this->fields)
+      if (field.name == name)
+      {
+        if (!isUtf8(field.value))
+          throw http::HttpError(toString("the field ", name, " is not UTF-8 text"), 400);
+        return field.value;
+      }
+    return String();
+  }
+
+  // The field as a whole number of type T: digits, a '-' first for a signed T, within T's range.
+  // Anything else fails with the message.
+  template <typename T>
+  T number(StringView name, Text message) const
+  {
+    Optional<T> value = formNumber<T>(this->text(name));
+    if (!value.has_value())
+      this->fail(message);
+    return *value;
+  }
+
+  // The field as a decimal number, as PHP's is_numeric read one (spaces around it, a sign, a point,
+  // an exponent); anything else fails with the message.
+  double decimal(StringView name, Text message) const
+  {
+    Optional<double> value = phpNumeric(this->text(name));
+    if (!value.has_value())
+      this->fail(message);
+    return *value;
+  }
+
+  // The file sent in the field (multipart), when one was chosen.
+  Optional<String> file(StringView name) const
+  {
+    if (this->request->contentType() != "multipart/form-data")
+      return Optional<String>();
+    for (const http::HttpPart& part : this->request->multipart())
+      if (part.name == name && part.filename.has_value() && !part.filename->empty())
+        return Optional<String>(part.data);
+    return Optional<String>();
+  }
+
+  // From now on, a value that does not fit goes back to target (a page that needs a field first).
+  void setTarget(StringView target) { this->target = String(target); }
+
+  // Stops the action: the request goes back to the form's page with the message.
+  [[noreturn]] void fail(Text message) const { throw FormError{this->target, toString(message)}; }
+
+  // An action changes something only from a form sent with POST (PHP took some as GET links, which
+  // another site could make a logged-in browser follow).
+  void requirePost(Text message) const
+  {
+    if (this->request->method != "POST")
+      this->fail(message);
+  }
+
+private:
+  const http::HttpRequest* request;
+  Vector<url::UrlQueryParameter> fields;
+  String target;
+};
+
+// A whole number of type T: digits, a '-' first for a signed T, within T's range (and i64's: a u64
+// above it is refused too); else nothing.
+template <typename T>
+Optional<T> formNumber(StringView text)
+{
+  bool negative = isSigned<T> && !text.empty() && text[0] == '-';
+  ContainerSize at = negative ? 1 : 0;
+  if (at == text.size())
+    return Optional<T>();
+  i64 value = 0;
+  for (; at < text.size(); ++at)
+  {
+    char c = text[at];
+    if (c < '0' || c > '9' || value > (Limits<i64>::max() - (c - '0')) / 10)
+      return Optional<T>();
+    value = value * 10 + (c - '0');
+  }
+  if (negative)
+    value = -value;
+  if (value < i64(Limits<T>::min()) || (sizeof(T) < sizeof(i64) && value > i64(Limits<T>::max())))
+    return Optional<T>();
+  return Optional<T>(T(value));
+}

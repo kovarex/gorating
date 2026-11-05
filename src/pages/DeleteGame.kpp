@@ -12,21 +12,19 @@ String localRedirect(StringView target, StringView fallback)
 
 void setGameDeleted(Page& page, http::HttpResponse& response, bool deleted)
 {
+  Form form(*page.request, "/");
   if (!canDeleteAnyGame(page))
-    return redirectWithMessage(response, "/", deleted ? "No rights to delete this game." : "No rights to restore this game.");
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/", "A game is deleted and restored with a form.");
-  Vector<url::UrlQueryParameter> form = page.request->form();
-  String id = formValue(form, "id");
-  String redirect = localRedirect(formValue(form, "redirect"), "/");
-  if (id.empty())
-    return redirectWithMessage(response, redirect, "Game id not specified");
-  for (char c : id)
-    if (c < '0' || c > '9')
-      return redirectWithMessage(response, redirect, toString("Game id is not numeric:", id));
-  page.query("UPDATE game SET deleted=", deleted, " WHERE id=", quote(id));
-  String message = toString("Game with id=", id, (deleted ? StringView(" deleted.\n") : StringView(" restored.\n")), processRating(page, ratingUpdateSeconds));
-  redirectWithMessage(response, redirect, message);
+    form.fail(deleted ? StringView("No rights to delete this game.") : StringView("No rights to restore this game."));
+  form.requirePost("A game is deleted and restored with a form.");
+  String redirect = localRedirect(form.text("redirect"), "/");
+  form.setTarget(redirect);
+  String idText = form.text("id");
+  if (idText.empty())
+    form.fail("Game id not specified");
+  u64 id = form.number<u64>("id", "Game id is not numeric:", idText);
+  page.query("UPDATE game SET deleted=", deleted, " WHERE id=", id);
+  redirectWithMessage(response, redirect, "Game with id=", id, deleted ? StringView(" deleted.\n") : StringView(" restored.\n"),
+                      processRating(page, ratingUpdateSeconds));
 }
 
 void deleteGameAction(Page& page, http::HttpResponse& response) { setGameDeleted(page, response, true); }

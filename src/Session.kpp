@@ -112,10 +112,10 @@ constexpr StringView statisticsCookie = "gorating_statistics";
 // The owner's switch for query statistics, kept in a cookie that counts for the owner only.
 void toggleStatisticsAction(Page& page, http::HttpResponse& response)
 {
+  Form form(*page.request, "/");
   if (!canShowStatistics(page))
-    return redirectWithMessage(response, "/", "No rights");
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/", "Statistics are toggled with the button.");
+    form.fail("No rights");
+  form.requirePost("Statistics are toggled with the button.");
   bool on = page.request->cookie(statisticsCookie).has_value();
   if (on)
     response.deleteCookie(statisticsCookie);
@@ -125,7 +125,7 @@ void toggleStatisticsAction(Page& page, http::HttpResponse& response)
     options.secure = page.config->secureCookies;
     response.setCookie(statisticsCookie, "1", options);
   }
-  redirectWithMessage(response, "/", on ? "Statistics turned OFF" : "Statistics turned ON");
+  redirectWithMessage(response, "/", on ? StringView("Statistics turned OFF") : StringView("Statistics turned ON"));
 }
 
 // The rating's decimals the user chose (settings), 0 for a visitor.
@@ -160,25 +160,12 @@ void loginPage(Page& page)
     page.body << loginTemplate.render({});
 }
 
-// The value of the form's field, or "". Text that is not UTF-8 is the request's error (400).
-String formValue(const Vector<url::UrlQueryParameter>& form, StringView name)
-{
-  for (const url::UrlQueryParameter& p : form)
-    if (p.name == name)
-    {
-      if (!isUtf8(p.value))
-        throw http::HttpError(toString("the field ", name, " is not UTF-8 text"), 400);
-      return p.value;
-    }
-  return String();
-}
-
 // A redirect with ?message= (src/link_helper.php's redirectWithMessageCustom).
-void redirectWithMessage(http::HttpResponse& response, StringView target, StringView message)
+void redirectWithMessage(http::HttpResponse& response, StringView target, Text message)
 {
   String location(target);
   location << (location.find('?') == String::npos ? StringView("?") : StringView("&"));
-  location << "message=" << url::urlEncode(message);
+  location << "message=" << url::urlEncode(toString(message));
   response.redirect(location);
 }
 
@@ -189,17 +176,17 @@ void loginAction(Page& page, http::HttpResponse& response)
     response.redirect("/login");
     return;
   }
-  Vector<url::UrlQueryParameter> form = page.request->form();
-  String username = formValue(form, "username");
-  String password = formValue(form, "password");
+  Form form(*page.request, "/login");
+  String username = form.text("username");
+  String password = form.text("password");
   if (username.empty())
-    return redirectWithMessage(response, "/login", "username not provided");
+    form.fail("username not provided");
   if (password.empty())
-    return redirectWithMessage(response, "/login", "password not provided");
+    form.fail("password not provided");
   mariadb::MariaDbResult user = page.query("SELECT id, username, password FROM user WHERE username=", quote(username));
   // One message for both, so the form does not tell which usernames exist (PHP said "not found").
   if (user.empty() || !user.at(0, "password").has_value() || !bcrypt::bcryptVerify(password, *user.at(0, "password")))
-    return redirectWithMessage(response, "/login", "Wrong username or password!");
+    form.fail("Wrong username or password!");
   Row row(user, 0);
   i64 expires = unixNow() + sessionSeconds;
   http::HttpCookieOptions options;
@@ -209,7 +196,7 @@ void loginAction(Page& page, http::HttpResponse& response)
   response.redirect(playerPath(row["id"], row["username"]));
 }
 
-void logoutAction(http::HttpResponse& response)
+void logoutAction(Page&, http::HttpResponse& response)
 {
   response.deleteCookie(sessionCookie);
   response.redirect("/");

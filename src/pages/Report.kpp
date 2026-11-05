@@ -99,25 +99,8 @@ void reportPage(Page& page)
 }
 
 // The form's fields and its one file, urlencoded or multipart.
-struct ReportForm
-{
-  Vector<url::UrlQueryParameter> fields;
-  Optional<String> sgf; // a file sent in the sgf field, when one was chosen
-};
-
-ReportForm readGameForm(const http::HttpRequest& request)
-{
-  ReportForm form;
-  form.fields = request.form();
-  if (request.contentType() == "multipart/form-data")
-    for (const http::HttpPart& part : request.multipart())
-      if (part.name == "sgf" && part.filename.has_value() && !part.filename->empty())
-        form.sgf = Optional<String>(part.data);
-  return form;
-}
-
 // PHP's is_numeric for a decimal number: digits, an optional sign, point and exponent.
-Optional<double> number(StringView text)
+Optional<double> phpNumeric(StringView text)
 {
   StringView t = httpTrimSpaces(text);
   if (t.empty() || t.size() > 40)
@@ -164,42 +147,35 @@ String quoteOrNull(StringView text) { return text.empty() ? String("NULL") : quo
 
 void reportAction(Page& page, http::HttpResponse& response)
 {
+  Form form(*page.request, "/");
   if (!loggedIn(page))
-    return redirectWithMessage(response, "/", "Can't report game when not logged in.");
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/", "A game is reported with the report form.");
-  ReportForm form = readGameForm(*page.request);
-  String opponentId = formValue(form.fields, "winner_user_id");
-  String back = toString("/report?id=", url::urlEncode(opponentId));
+    form.fail("Can't report game when not logged in.");
+  form.requirePost("A game is reported with the report form.");
+  String opponentId = form.text("winner_user_id");
   mariadb::MariaDbResult opponents = page.query("SELECT * FROM user WHERE id=", quote(opponentId));
   if (opponents.empty())
-    return redirectWithMessage(response, "/", toString("User with id=", opponentId, " doesn't exist"));
+    form.fail("User with id=", opponentId, " doesn't exist");
+  form.setTarget(toString("/report?id=", url::urlEncode(opponentId)));
   Row opponent(opponents, 0);
   String userId = userValue(page, "id");
   if (opponent["id"] == userId)
-    return redirectWithMessage(response, back, "A game is reported against someone else");
-  String gameType = formValue(form.fields, "game_type");
-  if (gameType != "5" && gameType != "6" && gameType != "7")
-    return redirectWithMessage(response, back, toString("Invalid game type:", gameType));
-  String handicapText = formValue(form.fields, "handicap");
-  Optional<double> handicap = number(handicapText);
-  if (!handicap.has_value() || *handicap != floor(*handicap))
-    return redirectWithMessage(response, back, "Handicap value must be a whole number");
-  if (*handicap > 9)
-    return redirectWithMessage(response, back, "Maximum handicap value is 9");
-  if (*handicap < 0)
-    return redirectWithMessage(response, back, "Handicap can't be negative");
-  String komiText = formValue(form.fields, "komi");
-  Optional<double> komi = number(komiText);
-  if (!komi.has_value())
-    return redirectWithMessage(response, back, "Komi value must be numeric");
-  String color = formValue(form.fields, "color");
+    form.fail("A game is reported against someone else");
+  u8 type = form.number<u8>("game_type", "Invalid game type:", form.text("game_type"));
+  if (type < 5 || type > 7)
+    form.fail("Invalid game type:", type);
+  i32 handicap = form.number<i32>("handicap", "Handicap value must be a whole number");
+  if (handicap > 9)
+    form.fail("Maximum handicap value is 9");
+  if (handicap < 0)
+    form.fail("Handicap can't be negative");
+  double komi = form.decimal("komi", "Komi value must be numeric");
+  String color = form.text("color");
   if (color != "black" && color != "white")
-    return redirectWithMessage(response, back, toString("Invalid color value:", color));
+    form.fail("Invalid color value:", color);
   bool opponentIsBlack = color == "white";
-  bool reportingWin = formValue(form.fields, "result") == "win";
+  bool reportingWin = form.text("result") == "win";
   if (reportingWin && !canReportWin(page))
-    return redirectWithMessage(response, back, "Only trusted users report their wins");
+    form.fail("Only trusted users report their wins");
 
   // The old ratings go back into the database as its own text, as PHP's did; the new ones as PHP
   // printed its doubles.
@@ -207,27 +183,27 @@ void reportAction(Page& page, http::HttpResponse& response)
   String opponentOldText = opponent["rating"];
   double myOldRating = ratingValue(myOldText);
   double opponentOldRating = ratingValue(opponentOldText);
-  double myHandicap = (opponentIsBlack ? -1 : 1) * *handicap;
-  double myExtraKomi = (opponentIsBlack ? 1 : -1) * (*komi - 6.5);
-  i32 type = (i32)stoll(gameType);
+  double myHandicap = (opponentIsBlack ? -1 : 1) * handicap;
+  double myExtraKomi = (opponentIsBlack ? 1 : -1) * (komi - 6.5);
   double myNewRating = calculateNewRating(myOldRating, opponentOldRating, reportingWin ? 1.0 : 0.0, type, myHandicap, myExtraKomi);
   double opponentNewRating = calculateNewRating(opponentOldRating, myOldRating, reportingWin ? 0.0 : 1.0, type, -myHandicap, -myExtraKomi);
-  String comment = formValue(form.fields, "comment");
-  String location = formValue(form.fields, "location");
+  String comment = form.text("comment");
+  String location = form.text("location");
+  Optional<String> sgf = form.file("sgf");
 
   page.db->begin();
   page.query("INSERT INTO game(winner_user_id, loser_user_id, game_type_id, location, winner_comment, loser_comment,"
              " winner_old_rating, winner_new_rating, loser_old_rating, loser_new_rating, sgf, winner_is_black, handicap, komi)"
              " VALUES(",
-             (reportingWin ? userId : opponent["id"]), ",", (reportingWin ? opponent["id"] : userId), ",", gameType, ",",
+             (reportingWin ? userId : opponent["id"]), ",", (reportingWin ? opponent["id"] : userId), ",", type, ",",
              quoteOrNull(location), ",", quoteOrNull(reportingWin ? comment : String()), ",",
              quoteOrNull(reportingWin ? String() : comment), ",",
              quote(reportingWin ? myOldText : opponentOldText), ",",
              quote(phpNumber(reportingWin ? myNewRating : opponentNewRating)), ",",
              quote(reportingWin ? opponentOldText : myOldText), ",",
              quote(phpNumber(reportingWin ? opponentNewRating : myNewRating)), ",",
-             (form.sgf.has_value() && !form.sgf->empty() ? quote(*form.sgf) : String("NULL")), ",",
-             opponentIsBlack != reportingWin, ",", quote(handicapText), ",", quote(komiText), ")");
+             (sgf.has_value() && !sgf->empty() ? quote(*sgf) : String("NULL")), ",",
+             opponentIsBlack != reportingWin, ",", handicap, ",", komi, ")");
   page.query("UPDATE user set rating=", phpNumber(myNewRating), " WHERE id=", quote(userId));
   page.query("UPDATE user set rating=", phpNumber(opponentNewRating), " WHERE id=", quote(opponent["id"]));
   page.db->commit();

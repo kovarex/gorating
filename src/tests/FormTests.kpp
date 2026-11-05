@@ -1,13 +1,13 @@
-// Reading the forms (Report.kpp, EditGame.kpp, DeleteGame.kpp, Session.kpp) without a database:
-// numbers as PHP's is_numeric takes them, timestamps, redirect targets, the fields and the SGF file.
+// Reading the forms (Form.kpp) without a database: numbers as PHP's is_numeric takes them, typed
+// numbers, timestamps, redirect targets, the fields and the SGF file, a FormError's target and message.
 
 test "numbers and timestamps in a form"
 {
   for (StringView good : {"6.5", " 7 ", "-1e2", "+0.5", "1E3", "0"})
-    check(number(good).has_value());
-  check(*number("6.5") == 6.5 && *number(" 7 ") == 7 && *number("-1e2") == -100);
+    check(phpNumeric(good).has_value());
+  check(*phpNumeric("6.5") == 6.5 && *phpNumeric(" 7 ") == 7 && *phpNumeric("-1e2") == -100);
   for (StringView bad : {"", " ", "abc", "1,5", ".", "1e", "0x10", "1.2.3", "--1", "1 2", "12345678901234567890123456789012345678901"})
-    check(!number(bad).has_value());
+    check(!phpNumeric(bad).has_value());
   check(isTimestamp("2026-11-04 15:30:00"));
   for (StringView bad : {"2026-11-04", "2026-11-04T15:30:00", "2026-11-04 15:30", "2026/11/04 15:30:00", "2026-11-04 15:30:0x", ""})
     check(!isTimestamp(bad));
@@ -42,29 +42,70 @@ http::HttpRequest postRequest(StringView contentType, StringView body)
 
 test "a game's form, urlencoded or with its SGF"
 {
-  ReportForm plain = readGameForm(postRequest("application/x-www-form-urlencoded", "opponent=12&komi=6.5&comment=a%20%26%20b"));
-  check(formValue(plain.fields, "opponent") == "12" && formValue(plain.fields, "komi") == "6.5" && formValue(plain.fields, "comment") == "a & b");
-  check(formValue(plain.fields, "missing").empty() && !plain.sgf.has_value());
+  http::HttpRequest plainRequest = postRequest("application/x-www-form-urlencoded", "opponent=12&komi=6.5&comment=a%20%26%20b");
+  Form plain(plainRequest, "/");
+  check(plain.text("opponent") == "12" && plain.text("komi") == "6.5" && plain.text("comment") == "a & b");
+  check(plain.text("missing").empty() && !plain.file("sgf").has_value());
 
   String body = "--XyZ\r\nContent-Disposition: form-data; name=\"komi\"\r\n\r\n0.5\r\n"
                 "--XyZ\r\nContent-Disposition: form-data; name=\"sgf\"; filename=\"game.sgf\"\r\nContent-Type: application/x-go-sgf\r\n\r\n(;GM[1]SZ[19])\r\n"
                 "--XyZ--\r\n";
-  ReportForm withFile = readGameForm(postRequest("multipart/form-data; boundary=XyZ", body));
-  check(formValue(withFile.fields, "komi") == "0.5");
-  check(withFile.sgf.has_value() && *withFile.sgf == "(;GM[1]SZ[19])");
+  http::HttpRequest fileRequest = postRequest("multipart/form-data; boundary=XyZ", body);
+  Form withFile(fileRequest, "/");
+  check(withFile.text("komi") == "0.5" && withFile.decimal("komi", "no komi") == 0.5);
+  check(withFile.file("sgf").has_value() && *withFile.file("sgf") == "(;GM[1]SZ[19])");
   String noFile = "--XyZ\r\nContent-Disposition: form-data; name=\"sgf\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n\r\n--XyZ--\r\n";
-  check(!readGameForm(postRequest("multipart/form-data; boundary=XyZ", noFile)).sgf.has_value());
+  http::HttpRequest noFileRequest = postRequest("multipart/form-data; boundary=XyZ", noFile);
+  check(!Form(noFileRequest, "/").file("sgf").has_value());
 
   // A field that is not UTF-8 is the request's error, 400.
-  ReportForm notUtf8 = readGameForm(postRequest("application/x-www-form-urlencoded", "comment=%FF%FE"));
+  http::HttpRequest notUtf8Request = postRequest("application/x-www-form-urlencoded", "comment=%FF%FE");
+  Form notUtf8(notUtf8Request, "/");
   i32 status = 0;
   try
   {
-    formValue(notUtf8.fields, "comment");
+    notUtf8.text("comment");
   }
   catch (const http::HttpError& e)
   {
     status = e.status;
   }
   check(status == 400);
+}
+
+// The message of the FormError a read throws, "" when it reads.
+template <typename F>
+String formErrorOf(F read)
+{
+  try
+  {
+    read();
+    return "";
+  }
+  catch (const FormError& e)
+  {
+    return toString(e.target, " ", e.message);
+  }
+}
+
+test "typed numbers in a form"
+{
+  http::HttpRequest request = postRequest("application/x-www-form-urlencoded", "digits=3&big=300&minus=-2&text=3a&empty=&long=99999999999999999999");
+  Form form(request, "/settings");
+  check(form.number<u8>("digits", "bad") == 3 && form.number<i32>("minus", "bad") == -2 && form.number<i64>("big", "bad") == 300);
+  check(formErrorOf([&form] { form.number<u8>("big", "Significant digits are 0 to 3"); }) == "/settings Significant digits are 0 to 3");
+  check(formErrorOf([&form] { form.number<u8>("minus", "bad"); }) == "/settings bad");
+  check(formErrorOf([&form] { form.number<i32>("text", "not ", form.text("text")); }) == "/settings not 3a");
+  check(formErrorOf([&form] { form.number<i32>("empty", "bad"); }) == "/settings bad");
+  check(formErrorOf([&form] { form.number<i32>("missing", "bad"); }) == "/settings bad");
+  check(formErrorOf([&form] { form.number<i64>("long", "bad"); }) == "/settings bad");
+  check(formErrorOf([&form] { form.number<u64>("long", "bad"); }) == "/settings bad");
+  check(form.number<u64>("big", "bad") == 300 && form.number<u32>("digits", "bad") == 3);
+  check(formErrorOf([&form] { form.number<u64>("minus", "bad"); }) == "/settings bad");
+  form.setTarget("/invites");
+  check(formErrorOf([&form] { form.fail("Email ", 2, " not provided"); }) == "/invites Email 2 not provided");
+  check(formErrorOf([&form] { form.requirePost("with the form"); }) == "");
+  http::HttpRequest get;
+  get.method = "GET";
+  check(formErrorOf([&get] { Form(get, "/").requirePost("with the form"); }) == "/ with the form");
 }

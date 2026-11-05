@@ -107,25 +107,25 @@ bool canAccessAllInvites(const Page& page) { return userCanDo(page, adminLevelMo
 
 void inviteAction(Page& page, http::HttpResponse& response)
 {
+  Form form(*page.request, "/");
   if (!loggedIn(page) || !canInvite(page))
-    return redirectWithMessage(response, "/", "Not logged in");
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/invites", "An invite is made with the form.");
-  Vector<url::UrlQueryParameter> form = page.request->form();
-  String email = formValue(form, "email");
-  String first = formValue(form, "first_name");
-  String last = formValue(form, "last_name");
-  String rating = formValue(form, "rating");
+    form.fail("Not logged in");
+  form.setTarget("/invites");
+  form.requirePost("An invite is made with the form.");
+  String email = form.text("email");
+  String first = form.text("first_name");
+  String last = form.text("last_name");
+  String rating = form.text("rating");
   if (email.empty())
-    return redirectWithMessage(response, "/invites", "Email not provided");
+    form.fail("Email not provided");
   if (!isMailAddress(email))
-    return redirectWithMessage(response, "/invites", "That is not an email address");
+    form.fail("That is not an email address");
   if (first.empty() || last.empty())
-    return redirectWithMessage(response, "/invites", "A first and a last name are needed");
-  if (!rating.empty() && !number(rating).has_value())
-    return redirectWithMessage(response, "/invites", "The rating is a number");
+    form.fail("A first and a last name are needed");
+  if (!rating.empty() && !phpNumeric(rating).has_value())
+    form.fail("The rating is a number");
   if (!page.query("SELECT id FROM user WHERE email=", quote(email)).empty())
-    return redirectWithMessage(response, "/invites", "Player with this email is already registered");
+    form.fail("Player with this email is already registered");
   String secret = secureRandomSecret();
   page.query("INSERT INTO invite(from_user_id, first_name, last_name, email, secret, rating) VALUES (",
              quote(userValue(page, "id")), ",", quote(first), ",", quote(last), ",", quote(email), ",", quote(secret), ",",
@@ -173,27 +173,27 @@ void inviteExistingUserPage(Page& page)
 
 void inviteExistingUserAction(Page& page, http::HttpResponse& response)
 {
+  Form form(*page.request, "/");
   if (!loggedIn(page) || !canInvite(page))
-    return redirectWithMessage(response, "/", "Not logged in");
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/invites", "An invite is made with the form.");
-  Vector<url::UrlQueryParameter> form = page.request->form();
-  String userId = formValue(form, "user_id");
-  String email = formValue(form, "email");
+    form.fail("Not logged in");
+  form.setTarget("/invites");
+  form.requirePost("An invite is made with the form.");
+  String userId = form.text("user_id");
+  String email = form.text("email");
   if (userId.empty())
-    return redirectWithMessage(response, "/invites", "user_id of player to register not provided");
+    form.fail("user_id of player to register not provided");
   mariadb::MariaDbResult found = page.query("SELECT * FROM user WHERE user.id=", quote(userId));
   if (found.empty())
-    return redirectWithMessage(response, "/invites", toString("User with id=", userId, " not found."));
+    form.fail("User with id=", userId, " not found.");
   Row user(found, 0);
   if (!user["username"].empty())
-    return redirectWithMessage(response, "/invites", user["name"] + " is already registered.");
+    form.fail(user["name"] + " is already registered.");
   if (email.empty())
-    return redirectWithMessage(response, "/invites", "Email not provided");
+    form.fail("Email not provided");
   if (!isMailAddress(email))
-    return redirectWithMessage(response, "/invites", "That is not an email address");
+    form.fail("That is not an email address");
   if (!page.query("SELECT id FROM user WHERE email=", quote(email)).empty())
-    return redirectWithMessage(response, "/invites", "Player with this email is already registered");
+    form.fail("Player with this email is already registered");
   String secret = secureRandomSecret();
   page.query("INSERT INTO invite(from_user_id, user_id, email, secret) VALUES (", quote(userValue(page, "id")), ",",
              quote(userId), ",", quote(email), ",", quote(secret), ")");
@@ -288,25 +288,25 @@ bool isUsername(StringView name)
 
 void registerAction(Page& page, http::HttpResponse& response)
 {
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/", "Registration is done with the form.");
-  Vector<url::UrlQueryParameter> form = page.request->form();
-  String id = formValue(form, "invite_id");
-  String secret = formValue(form, "secret");
+  Form form(*page.request, "/");
+  form.requirePost("Registration is done with the form.");
+  String id = form.text("invite_id");
+  String secret = form.text("secret");
   String back = toString("/register?id=", url::urlEncode(id), "&secret=", url::urlEncode(secret));
   Optional<String> problem = registrationProblem(page, id, secret);
   if (problem.has_value())
-    return redirectWithMessage(response, "/", *problem);
+    form.fail(*problem);
   mariadb::MariaDbResult invited = page.query("SELECT * FROM invite WHERE id=", quote(id));
   Row row(invited, 0);
-  String username = formValue(form, "username");
-  String password = formValue(form, "password");
+  String username = form.text("username");
+  String password = form.text("password");
+  form.setTarget(back);
   if (!isUsername(username))
-    return redirectWithMessage(response, back, "A username is letters, digits, '_', '-' and '.', and not a page's name");
+    form.fail("A username is letters, digits, '_', '-' and '.', and not a page's name");
   if (password.size() < 4)
-    return redirectWithMessage(response, back, "The password needs 4 characters or more");
+    form.fail("The password needs 4 characters or more");
   if (!page.query("SELECT id FROM user where username=", quote(username)).empty())
-    return redirectWithMessage(response, back, toString("The username \"", username, "\" is taken"));
+    form.fail("The username \"", username, "\" is taken");
   String hash = passwordHash(password);
   String newUserId;
   page.db->begin();
@@ -315,7 +315,7 @@ void registerAction(Page& page, http::HttpResponse& response)
     if (page.query("SELECT id FROM user WHERE id=", quote(row["user_id"])).empty())
     {
       page.db->rollback();
-      return redirectWithMessage(response, back, "The user you are supposed to register as doesn't exist.");
+      form.fail("The user you are supposed to register as doesn't exist.");
     }
     page.query("UPDATE user SET username=", quote(username), ", email=", quote(row["email"]), ", password=", quote(hash),
                ", admin_level_id=5, invited_by_user_id=", row["from_user_id"],
@@ -324,17 +324,17 @@ void registerAction(Page& page, http::HttpResponse& response)
   }
   else
   {
-    String country = formValue(form, "country_code");
+    String country = form.text("country_code");
     if (country.empty())
     {
       page.db->rollback();
-      return redirectWithMessage(response, back, "Country not selected");
+      form.fail("Country not selected");
     }
     mariadb::MariaDbResult countries = page.query("SELECT id FROM country WHERE code=", quote(country));
     if (countries.empty())
     {
       page.db->rollback();
-      return redirectWithMessage(response, back, toString("Country with code '", country, "' not found."));
+      form.fail("Country with code '", country, "' not found.");
     }
     String rating = row["rating"].empty() ? String("100") : row["rating"];
     page.query("INSERT INTO user(username, first_name, last_name, email, rating, register_rating, password, country_id,"
@@ -377,20 +377,20 @@ constexpr i64 resetInterval = 600;
 
 void resetPasswordAction(Page& page, http::HttpResponse& response)
 {
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/reset_password", "A reset is asked for with the form.");
-  Vector<url::UrlQueryParameter> form = page.request->form();
-  String email = formValue(form, "email");
+  Form form(*page.request, "/reset_password");
+  form.requirePost("A reset is asked for with the form.");
+  String email = form.text("email");
   if (email.empty())
-    return redirectWithMessage(response, "/reset_password", "Email not provided");
+    form.fail("Email not provided");
   // The same answer whether the address has an account or not.
   String answer = "If an account has this address, a reset link is on its way to it.";
   mariadb::MariaDbResult found = page.query("SELECT id, TIMESTAMPDIFF(SECOND, reset_password_timestamp, NOW()) as since FROM user WHERE email=", quote(email));
+  form.setTarget("/");
   if (found.empty() || !isMailAddress(email))
-    return redirectWithMessage(response, "/", answer);
+    form.fail(answer);
   Row user(found, 0);
   if (!user["since"].empty() && stoll(user["since"]) < resetInterval)
-    return redirectWithMessage(response, "/", answer);
+    form.fail(answer);
   String secret = secureRandomSecret();
   page.query("UPDATE user SET reset_password_secret=", quote(secret), ", reset_password_timestamp=now() WHERE id=", quote(user["id"]));
   sendMail(*page.config, email, "gorating.com password reset",
@@ -431,18 +431,16 @@ void resetPasswordConfirmPage(Page& page)
 
 void resetPasswordConfirmAction(Page& page, http::HttpResponse& response)
 {
-  if (page.request->method != "POST")
-    return redirectWithMessage(response, "/", "A new password is set with the form.");
-  Vector<url::UrlQueryParameter> form = page.request->form();
+  Form form(*page.request, "/");
+  form.requirePost("A new password is set with the form.");
   mariadb::MariaDbResult user;
-  Optional<String> problem = resetProblem(page, formValue(form, "id"), formValue(form, "secret"), user);
+  Optional<String> problem = resetProblem(page, form.text("id"), form.text("secret"), user);
   if (problem.has_value())
-    return redirectWithMessage(response, "/", *problem);
-  String password = formValue(form, "password");
+    form.fail(*problem);
+  String password = form.text("password");
+  form.setTarget(toString("/reset_password_confirm?id=", url::urlEncode(form.text("id")), "&secret=", url::urlEncode(form.text("secret"))));
   if (password.size() < 4)
-    return redirectWithMessage(response, toString("/reset_password_confirm?id=", url::urlEncode(formValue(form, "id")), "&secret=",
-                                             url::urlEncode(formValue(form, "secret"))),
-                               "The password needs 4 characters or more");
+    form.fail("The password needs 4 characters or more");
   page.query("UPDATE user SET password=", quote(passwordHash(password)),
              ", reset_password_secret = NULL, reset_password_timestamp = NULL WHERE id=", quote(Row(user, 0)["id"]));
   redirectWithMessage(response, "/", "Password successfully changed.");
