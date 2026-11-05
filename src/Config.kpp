@@ -19,8 +19,9 @@ struct GoratingConfig
   String scrapeDoToken;       // EGD's pages through scrape.do (Egd.kpp); "": from EGD itself
 };
 
-struct GoratingError : RuntimeError
+class GoratingError : public RuntimeError
 {
+public:
   GoratingError() {}
   GoratingError(const String& message) : RuntimeError(message) {}
 };

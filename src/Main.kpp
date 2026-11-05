@@ -4,7 +4,7 @@
 GoratingConfig goratingConfig;
 
 // A path that is no page and no player's username.
-struct PageNotFound : Exception
+class PageNotFound : public Exception
 {
 };
 
