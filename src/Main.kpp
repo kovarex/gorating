@@ -1,0 +1,205 @@
+// gorating.com in kpp: the router (start.php). Under Apache it runs as CGI, one request per
+// process; `gorating --port 8082` serves on one's own machine. README.md says how to run it.
+
+GoratingConfig goratingConfig;
+
+// A path that is no page and no player's username.
+struct PageNotFound : Exception
+{
+};
+
+// The pages ported so far; the others answer 501 until they are.
+bool route(Page& page, StringView name)
+{
+  if (name.empty())
+    homePage(page);
+  else if (name == "about")
+    aboutPage(page);
+  else if (name == "tournaments")
+    tournamentsPage(page);
+  else if (name == "tournament")
+    tournamentPage(page);
+  else if (name == "players")
+    playersPage(page);
+  else if (name == "game")
+    gamePage(page);
+  else if (name == "player")
+    playerPage(page, page.get("id"));
+  else if (name == "login")
+    loginPage(page);
+  else if (name == "settings")
+    settingsPage(page);
+  else if (name == "report")
+    reportPage(page);
+  else if (name == "edit_game")
+    editGamePage(page);
+  else if (name == "invites")
+    invitesPage(page);
+  else if (name == "invite_existing_user")
+    inviteExistingUserPage(page);
+  else if (name == "register")
+    registerPage(page);
+  else if (name == "reset_password")
+    resetPasswordPage(page);
+  else if (name == "reset_password_confirm")
+    resetPasswordConfirmPage(page);
+  else if (name == "deleted_games")
+    deletedGamesPage(page);
+  else if (name == "changes")
+    changesPage(page);
+  else if (name == "rating_discrepancies")
+    ratingDiscrepanciesPage(page);
+  else if (isPageName(name))
+    return false;
+  else if (!playerByUsername(page, name))
+    throw PageNotFound();
+  return true;
+}
+
+String contentTypeOf(StringView path)
+{
+  if (path.ends_with(".css"))
+    return "text/css";
+  if (path.ends_with(".js"))
+    return "text/javascript";
+  if (path.ends_with(".png"))
+    return "image/png";
+  return "application/octet-stream";
+}
+
+// With resourceAddress "" and a staticDirectory (a local run; on the server Apache serves the files
+// itself): the bundled CSS and JS from staticDirectory's build/assets (assets/build.sh), and
+// img/*.png from staticDirectory.
+bool serveStatic(const http::HttpRequest& request, http::HttpResponse& response)
+{
+  if (!goratingConfig.resourceAddress.empty() || goratingConfig.staticDirectory.empty())
+    return false;
+  StringView path = request.path;
+  String file;
+  if (path == String("/") + config::siteCss || path == String("/") + config::siteJs)
+    file = goratingConfig.staticDirectory + "/build/assets" + String(path);
+  else if (path.starts_with("/img/") && path.ends_with(".png") && path.find("..") == StringView::npos &&
+           path.find('/', 5) == StringView::npos)
+    file = goratingConfig.staticDirectory + String(path);
+  else
+    return false;
+  response.setHeader("Content-Type", contentTypeOf(path));
+  response.body = goratingReadFile(file);
+  return true;
+}
+
+void handle(const http::HttpRequest& request, http::HttpResponse& response)
+{
+  auto start = SteadyClock::now();
+  if (serveStatic(request, response))
+    return;
+  mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(goratingConfig.database);
+  const String* forwarded = request.header("x-forwarded-for");
+  String source = forwarded != nullptr ? *forwarded : request.remoteAddress;
+  db.query(String("INSERT INTO visit (`url`, `source`) VALUES (") + quote(request.target) + "," + quote(source) + ")");
+
+  Page page;
+  page.config = &goratingConfig;
+  page.db = &db;
+  page.request = &request;
+  String name = request.path.size() > 0 ? request.path.substr(1) : String();
+  readSession(page);
+  page.statistics = canShowStatistics(page) && request.cookie(statisticsCookie).has_value();
+  ratingDigits = significantDigits(page);
+  ratingChangeFormat = userValue(page, "setting_rating_change_format") == "2" ? 2 : 1;
+  // The pages without the layout.
+  if (runJob(page, name, response))
+    return;
+  if (name == "sgf")
+  {
+    sgfDownload(page, response);
+    return;
+  }
+  if (name == "login_action")
+  {
+    loginAction(page, response);
+    return;
+  }
+  using Action = void (*)(Page&, http::HttpResponse&);
+  for (Pair<const char*, Action> action : {Pair<const char*, Action>{"invite_action", inviteAction},
+                                           Pair<const char*, Action>{"invite_existing_user_action", inviteExistingUserAction},
+                                           Pair<const char*, Action>{"register_action", registerAction},
+                                           Pair<const char*, Action>{"reset_password_action", resetPasswordAction},
+                                           Pair<const char*, Action>{"reset_password_confirm_action", resetPasswordConfirmAction},
+                                           Pair<const char*, Action>{"toggle_statistics", toggleStatisticsAction}})
+    if (name == action.first)
+    {
+      action.second(page, response);
+      return;
+    }
+  if (name == "edit_player_name_action")
+  {
+    editPlayerNameAction(page, response);
+    return;
+  }
+  if (name == "edit_game_action")
+  {
+    editGameAction(page, response);
+    return;
+  }
+  if (name == "delete_game_action")
+  {
+    deleteGameAction(page, response);
+    return;
+  }
+  if (name == "restore_game_action")
+  {
+    restoreGameAction(page, response);
+    return;
+  }
+  if (name == "report_action")
+  {
+    reportAction(page, response);
+    return;
+  }
+  if (name == "settings_action")
+  {
+    settingsAction(page, response);
+    return;
+  }
+  if (name == "logout")
+  {
+    logoutAction(response);
+    return;
+  }
+  bool routed = false;
+  try
+  {
+    routed = route(page, name);
+  }
+  catch (const PageNotFound& e)
+  {
+    response.status = 404;
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.body = format("Unknown page:{}", name);
+    return;
+  }
+  if (!routed)
+  {
+    response.status = 501;
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.body = format("The page {} is not in the kpp version yet.\n", request.path);
+    return;
+  }
+  double seconds = (double)durationCast<Microseconds>(SteadyClock::now() - start).count() / 1e6;
+  response.body = layout(page, page.body, seconds);
+}
+
+int main(int argc, char** argv)
+{
+  goratingConfig = goratingReadConfig();
+  if (getenv("REQUEST_METHOD") != nullptr)
+    return http::httpCgi(handle);
+  http::HttpServerOptions options;
+  options.port = 8082;
+  for (int i = 1; i + 1 < argc; ++i)
+    if (StringView(argv[i]) == "--port")
+      options.port = (int)stoll(String(StringView(argv[i + 1])));
+  http::httpServe(options, handle);
+  return 0;
+}

@@ -1,0 +1,138 @@
+// The integration tests' database. GORATING_TEST_DB names a MariaDB server, "host:port:user" or
+// "host:port:user:password"; without it each integration test says it is skipped. A test that needs
+// the data makes a fresh database, gorating_kpp_tests: the repository's schema and procedures
+// (setup.sql), the migrations (migrations/, in order) and the made-up data
+// (testdata/fixture.sql, testdata/generate.py's output: no real person in it). Run from the repository's root.
+
+// The statements of an SQL script as the mariadb client splits them: each ends at the delimiter
+// (";", or what a DELIMITER line sets), outside quotes and comments; "--" and "#" comments to the
+// line's end and /* */ ones are left out, /*! */ ones kept (the server runs them).
+Vector<String> sqlStatements(StringView script)
+{
+  Vector<String> statements;
+  String delimiter = ";";
+  String current;
+  ContainerSize i = 0;
+  bool lineStart = true;
+  auto finish = [&]()
+  {
+    StringView text = httpTrimSpaces(current);
+    if (!text.empty())
+      statements.push_back(String(text));
+    current = String();
+  };
+  while (i < script.size())
+  {
+    char c = script[i];
+    if (lineStart && httpTrimSpaces(current).empty())
+    {
+      // A DELIMITER line, at a statement's start.
+      ContainerSize end = script.find('\n', i);
+      if (end == StringView::npos)
+        end = script.size();
+      StringView line = httpTrimSpaces(script.substr(i, end - i));
+      if (line.size() > 10 && (line.starts_with("DELIMITER ") || line.starts_with("delimiter ")))
+      {
+        delimiter = String(httpTrimSpaces(line.substr(10)));
+        i = end + 1;
+        continue;
+      }
+    }
+    lineStart = c == '\n';
+    if (c == '\'' || c == '"' || c == '`')
+    {
+      // A quoted string or name: to its closing quote, a backslash (not in a name) escaping the next.
+      current.append(c);
+      ++i;
+      while (i < script.size() && script[i] != c)
+      {
+        if (script[i] == '\\' && c != '`' && i + 1 < script.size())
+          current.append(script[i++]);
+        current.append(script[i++]);
+      }
+      if (i < script.size())
+        current.append(script[i++]);
+      continue;
+    }
+    if ((c == '-' && script.substr(i).starts_with("-- ")) || c == '#')
+    {
+      ContainerSize end = script.find('\n', i);
+      i = end == StringView::npos ? script.size() : end;
+      continue;
+    }
+    if (c == '/' && script.substr(i).starts_with("/*") && !script.substr(i).starts_with("/*!"))
+    {
+      ContainerSize end = script.find("*/", i + 2);
+      i = end == StringView::npos ? script.size() : end + 2;
+      continue;
+    }
+    if (script.substr(i).starts_with(delimiter))
+    {
+      finish();
+      i += delimiter.size();
+      continue;
+    }
+    current.append(c);
+    ++i;
+  }
+  finish();
+  return statements;
+}
+
+void runSqlScript(mariadb::MariaDbConnection& db, StringView script)
+{
+  for (const String& statement : sqlStatements(script))
+    db.query(statement);
+}
+
+// GORATING_TEST_DB's server, or nothing.
+Optional<mariadb::MariaDbOptions> testDatabaseServer()
+{
+  const char* named = getenv("GORATING_TEST_DB");
+  if (named == nullptr || StringView(named).empty())
+    return Optional<mariadb::MariaDbOptions>();
+  Vector<String> parts;
+  StringView text(named);
+  for (ContainerSize at = 0;;)
+  {
+    ContainerSize colon = text.find(':', at);
+    parts.push_back(String(text.substr(at, colon == StringView::npos ? StringView::npos : colon - at)));
+    if (colon == StringView::npos)
+      break;
+    at = colon + 1;
+  }
+  if (parts.size() < 3)
+    throw GoratingError(format("GORATING_TEST_DB is \"{}\", not host:port:user[:password]", text));
+  mariadb::MariaDbOptions options;
+  options.host = parts[0];
+  options.port = (int)stoll(parts[1]);
+  options.user = parts[2];
+  if (parts.size() > 3)
+    options.password = parts[3];
+  return Optional<mariadb::MariaDbOptions>(options);
+}
+
+constexpr StringView testDatabaseName = "gorating_kpp_tests";
+
+// The configuration of a fresh test database (above), which the site's handler and the tests use.
+GoratingConfig freshTestDatabase(const mariadb::MariaDbOptions& server)
+{
+  mariadb::MariaDbConnection admin = mariadb::MariaDbConnection::connect(server);
+  admin.query(format("DROP DATABASE IF EXISTS {}", testDatabaseName));
+  admin.query(format("CREATE DATABASE {} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", testDatabaseName));
+  GoratingConfig config = testConfig();
+  config.database = server;
+  config.database.database = String(testDatabaseName);
+  mariadb::MariaDbConnection db = mariadb::MariaDbConnection::connect(config.database);
+  db.query("SET NAMES utf8mb4");
+  runSqlScript(db, goratingReadFile("setup.sql"));
+  Vector<String> migrations;
+  for (const filesystem::directory_entry& entry : filesystem::directory_iterator(filesystem::path("migrations")))
+    if (entry.path().extension().string() == ".sql")
+      migrations.push_back(entry.path().string());
+  sort(migrations.begin(), migrations.end());
+  for (const String& migration : migrations)
+    runSqlScript(db, goratingReadFile(migration));
+  runSqlScript(db, goratingReadFile("testdata/fixture.sql"));
+  return config;
+}

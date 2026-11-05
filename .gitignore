@@ -1,3 +1,9 @@
-src/config.php
+libraries
+build
+gorating-config.json
+gorating-config-scenario.json
+gorating-config-live.json
+testdata/egd-work
+testdata/mail-work
 .idea
 tmp

@@ -1,7 +1,7 @@
-# The kpp version (kpp/): built with a pinned release of kpp (kpp/kpp-version: the installed kpp
+# gorating.com: built with a pinned release of kpp (kpp-version: the installed kpp
 # alone, its FreeBSD sysroot and official libraries included), tested on Windows and in a FreeBSD
 # 14.3 VM against a MariaDB with the made-up data, and packed as the site's release
-# (gorating-site.tar.gz, kpp/DEPLOY.md), whose install kpp's tools/deploy/test-deploy.sh checks in
+# (gorating-site.tar.gz, DEPLOY.md), whose install kpp's tools/deploy/test-deploy.sh checks in
 # the VM. Every push to master that passes publishes the package as the GitHub Release kpp-<run>
 # (kovarex, 2026-11-04: "just take the latest"), which `kpp-deploy.sh` alone installs on the server
 # (kpp-deploy.sh kpp-<run> an older one). Nothing here deploys, holds a secret or connects to the site.
@@ -33,7 +33,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $version = (Get-Content kpp\kpp-version -Raw).Trim()
+          $version = (Get-Content kpp-version -Raw).Trim()
           gh release download $version --repo kovarex/kpp --pattern "kpp-*.zip" --dir kpp-release
           if ($LASTEXITCODE -ne 0) { throw "kpp $version has no zip" }
           Expand-Archive (Get-ChildItem kpp-release\*.zip)[0].FullName kpp-release\kpp
@@ -43,25 +43,22 @@ jobs:
 
       - name: Tests on Windows (without a database)
         shell: powershell
-        working-directory: kpp
         run: |
           & $env:KPP --no-server --test
           if ($LASTEXITCODE -ne 0) { throw "kpp --test: exit $LASTEXITCODE" }
 
-      # The CSS and JS bundled, minified and named by their contents (kpp/assets/build.sh, esbuild
+      # The CSS and JS bundled, minified and named by their contents (assets/build.sh, esbuild
       # pinned); the release program links those names.
       - name: The CSS and JS
         shell: bash
-        working-directory: kpp
         run: |
           set -e
-          options=$(sh assets/build.sh ../freebsd/assets | tail -n 1)
+          options=$(sh assets/build.sh freebsd/assets | tail -n 1)
           echo "$options"
           echo "SITE_ASSETS=$options" >> "$GITHUB_ENV"
 
       - name: The FreeBSD program and its tests
         shell: powershell
-        working-directory: kpp
         run: |
           $ErrorActionPreference = 'Continue'
           $assets = $env:SITE_ASSETS -split ' '
@@ -128,23 +125,22 @@ jobs:
             service mysql-server start
             mysql -e "CREATE USER 'gorating'@'127.0.0.1' IDENTIFIED BY 'test-only'; GRANT ALL PRIVILEGES ON *.* TO 'gorating'@'127.0.0.1'"
             chmod +x freebsd/gorating freebsd/gorating-tests
-            cd kpp
-            GORATING_TEST_DB=127.0.0.1:3306:gorating:test-only ../freebsd/gorating-tests > ../freebsd/tests.log 2>&1 || true
-            cat ../freebsd/tests.log
+            GORATING_TEST_DB=127.0.0.1:3306:gorating:test-only freebsd/gorating-tests > freebsd/tests.log 2>&1 || true
+            cat freebsd/tests.log
             # The program as Apache runs it, on the database the tests left: the About page (no
             # database) and the players' list (the database).
-            printf '{"database": {"host": "127.0.0.1", "port": 3306, "user": "gorating", "password": "test-only", "name": "gorating_kpp_tests"}, "resourceAddress": "", "sessionSecret": "0123456789abcdef0123456789abcdef-ci"}' > ../freebsd/config.json
+            printf '{"database": {"host": "127.0.0.1", "port": 3306, "user": "gorating", "password": "test-only", "name": "gorating_kpp_tests"}, "resourceAddress": "", "sessionSecret": "0123456789abcdef0123456789abcdef-ci"}' > freebsd/config.json
             for page in /about /players; do
-              REQUEST_METHOD=GET REQUEST_URI=$page GORATING_CONFIG=../freebsd/config.json ../freebsd/gorating > ../freebsd/cgi$(echo $page | tr / _).txt 2>&1 || true
-              head -c 300 ../freebsd/cgi$(echo $page | tr / _).txt; echo
+              REQUEST_METHOD=GET REQUEST_URI=$page GORATING_CONFIG=freebsd/config.json freebsd/gorating > freebsd/cgi$(echo $page | tr / _).txt 2>&1 || true
+              head -c 300 freebsd/cgi$(echo $page | tr / _).txt; echo
             done
             # The package installed as on the server: a database as production's before the switch
             # (setup.sql), the migrations run by kpp-deploy.sh --migrate, its smoke tests, a rollback.
             mysql -e "CREATE DATABASE gorating_deploy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-            mysql gorating_deploy < ../setup.sql
-            sed 's/gorating_kpp_tests/gorating_deploy/' ../freebsd/config.json > ../freebsd/deploy-config.json
-            GORATING_TEST_CONFIG=../freebsd/deploy-config.json sh ../deploy-tools/test-deploy.sh ../package/gorating-site.tar.gz "mysql -h 127.0.0.1 -u gorating -ptest-only gorating_deploy" > ../freebsd/deploy.log 2>&1 || true
-            cat ../freebsd/deploy.log
+            mysql gorating_deploy < setup.sql
+            sed 's/gorating_kpp_tests/gorating_deploy/' freebsd/config.json > freebsd/deploy-config.json
+            GORATING_TEST_CONFIG=freebsd/deploy-config.json sh deploy-tools/test-deploy.sh package/gorating-site.tar.gz "mysql -h 127.0.0.1 -u gorating -ptest-only gorating_deploy" > freebsd/deploy.log 2>&1 || true
+            cat freebsd/deploy.log
 
       - name: Result
         if: always()
@@ -164,7 +160,7 @@ jobs:
           { echo; echo "    ${deployed:-test-deploy: no result}"; grep -E '^FAIL' freebsd/deploy.log 2>/dev/null | sed 's/^/    /' || true; } >> "$GITHUB_STEP_SUMMARY"
           [ "$deployed" = "test-deploy: ALL PASSED" ] || { echo "the package's install failed:"; cat freebsd/deploy.log; exit 1; }
 
-  # The site's package: what kpp/DEPLOY.md puts on the server, laid out as there, with kpp-deploy.sh,
+  # The site's package: what DEPLOY.md puts on the server, laid out as there, with kpp-deploy.sh,
   # which installs it. test-freebsd installs it before a release is made of it.
   package:
     needs: build
@@ -188,10 +184,10 @@ jobs:
           p=gorating-site
           mkdir -p $p/public $p/migrations
           cp freebsd/gorating $p/public/gorating.cgi && chmod 755 $p/public/gorating.cgi
-          cp kpp/deploy/.htaccess freebsd/assets/site.*.css freebsd/assets/site.*.js $p/public/
+          cp deploy/.htaccess freebsd/assets/site.*.css freebsd/assets/site.*.js $p/public/
           cp -R img $p/public/img
-          cp kpp/migrations/*.sql $p/migrations/
-          cp kpp/deploy/gorating-config.example.json kpp/deploy/switch-to-kpp.sh kpp/DEPLOY.md kpp/DEPLOY-CHECKLIST.md $p/
+          cp migrations/*.sql $p/migrations/
+          cp deploy/gorating-config.example.json deploy/switch-to-kpp.sh DEPLOY.md DEPLOY-CHECKLIST.md $p/
           curl -fsSL -o $p/kpp-deploy.sh "https://raw.githubusercontent.com/kovarex/kpp/$KPP_DEPLOY_COMMIT/tools/deploy/kpp-deploy.sh"
           {
             echo "app gorating"
@@ -201,7 +197,7 @@ jobs:
           } > $p/MANIFEST
           {
             echo "gorating $version, commit $GITHUB_SHA"
-            echo "$(cat freebsd/kpp-version.txt), installed (kpp/kpp-version)"
+            echo "$(cat freebsd/kpp-version.txt), installed (kpp-version)"
             echo "kpp-deploy.sh from kovarex/kpp $KPP_DEPLOY_COMMIT"
             echo "built by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             (cd $p && find . -type f ! -name BUILD.txt | sort | xargs sha256sum)
@@ -247,7 +243,7 @@ jobs:
           tag="kpp-$GITHUB_RUN_NUMBER"
           gh release create "$tag" gorating-site.tar.gz gorating-site.tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest=false \
             --title "$tag (${GITHUB_SHA:0:10})" \
-            --notes "The kpp version's site package (kpp/DEPLOY.md), commit $GITHUB_SHA, built by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Install: kpp-deploy.sh (the latest) or kpp-deploy.sh $tag."
+            --notes "The kpp version's site package (DEPLOY.md), commit $GITHUB_SHA, built by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Install: kpp-deploy.sh (the latest) or kpp-deploy.sh $tag."
           newest=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName -q '.[].tagName' | sed -n 's/^kpp-\([0-9][0-9]*\)$/\1/p' | sort -n | tail -n 1)
           if [ "$newest" = "$GITHUB_RUN_NUMBER" ]; then
             gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --latest

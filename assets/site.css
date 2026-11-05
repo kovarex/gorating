@@ -1,0 +1,3 @@
+/* The site's style sheet: assets/build.sh bundles this file and everything it imports into one,
+   minified and named by its contents (site.<hash>.css); a new file is one more @import. */
+@import "./style2.css";
