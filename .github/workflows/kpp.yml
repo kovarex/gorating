@@ -191,7 +191,7 @@ jobs:
           cp kpp/deploy/.htaccess freebsd/assets/site.*.css freebsd/assets/site.*.js $p/public/
           cp -R img $p/public/img
           cp kpp/migrations/*.sql $p/migrations/
-          cp kpp/deploy/gorating-config.example.json kpp/DEPLOY.md kpp/DEPLOY-CHECKLIST.md $p/
+          cp kpp/deploy/gorating-config.example.json kpp/deploy/switch-to-kpp.sh kpp/DEPLOY.md kpp/DEPLOY-CHECKLIST.md $p/
           curl -fsSL -o $p/kpp-deploy.sh "https://raw.githubusercontent.com/kovarex/kpp/$KPP_DEPLOY_COMMIT/tools/deploy/kpp-deploy.sh"
           {
             echo "app gorating"

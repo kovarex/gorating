@@ -25,6 +25,22 @@ first run is CI's FreeBSD VM with a MariaDB of the made-up data (README.md, "Not
   order (`mariadb gorating_test < migrations/001-secrets-and-rating-discrepancies.sql`). The PHP
   site works on the changed database too (tested locally).
 
+## The switch from PHP: switch-to-kpp.sh (kovarex, over SSH, once)
+
+With the database backed up, production's `/home/protected/gorating-config.json` (mode 640, group
+web) and `/home/protected/deploy/my.cnf` (below) written:
+
+```sh
+fetch -o /home/protected/switch-to-kpp.sh https://raw.githubusercontent.com/kovarex/gorating/kpp/kpp/deploy/switch-to-kpp.sh
+sh /home/protected/switch-to-kpp.sh
+```
+
+It checks the configuration, the database client and the PHP version (changing nothing), asks for
+yes, moves the PHP files (`*.php`, `src/`, `.htaccess`) to /home/protected/php-site, runs
+`kpp-deploy.sh --migrate` (migrations 001 and 002, the latest release, its smoke tests) and puts the
+PHP version back when anything fails. `sh switch-to-kpp.sh --back-to-php` puts it back later. Then the
+hourly task's address gets `?secret=<jobSecret>`.
+
 ## Installing a release with kpp-deploy.sh (kovarex, over SSH)
 
 Every push to the kpp branch that passes CI is published as the GitHub Release `kpp-<run>`, the
