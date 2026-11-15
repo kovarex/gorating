@@ -133,7 +133,7 @@ bool processTournament(Page& page, String key)
       String gorText = player.gor;
       PhpNumber currentGor = PhpNumber::read(gorText);
       String playerPin = player.pin;
-      String userId = addEgdPlayerIfNotPresent(page, playerPin, player.firstName, player.lastName);
+      String userId = addEgdPlayerIfNotPresent(page, playerPin, player.firstName, player.lastName, gorText);
       mariadb::MariaDbResult userResult = page.query("SELECT * from user WHERE user.id=", quote(userId));
       Row user(userResult, 0);
       if (!existed)
@@ -167,7 +167,8 @@ bool processTournament(Page& page, String key)
         String opponentPin = row.opponentPin;
         // A jigo is stored with the player seen first as its winner.
         bool userWon = jigo ? processedGame(processed, opponentPin, playerPin, round) == nullptr : row.result == "Win";
-        String opponentId = addEgdPlayerIfNotPresent(page, opponentPin, row.opponentFirstName, row.opponentLastName);
+        String opponentId =
+            addEgdPlayerIfNotPresent(page, opponentPin, row.opponentFirstName, row.opponentLastName, row.opponentGor);
         String opponentGorText = row.opponentGor;
         PhpNumber opponentGor = PhpNumber::read(opponentGorText);
         PhpNumber opponentGorChange = PhpNumber::read(row.opponentGorChange);

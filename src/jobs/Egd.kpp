@@ -90,21 +90,23 @@ bool isTournamentKey(StringView key)
 
 constexpr StringView egdAddress = "https://www.europeangodatabase.eu/EGD/";
 
-// A player's rating and country from their EGD card (getEgdInfo).
-EgdPlayerInfo egdPlayerInfo(Page& page, StringView pin)
+// A player's rating and country from their EGD card (getEgdInfo); the rating is knownGor when the
+// card shows none (EGD left a player's GoR empty on 2026-11-15, which stopped PHP's job as well).
+EgdPlayerInfo egdPlayerInfo(Page& page, StringView pin, StringView knownGor)
 {
   String url = String(egdAddress) + "Player_Card.php?&key=" + String(pin);
   EgdPlayerCard card = readEgdPlayerCard(readHtml(fetchEgd(*page.config, url)), url);
-  return EgdPlayerInfo{card.rating, egdCountry(page, card.country)};
+  return EgdPlayerInfo{card.rating.has_value() ? *card.rating : String(knownGor), egdCountry(page, card.country)};
 }
 
-// The user with this EGD pin, made from their card when there is none yet (addEGDPlayerIfNotPresent).
-String addEgdPlayerIfNotPresent(Page& page, StringView pin, StringView firstName, StringView lastName)
+// The user with this EGD pin, made from their card when there is none yet (addEGDPlayerIfNotPresent);
+// knownGor is the GoR the tournament page gives them, for a card without one.
+String addEgdPlayerIfNotPresent(Page& page, StringView pin, StringView firstName, StringView lastName, StringView knownGor)
 {
   mariadb::MariaDbResult found = page.query("SELECT id FROM user WHERE egd_pin =", quote(pin));
   if (!found.empty())
     return Row(found, 0)["id"];
-  EgdPlayerInfo info = egdPlayerInfo(page, pin);
+  EgdPlayerInfo info = egdPlayerInfo(page, pin, knownGor);
   page.query("INSERT INTO user(first_name, last_name, egd_pin, egd_rating, rating, country_id, admin_level_id) VALUES(",
              quoteOrNull(firstName), ",", quoteOrNull(lastName), ",", quote(pin), ",", quote(info.rating), ",",
              quote(info.rating), ",", quote(info.country.id), ",6)");

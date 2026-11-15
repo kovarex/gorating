@@ -151,16 +151,19 @@ EgdPlayerCard readEgdPlayerCard(const HtmlDocument& doc, StringView url)
     {
       ContainerSize space = value->find(' ');
       String gor = space == String::npos ? *value : value->substr(0, space);
-      if (!phpIsNumeric(gor))
-        throw GoratingError(toString("The provided rating from egd (", gor, ") doesn't seem to be a number."));
-      rating = Optional<String>(gor);
+      if (gor.empty())
+        rating = Optional<String>(String());
+      else if (!phpIsNumeric(gor))
+        throw GoratingError(toString("The provided rating from egd (", gor, ") doesn't seem to be a number. Link:", url));
+      else
+        rating = Optional<String>(gor);
     }
     else if (*name == "country")
       country = Optional<String>(*value);
   }
-  if (!rating.has_value() || rating->empty() || !country.has_value())
+  if (!rating.has_value() || !country.has_value())
     throw GoratingError(toString("Couldn't determine the rating from the EGD page. Link:", url));
-  return EgdPlayerCard{*rating, *country};
+  return EgdPlayerCard{rating->empty() ? Optional<String>() : rating, *country};
 }
 
 // The tournament search's keys, newest first: the first cell of each row of its results table.

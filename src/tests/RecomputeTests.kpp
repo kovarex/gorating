@@ -191,3 +191,30 @@ test "recomputing agrees with processing a tournament"
   check(nearly(ratingValue(dbValue(config, toString("SELECT rating FROM user WHERE id=", a))),
                ratingValue(dbValue(config, toString("SELECT winner_new_rating FROM game WHERE id=", later)))));
 }
+
+test "a player whose EGD card shows no GoR takes the tournament's"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  // The player's ratings once the tournament is processed with their card's GoR.
+  const MadeUpPlayer& player = madeUpPlayers[0];
+  String ratings = toString("SELECT CONCAT(egd_rating, ' ', rating) FROM user WHERE egd_pin=", quote(player.pin));
+  GoratingConfig config = freshTestDatabase(*server);
+  saveMadeUpPages();
+  config.egdPageDirectory = String(egdWork);
+  check(processMadeUpTournament(config).find("Processed") != String::npos);
+  String withCard = dbValue(config, ratings);
+  // EGD left a player's GoR empty on 2026-11-15, and the hourly job stopped at that tournament: the
+  // tournament page's GoR (here the card's) stands in.
+  config = freshTestDatabase(*server);
+  config.egdPageDirectory = String(egdWork);
+  writeTestFile(String(egdWork) + "/" + egdPageName(String(egdAddress) + "Player_Card.php?&key=" + player.pin, ""),
+                "<form><input name=\"gor\" value=\"\"><input name=\"country\" value=\"Czechia (CZ)\"></form>");
+  check(processMadeUpTournament(config).find("Processed") != String::npos);
+  check(!withCard.empty() && dbValue(config, ratings) == withCard);
+  saveMadeUpPages();
+}

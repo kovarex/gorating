@@ -101,11 +101,15 @@ test "a player's card and the tournament search"
   String card = "<html><body><form><input name=\"name\" value=\"Anna\"><input name=\"gor\" value=\"2100.5 (x)\">"
                 "<input name=\"country\" value=\"Czech Republic (CZ)\"><input type=\"submit\"></form></body></html>";
   EgdPlayerCard read = readEgdPlayerCard(readHtml(card), "card");
-  check(read.rating == "2100.5" && read.country == "Czech Republic (CZ)");
+  check(read.rating.has_value() && *read.rating == "2100.5" && read.country == "Czech Republic (CZ)");
+  // EGD leaves the GoR empty for some players (2026-11-15): no rating, the tournament's is used.
+  String emptyCard = "<input name=\"gor\" value=\"\"><input name=\"country\" value=\"Czechia (CZ)\">";
+  EgdPlayerCard empty = readEgdPlayerCard(readHtml(emptyCard), "card");
+  check(!empty.rating.has_value() && empty.country == "Czechia (CZ)");
   check(goratingErrorOf([&]() { readEgdPlayerCard(readHtml("<input name=\"gor\" value=\"1\">"), "card"); }) ==
         "Couldn't determine the rating from the EGD page. Link:card");
   check(goratingErrorOf([&]() { readEgdPlayerCard(readHtml("<input name=\"gor\" value=\"abc\">"), "card"); }) ==
-        "The provided rating from egd (abc) doesn't seem to be a number.");
+        "The provided rating from egd (abc) doesn't seem to be a number. Link:card");
 
   String search = "<table bordercolor=#000000><tr><td>not this</td></tr></table><TABLE bordercolor=#396B95><tr><th>Code</th></tr>"
                   "<tr><td>T261031Z</td><td>Made-up Cup</td></tr><tr><td>T261024Y</td><td>Other</td></tr></TABLE>";
