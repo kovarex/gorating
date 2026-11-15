@@ -118,6 +118,30 @@ test "EGD rating jumps between tournaments: check_rating_changes and collect_man
   check(job(config, {String("collect_manual_rating_changes"), String("username=nobody-here")}) == "User with username=\"nobody-here\" doesn't exist.\n");
 }
 
+test "a tournament that fails does not stop the ones queued after it"
+{
+  Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
+  if (!server.has_value())
+  {
+    println("skipped: GORATING_TEST_DB is not set (src/tests/TestDatabase.kpp)");
+    return;
+  }
+  GoratingConfig config = freshTestDatabase(*server);
+  saveMadeUpPages();
+  config.egdPageDirectory = String(egdWork);
+  // T000000X has no saved page, so reading it fails; it was queued first.
+  dbRun(config, toString("DELETE FROM egd_tournament_to_process;"
+                         " INSERT INTO egd_tournament_to_process(egd_key) VALUES('T000000X'), (", quote(madeUpKey), ");"));
+  String output = job(config, {String("process_tournament_batch")}, 1);
+  check(output.starts_with("process_tournament_batch failed: Processed 1 tournaments, 1 remaining, 1 failed.\n"
+                           "tournament T000000X: "));
+  check(dbValue(config, toString("SELECT COUNT(*) FROM egd_tournament WHERE egd_key=", quote(madeUpKey))) == "1");
+  check(dbValue(config, "SELECT GROUP_CONCAT(egd_key) FROM egd_tournament_to_process") == "T000000X");
+  // It stays queued, and fails again on its own without stopping the job's other work.
+  String again = job(config, {String("process_tournament_batch")}, 1);
+  check(again.find("Processed 0 tournaments, 1 remaining, 1 failed.") != String::npos);
+}
+
 test "the jobs from the server's shell: gorating.cgi --job NAME, no secret"
 {
   Optional<mariadb::MariaDbOptions> server = testDatabaseServer();

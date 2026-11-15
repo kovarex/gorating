@@ -36,21 +36,42 @@ i32 queueTournaments(Page& page, const Vector<String>& keys)
   return queued;
 }
 
-// Up to tournamentsPerBatch queued tournaments, half a second apart when EGD is asked (as PHP).
-String processTournamentBatch(Page& page)
+// Up to tournamentsPerBatch queued tournaments, half a second apart when EGD is asked (as PHP). A
+// tournament that fails goes to the back of the queue, so the ones after it are processed (one that
+// failed every hour had stopped them all, 2026-11-15); its error is added to failures.
+String processTournamentBatch(Page& page, String& failures)
 {
   String out;
   i32 done = 0;
+  Vector<String> failed;
   for (i32 i = 0; i < tournamentsPerBatch; ++i)
   {
-    if (!processTournament(page, String()))
+    mariadb::MariaDbResult queued = page.query("SELECT egd_key FROM egd_tournament_to_process ORDER BY id LIMIT 1");
+    if (queued.empty())
       break;
-    ++done;
+    String key = Row(queued, 0)["egd_key"];
+    if (find(failed.begin(), failed.end(), key) != failed.end())
+      break; // every one left failed in this batch
+    try
+    {
+      processTournament(page, key);
+      ++done;
+    }
+    catch (const Exception& e)
+    {
+      failed.push_back(key);
+      failures << "tournament " << key << ": " << StringView(e.what()) << "\n";
+      page.query("DELETE FROM egd_tournament_to_process WHERE egd_key=", quote(key));
+      page.query("INSERT INTO egd_tournament_to_process(egd_key) VALUES(", quote(key), ")");
+    }
     if (page.config->egdPageDirectory.empty())
       thisThread::sleepFor(Milliseconds(500));
   }
   String remaining = page.db->scalar("SELECT COUNT(*) FROM egd_tournament_to_process").value_or(String("0"));
-  out << "Processed " << done << " tournaments, " << remaining << " remaining.\n";
+  out << "Processed " << done << " tournaments, " << remaining << " remaining";
+  if (!failed.empty())
+    out << ", " << (i64)failed.size() << " failed";
+  out << ".\n";
   return out;
 }
 
@@ -105,10 +126,12 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
     response.body = "The jobs run from the server's shell (gorating.cgi --job NAME), or for the owner.\n";
     return true;
   }
+  // A tournament that failed does not stop the others; the job fails at its end, naming it.
+  String failures;
   if (name == "update_tournament_list")
   {
     i32 queued = queueTournaments(page, tournamentListKeys(fetchEgd(*page.config, String(egdAddress) + "EGD_2_0/downloads/tlist.html")));
-    response.body = toString("Queued ", queued, " tournaments.\n") + processTournamentBatch(page);
+    response.body = toString("Queued ", queued, " tournaments.\n") + processTournamentBatch(page, failures);
     // The cron calls only this job: it also moves a rating update on, for up to ratingUpdateSeconds
     // (PHP's moved only when a game was deleted or edited, or update_rating called).
     response.body << processRating(page, ratingUpdateSeconds) + "\n";
@@ -116,7 +139,7 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
   else if (name == "check_new_tournaments")
   {
     i32 queued = queueTournaments(page, latestTournamentKeys(page));
-    response.body = toString("Added ", queued, " to be processed.\n") + processTournamentBatch(page);
+    response.body = toString("Added ", queued, " to be processed.\n") + processTournamentBatch(page, failures);
   }
   else if (name == "process_tournament")
   {
@@ -124,13 +147,15 @@ bool runJob(Page& page, StringView name, http::HttpResponse& response)
     response.body = processTournament(page, key) ? String("Processed.\n") : String("No tournament to process.\n");
   }
   else if (name == "process_tournament_batch")
-    response.body = processTournamentBatch(page);
+    response.body = processTournamentBatch(page, failures);
   else if (name == "check_rating_changes")
     response.body = checkRatingChanges(page);
   else if (name == "collect_manual_rating_changes")
     response.body = collectManualRatingChanges(page);
   else
     response.body = processRating(page, ratingUpdateSeconds) + "\n";
+  if (!failures.empty())
+    throw GoratingError(toString(response.body, failures));
   return true;
 }
 

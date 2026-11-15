@@ -192,7 +192,7 @@ test "recomputing agrees with processing a tournament"
                ratingValue(dbValue(config, toString("SELECT winner_new_rating FROM game WHERE id=", later)))));
 }
 
-test "a player whose EGD card shows no GoR takes the tournament's"
+test "a player whose EGD card shows no GoR and no country takes the tournament's GoR and Undefined"
 {
   Optional<mariadb::MariaDbOptions> server = testDatabaseServer();
   if (!server.has_value())
@@ -203,6 +203,8 @@ test "a player whose EGD card shows no GoR takes the tournament's"
   // The player's ratings once the tournament is processed with their card's GoR.
   const MadeUpPlayer& player = madeUpPlayers[0];
   String ratings = toString("SELECT CONCAT(egd_rating, ' ', rating) FROM user WHERE egd_pin=", quote(player.pin));
+  String country =
+      toString("SELECT country.code FROM user JOIN country ON country.id = user.country_id WHERE egd_pin=", quote(player.pin));
   GoratingConfig config = freshTestDatabase(*server);
   saveMadeUpPages();
   config.egdPageDirectory = String(egdWork);
@@ -213,8 +215,9 @@ test "a player whose EGD card shows no GoR takes the tournament's"
   config = freshTestDatabase(*server);
   config.egdPageDirectory = String(egdWork);
   writeTestFile(String(egdWork) + "/" + egdPageName(String(egdAddress) + "Player_Card.php?&key=" + player.pin, ""),
-                "<form><input name=\"gor\" value=\"\"><input name=\"country\" value=\"Czechia (CZ)\"></form>");
+                "<form><input name=\"gor\" value=\"\"><input name=\"country\" value=\"\"></form>");
   check(processMadeUpTournament(config).find("Processed") != String::npos);
   check(!withCard.empty() && dbValue(config, ratings) == withCard);
+  check(dbValue(config, country) == "XX");
   saveMadeUpPages();
 }

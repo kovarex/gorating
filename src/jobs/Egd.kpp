@@ -57,6 +57,8 @@ bool phpLooseEqual(const Optional<String>& a, const Optional<String>& b)
 }
 
 // "Germany (DE)": the code in the last brackets, and its country (getCountryCodeAndID).
+// Undefined, XX, where EGD names no country or one gorating does not have (EGD left a player's card
+// without a country on 2026-11-15, and PHP's job stopped there, as the kpp one did until then).
 EgdCountry egdCountry(Page& page, StringView country)
 {
   ContainerSize space = country.rfind(' ');
@@ -64,7 +66,12 @@ EgdCountry egdCountry(Page& page, StringView country)
   String code = last.size() >= 2 ? String(last.substr(1, last.size() - 2)) : String();
   mariadb::MariaDbResult found = page.query("SELECT id FROM country WHERE code=", quote(code));
   if (found.empty())
-    throw GoratingError(toString("Couldn't find country with code:", code, " complete name:", country));
+  {
+    code = "XX";
+    found = page.query("SELECT id FROM country WHERE code='XX'");
+    if (found.empty())
+      throw GoratingError(toString("Couldn't find country with code:", code, " complete name:", country));
+  }
   return EgdCountry{Row(found, 0)["id"], code};
 }
 
